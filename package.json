@@ -1,7 +1,7 @@
 {
   "name": "domoja",
   "author": "Bruno Chabrier",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": false,
   "dependencies": {
     "@types/async": "^2.0.49",
