@@ -4,6 +4,7 @@
 *.old
 *.zip
 *.tgz
+.travis.yml
 config.xml
 secrets.*
 ssl/
