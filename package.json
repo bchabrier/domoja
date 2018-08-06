@@ -4,7 +4,18 @@
   "description": "A Typescript framework for home automation",
   "version": "0.0.2",
   "private": false,
-  "dependencies": {
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bchabrier/domoja.git"
+  },
+  "keywords": [
+    "home",
+    "automation"
+  ],
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bchabrier/domoja/issues"
+  },"dependencies": {
     "assert": "^1.4.1",
     "async": "^2.6.1",
     "express": "^4.16.3",
