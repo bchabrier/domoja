@@ -13,7 +13,7 @@ This framework allows to create home automation applications.
 
 The server part is written in Typescript, while the GUI uses Angular and Iconic.
 
-Here some screenshots of the application:
+Here are some screenshots of the application:
 
 <div>
 <img height=230px src=https://user-images.githubusercontent.com/7472805/43680587-4df7f310-983e-11e8-97d5-3eb9bd6e2969.png>
@@ -38,12 +38,11 @@ Here some screenshots of the application:
 Modules
 -------
 
-Domoja can be extended through modules, to add new sources, devices, etc. They a
-re essentially `npm` modules following particular specifications:
+Domoja can be extended through modules, to add new sources, devices, etc. They are essentially `npm` modules following particular specifications:
 - their name must start with `domoja-`
 - they must derive from `domoModule`
 
-### Existing modules
+### Available modules
 
 The following modules are currently available:
 
