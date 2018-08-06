@@ -23,6 +23,7 @@ build/
 
 *.js
 
+.nyc_output/
 secrets.*
 .vscode/
 modules/

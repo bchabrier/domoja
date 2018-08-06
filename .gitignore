@@ -30,3 +30,4 @@ app/scripts/configuration.js
 build/
 
 *.js
+.nyc_output/
