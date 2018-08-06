@@ -44,9 +44,9 @@
   },
   "scripts": {
     "start": "nodejs app",
-    "test": "ts-mocha test/**/*.ts",
+    "testonly": "ts-mocha test/**/*.ts",
     "test-watch": "ts-mocha test/**/*.ts -w --watch-extensions ts",
-    "cover": "nyc --extension .ts npm run test",
+    "test": "nyc --extension .ts npm run testonly",
     "report": "nyc report",
     "coverage": "nyc report --reporter=text-lcov | coveralls"
   }
