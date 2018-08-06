@@ -1,0 +1,33 @@
+
+imports:
+  - module: ./test/load/devices/fake_device
+    device: fakeDevice
+
+
+devices:
+  - level1:
+    - level1-1: 
+      - level1-1-1: { 
+        type: fakeDevice, 
+        name: "Device 1-1-1",
+        parameter1: value1
+      }
+    - level1-2: 
+      - level1-2-1: { 
+        type: fakeDevice, 
+        name: "Device 1-2-1",
+        parameter1: value1
+      }
+      - level1-2-2: { 
+        type: fakeDevice, 
+        name: "Device 1-2-2",
+        parameter1: value1
+      }
+  - level2:
+    - level2-1: 
+      - level2-1-1: { 
+        type: fakeDevice, 
+        name: "Device 2-1-1",
+        parameter1: value1
+      }
+

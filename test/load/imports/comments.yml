@@ -1,0 +1,5 @@
+# this is a top comment
+
+imports:
+  - module: ./test/load/sources/fake_source # the module comment
+    source: fakeSource # the source comment

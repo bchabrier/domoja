@@ -1,0 +1,11 @@
+# test that several sources and devices can be loaded
+
+imports:
+  - module: ./test/load/sources/fake_source # the module comment
+    source: source1 # fakeSource ID is used for source
+  - module: ./test/load/sources/fake_source # the module comment
+    device: device1 # should be accepted
+  - module: ./test/load/sources/fake_source # the module comment
+    source: source2 # should be accepted
+  - module: ./test/load/sources/fake_source # the module comment
+    device: device2 # should be accepted

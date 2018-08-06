@@ -1,0 +1,9 @@
+# test that 2 identical sources are rejected
+
+imports:
+  - module: ./test/load/sources/fake_source # the module comment
+    source: fakeSource # fakeSource ID is used for source
+  - module: ./test/load/sources/fake_source # the module comment
+    device: fakeSource # should be accepted
+  - module: ./test/load/sources/fake_source # the module comment
+    source: fakeSource # should be rejected as duplicate

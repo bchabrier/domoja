@@ -1,0 +1,3 @@
+imports:
+  - module: ./test/load/sources/fake_source
+    device: fakeSource 

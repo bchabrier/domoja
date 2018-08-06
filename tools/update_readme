@@ -1,0 +1,17 @@
+#!/bin/sh
+
+readme=`dirname $0`/../README.md
+tmpreadme=/tmp/readme.$$
+
+awk '{ print } /\[\/\/\]: # \(modulesList START\)/ { exit }' $readme > $tmpreadme
+
+npm search --parseable domoja | awk -F'\t' '
+$1 ~ /^domoja-/ { printf "- [%s](https://www.npmjs.com/package/%s): %s\n", $1, $1, $2 }
+' | tee -a $tmpreadme
+
+echo >> $tmpreadme
+awk '/\[\/\/\]: # \(modulesList END\)/ { p = 1 } p == 1 { print } ' $readme >> $tmpreadme
+
+mv $readme /tmp/README.md.$$
+mv $tmpreadme $readme
+

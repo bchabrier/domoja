@@ -1,0 +1,17 @@
+*~
+\#*\#
+*.zip
+secrets.*
+node_modules/
+.idea
+.temp
+.sass-cache
+coverage/
+platforms/
+*.swp
+*.swo
+*.log
+*.DS_Store
+
+build/
+

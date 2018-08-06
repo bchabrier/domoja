@@ -1,0 +1,14 @@
+
+imports:
+  - module: ./test/load/sources/fake_source
+    source: fakeSource 
+
+sources:
+  - duplicateSource: {
+      type: fakeSource,
+      required-parameter: value
+  }
+  - duplicateSource: {
+      type: fakeSource,
+      required-parameter: value
+  }

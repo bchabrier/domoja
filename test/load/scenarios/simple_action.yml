@@ -1,0 +1,33 @@
+
+imports:
+  - module: ./test/load/sources/fake_source
+    source: fakeSource 
+  - module: ./devices/device
+    device: device
+
+sources:
+  - testSource: {
+      type: fakeSource,
+      required-parameter: somevalue
+  }
+
+# A fake device using the fake source
+devices:
+  - the_device: {
+     type: device,
+     source: testSource,
+     name: the_device
+  }
+
+scenarios:
+  - scenario:
+      trigger: 
+        state: the_device   
+      action:
+        - !!js/function 'function(callback) {
+            assert.equal(this.msg.oldValue, -1);
+            assert.equal(this.msg.newValue, 1);
+            callback(null);
+            this.done()
+          }'
+

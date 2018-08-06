@@ -1,0 +1,95 @@
+imports:
+  - module: ./sources/zibase
+    source: Zibase
+  - module: ./sources/ipx800
+    source: IPX800
+  - module: ./devices/sirene
+    device: sirene
+  - module: ./devices/lightTimer
+    device: LightTimer
+  - module: ./devices/httpcamera
+    device: httpCamera
+  - module: ./devices/device
+    device: device
+  - module: ./devices/sensor
+    device: sensor
+
+sources:
+  - myZibase: {
+      type: Zibase,
+      ip: 192.168.0.15,
+      device_id: !secrets zibase_device_id,
+      token: !secrets zibase_token
+  }
+  - myIPX800: {
+      type: IPX800,
+      ip: 192.168.0.17,
+      macaddress: 00:04:A3:2D:68:E6,
+      update_url: /ipx800/update
+  }
+  
+devices:
+  - alarme:
+    - en_route: { type: device , source: myZibase, id: A1, name: "Alarme en route" }
+    - sirene_interieure: { type: sirene, source: myIPX800, id: 1, name: "Sirène intérieure" }
+    - sirene_exterieure: { type: sirene, source: myIPX800, id: 2, name: "Sirène extérieure" }
+
+  - piscine:
+     - filtration: { type: device, source: myZibase, id: "ZA8", name: "Filtration piscine" }
+     - pieuvre: { type: device, source: myZibase, id: "ZO11", name: "Pieuvre" }
+     - chlore_plus: { type: device, source: myZibase, id: "ZA14", name: "Chlore +" }
+     - chlore_moins: { type: device, source: myZibase, id: "ZO14", name: "Chlore -" }
+
+  - garages:
+    - porte: { type: sensor, source: myIPX800, id: "INPUT5", name: "Porte garage du bas ou jardin" }
+
+  - bureau: { type: sensor, source: myIPX800, id: "INPUT2", name: "Détecteur bureau"}
+  - salle_a_manger: { type: sensor, source: myIPX800, id: "INPUT6", name: "Détecteur salle à manger", transform: !!js/function 'function (newValue) {
+        return newValue == "1" ? "0" : "1";
+      }', camera: camera_interieure }
+
+  - petit_portail: { type: device, source: myZibase, id: "ZA3", name: "Petit Portail", camera: camera_exterieure }
+  - petit_portail_en_grand: { type: device, source: myZibase, id: "ZO10", name: "Petit Portail ouvert en grand", camera: camera_exterieure }
+  - grand_portail:
+     - grand_portail: { type: device, source: myZibase, id: "ZA10", name: "Grand Portail" }
+     - senseur_fermeture: { type: sensor, source: myZibase, id: "ZB9", name: "Universal sensor Grand Portail" }
+
+  - lampe_chambre_parents: { type: device, source: myZibase, id: "ZA4", name: "Lampe Chambre parents" }
+  - lampe_hall: { type: device, source: myZibase, id: "ZC7", name: "Spots Hall" }
+  - lampe_table_cuisine: { type: device, source: myZibase , id: ZP6, name: "Spots Table Cuisine" }
+  - lampe_preau: { type: device, source: myZibase, id: "ZA5", name: "Lampe Préau" }
+  - prise_camera: { type: device, source: myZibase, id: "G2", name: "Prise Caméra" }
+  - lampe_rouge_bas: { type: device, source: myZibase, id: "ZC4", name: "Lampe rouge bas" }
+  - lampe_escalier: { type: device, source: myZibase, id: "ZB11", name: "Lampe escalier" }
+  - hall: { type: sensor, source: myIPX800, id: "INPUT3", name: "Détecteur hall" }
+  - escalier: { type: sensor, source: myIPX800, id: "INPUT4", name: "Détecteur escalier" }
+  - cuisine: { type: sensor, source: myIPX800, id: "INPUT1", name: "Détecteur cuisine" }
+  - pompes_aquarium : { type: device, source: myZibase, id: "ZC6", name: "Pompes aquarium" }
+  - lampes_aquarium : { type: device, source: myZibase, id: "ZO13", name: "Lampes UV aquarium" }
+  - hallLightTimer: {
+      type: LightTimer, 
+      name: "Minuterie hall",
+      sensors: [ hall ],
+      #lights: [ lampe_hall ],
+      duration: 3:00,
+      off: [ sunrise, sunset ]
+  }
+  - stairLightTimer: {
+      type: LightTimer, 
+      name: "Minuterie escalier",
+      sensors: [ hall, escalier ],
+      #lights: [ lampe_escalier ],
+      duration: 5:00,
+      on: [ 23:00, 2:00 ],
+      off: [ sunrise, sunset ],
+      priority: off
+  }
+  - kitchenLightTimer: {
+      type: LightTimer, 
+      name: "Minuterie cuisine",
+      sensors: [ cuisine ],
+      #lights: [ lampe_table_cuisine ],
+      duration: 10:00,
+      off: [ sunrise, sunset ]
+  }      
+      

@@ -1,0 +1,9 @@
+
+imports:
+  - module: ./test/load/devices/fake_device
+    device: fakeDevice
+
+
+devices:
+  - simple_device: { type: fakeDevice, name: "A fake device", parameter1: value1 }
+

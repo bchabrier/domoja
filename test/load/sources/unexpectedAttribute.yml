@@ -1,0 +1,10 @@
+
+imports:
+  - module: ./test/load/sources/fake_source
+    source: fakeSource 
+
+sources:
+  - wrongSource: {
+      type: fakeSource,
+      unexpectedAttribute: anUnexpectedAttribute
+  }

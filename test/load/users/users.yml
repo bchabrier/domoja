@@ -1,0 +1,8 @@
+
+users:
+  - id: 1 # must be unique
+    login: login1
+    password: password1
+    email: user1@mail.com
+    phone: +33(0)615
+  - { id: 2, login: login2, password: !secrets key2, email: toto@titi.fr, phone: 12345}

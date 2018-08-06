@@ -1,0 +1,40 @@
+{
+  "name": "domoja-sample",
+  "author": "Bruno Chabrier",
+  "version": "0.0.0",
+  "private": false,
+  "description": "A sample Domoja module skeleton",
+  "main": "sample.js",
+  "scripts": {
+    "test": "mocha",
+    "coveralls": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage",
+    "cover": "istanbul cover ./node_modules/mocha/bin/_mocha",
+    "report": "istanbul report text-summary text",
+    "doc": "jsdoc -c ./jsdoc.conf.json -t ./node_modules/ink-docstrap/template/ -R README.md -d doc .",
+    "deploy": "./node_modules/gh-pages/bin/gh-pages -d doc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bchabrier/domoja.git"
+  },
+  "keywords": [
+    "sample",
+    "zapi"
+  ],
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bchabrier/domoja/issues"
+  },
+  "homepage": "https://github.com/bchabrier/domoja/modules/sample#readme",
+  "dependencies": {
+    "tracer": "^0.9.1"
+  },
+  "devDependencies": {
+    "coveralls": "^3.0.2",
+    "gh-pages": "^1.2.0",
+    "ink-docstrap": "*",
+    "istanbul": "^0.4.2",
+    "mocha": "^5.2.0",
+    "mocha-lcov-reporter": "^1.2.0"
+  }
+}

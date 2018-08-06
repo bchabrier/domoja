@@ -1,0 +1,20 @@
+
+imports:
+  - module: ./test/load/sources/fake_source
+    source: fakeSource 
+  - module: ./devices/device
+    device: device
+
+sources:
+  - testSource: {
+      type: fakeSource,
+      required-parameter: somevalue
+  }
+
+# A fake device using the fake source
+devices:
+  - test_device: {
+      type: device,
+      source: testSource,
+      name: testdevice
+  }

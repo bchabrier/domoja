@@ -1,0 +1,28 @@
+# this file is for ephemeral tests
+
+imports:
+  - module: ./devices/lightTimer
+    device: LightTimer
+  - module: ./devices/httpcamera
+    device: httpCamera
+
+devices:
+  - camera_interieure: { type: httpCamera, url: "http://192.168.0.5", name: "Caméra intérieure" }
+  - hallLightTimer: {
+      type: LightTimer, 
+      name: "Minuterie hall",
+      duration: 3:00,
+      off: [ sunrise, sunset ],
+      sensors: [ camera_interieure ]
+  }
+
+scenarios:
+  - scenario:
+      trigger: 
+        state: hallLightTimer   
+      action:
+        - the-action: !!js/function 'function(callback) {
+            console.log("action called")
+            callback(null);
+          }'
+
