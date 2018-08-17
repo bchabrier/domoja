@@ -2,7 +2,7 @@
   "name": "domoja",
   "author": "Bruno Chabrier",
   "description": "A Typescript framework for home automation",
-  "version": "0.0.8",
+  "version": "0.0.10",
   "private": false,
   "repository": {
     "type": "git",
@@ -29,6 +29,7 @@
   "devDependencies": {
     "@types/mocha": "^5.2.5",
     "mocha": "^5.2.0",
+    "nyc": "^12.0.2",
     "ts-mocha": "^2.0.0",
     "typescript": "^3.0.1"
   },
