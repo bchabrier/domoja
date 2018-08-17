@@ -35,6 +35,22 @@ Here are some screenshots of the application:
 <img height=230px src=https://user-images.githubusercontent.com/7472805/43680586-4daf4f20-983e-11e8-8c40-d8206ed57959.png>
 </div>
 
+Concepts
+--------
+
+Domoja collects information from and interacts with devices through sources. You can think of sources as sources of information.
+
+### Sources
+
+
+### Devices
+
+The framework supports a range of devices:
+- device: a generic device with attributes which can be set or get.
+- relay: a particular switch, for which delays can be configured.
+
+
+
 Modules
 -------
 
@@ -47,8 +63,10 @@ Domoja can be extended through modules, to add new sources, devices, etc. They a
 The following modules are currently available:
 
 [//]: # (modulesList START)
+- [domoja-core](https://www.npmjs.com/package/domoja-core): Core components of Domoja
+- [domoja-ipx800](https://www.npmjs.com/package/domoja-ipx800): IPX800 source for Domoja
+- [domoja-proxiti](https://www.npmjs.com/package/domoja-proxiti): Astronomy source for Domoja from http://www.proxiti.info/
 - [domoja-sample](https://www.npmjs.com/package/domoja-sample): A sample Domoja module skeleton
 - [domoja-zibase](https://www.npmjs.com/package/domoja-zibase): ZiBase source for Domoja
-- [domoja-ipx800](https://www.npmjs.com/package/domoja-ipx800): IPX800 source for Domoja
 
 [//]: # (modulesList END)
