@@ -156,7 +156,11 @@ describe('Module load', function () {
         });
         */
         it.only('should load the current configuration file', function () {
-            doc = grammar.loadFileSync('./config/config.yml');
+        const confFile = './config/config.yml';
+            if (!fs.existsSync(confFile)) {
+                this.skip();
+            }
+            doc = grammar.loadFileSync(confFile);
             assert.notEqual(doc, null);
         });
     });
