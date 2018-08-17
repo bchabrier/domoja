@@ -6,11 +6,11 @@ imports:
     source: IPX800
   - module: ipx800
     device: relay
-  - module: ./devices/httpcamera
+  - module: ./core/devices/httpcamera
     device: httpCamera
-  - module: ./devices/device
+  - module: ./core/devices/device
     device: device
-  - module: ./devices/sensor
+  - module: ./core/devices/sensor
     device: sensor
   - module: proxiti
     source: astronomy

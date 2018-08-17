@@ -155,7 +155,7 @@ describe('Module load', function () {
             assert.notEqual(doc, null);
         });
         */
-        it.only('should load the current configuration file', function () {
+        it.skip('should load the current configuration file', function () {
             doc = grammar.loadFileSync('./config/config.yml');
             assert.notEqual(doc, null);
         });
