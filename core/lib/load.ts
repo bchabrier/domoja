@@ -264,7 +264,7 @@ export class ConfigLoader extends events.EventEmitter {
 
     private getModuleClass(moduleName: string, className: string): new () => DomoModule {
         try {
-            let p = moduleName.match(/^[/.]/) ? path.resolve(__dirname, '..', moduleName) : "domoja-" + moduleName
+            let p = moduleName.match(/^[/.]/) ? path.resolve(__dirname, '../..', moduleName) : "domoja-" + moduleName
             let id = require.resolve(p);
             let newModuleExports = this.rootModule.require(id);
             logger.info('Successfully imported class \'%s\' from \'%s\'.', className, moduleName);
