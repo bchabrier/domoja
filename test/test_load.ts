@@ -305,6 +305,7 @@ describe('Module load', function () {
 
         const confFile = './config/config.yml';
         before('check if current configuration file exists', function () {
+            console.log('checking if config file exists:',confFile, fs.existsSync(confFile) );
             if (!fs.existsSync(confFile)) {
                 this.skip();
             }
