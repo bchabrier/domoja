@@ -1,7 +1,7 @@
 {
   "name": "domoja-zibase",
   "author": "Bruno Chabrier",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": false,
   "description": "ZiBase source for Domoja",
   "main": "zibase.js",
@@ -27,9 +27,9 @@
   },
   "homepage": "https://github.com/bchabrier/domoja/modules/zibase#readme",
   "dependencies": {
-    "domoja-core": "*",
+    "domoja-core": "file:../../core",
     "tracer": "^0.9.1",
-    "zibase": "*"
+    "zibase": "file:../../../zibase"
   },
   "devDependencies": {
     "coveralls": "^3.0.2",
