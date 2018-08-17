@@ -1,7 +1,7 @@
 imports:
   - module: ./test/load/sources/fake_source
     source: fakeSource 
-  - module: ./core/devices/device
+  - module: ./devices/device
     device: device
 
 

@@ -1,14 +1,14 @@
 
 imports:
-  - module: ./core/sources/demo
+  - module: ./sources/demo
     source: demo
   - module: ipx800
     device: relay
-  - module: ./core/devices/httpcamera
+  - module: ./devices/httpcamera
     device: httpCamera
-  - module: ./core/devices/device
+  - module: ./devices/device
     device: device
-  - module: ./core/devices/sensor
+  - module: ./devices/sensor
     device: sensor
   - module: proxiti
     source: astronomy

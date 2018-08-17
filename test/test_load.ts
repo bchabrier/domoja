@@ -40,10 +40,10 @@ describe('Module load', function () {
                 });
             } else {
                 */
-            callback();
-            /*
-        }
-        */
+                callback();
+                /*
+            }
+            */
         }, () => {
             //console.log("all zibases got messages")
             if (doc) doc.release();
@@ -155,7 +155,7 @@ describe('Module load', function () {
             assert.notEqual(doc, null);
         });
         */
-        it.skip('should load the current configuration file', function () {
+        it.only('should load the current configuration file', function () {
             doc = grammar.loadFileSync('./config/config.yml');
             assert.notEqual(doc, null);
         });
@@ -305,7 +305,6 @@ describe('Module load', function () {
 
         const confFile = './config/config.yml';
         before('check if current configuration file exists', function () {
-            console.log('checking if config file exists:',confFile, fs.existsSync(confFile) );
             if (!fs.existsSync(confFile)) {
                 this.skip();
             }
@@ -337,22 +336,12 @@ describe('Module load', function () {
             //console.log(require('util').inspect(doc, {showHidden: false, depth: null}));
         });
     });
-    describe('#load the demo configuration file', function () {
-        this.timeout(60000);
-
-        const confFile = './config/demo.yml';
-        it('should load the demo configuration file', function () {
-            doc = grammar.loadFileSync(confFile);
-            assert.notEqual(doc, null);
-            //console.log(require('util').inspect(doc, {showHidden: false, depth: null}));
-        });
-    });
-    describe('#load users section', function () {
-        it('should load users', function (done) {
+    describe('#load users section', function() {
+        it('should load users', function(done) {
             grammar.reloadConfig('./test/load/users/users.yml');
-            grammar.checkUser('login1', 'password1', function (err, user) {
+            grammar.checkUser('login1', 'password1', function(err, user) {
                 assert.equal(user.login, 'login1')
-                grammar.checkUser('login2', 'password2', function (err, user) {
+                grammar.checkUser('login2', 'password2', function(err, user) {
                     assert.equal(user.login, 'login2')
                     done(err);
                 })

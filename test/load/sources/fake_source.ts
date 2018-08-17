@@ -1,7 +1,7 @@
-import { Source, DEFAULT_SOURCE, DefaultSource } from '../../..';
-import { ConfigLoader } from '../../..';
-import { InitObject, Parameters } from '../../..';
-import { GenericDevice } from '../../..';
+import { Source, DEFAULT_SOURCE, DefaultSource } from '../../../core/sources/source';
+import { ConfigLoader } from '../../../core/lib/load';
+import { InitObject, Parameters } from '../../../core/lib/module';
+import { GenericDevice } from '../../../core/devices/genericDevice';
 
 var logger = require("tracer").colorConsole({
 	dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -10,14 +10,14 @@ var logger = require("tracer").colorConsole({
 
 export class fakeSource extends Source {
 
-	constructor(path: string) {
-		super(path);
+	constructor() {
+		super();
 	}
 
 	release(): void { }
 
-	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-		return new fakeSource(path);
+	createInstance(configLoader: ConfigLoader, id: string, initObject: InitObject): Source {
+		return new fakeSource();
 	}
 
 	getParameters(): Parameters {
