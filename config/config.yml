@@ -1,0 +1,282 @@
+
+imports:
+  - module: zibase
+    source: Zibase
+  - module: ipx800
+    source: IPX800
+  - module: ipx800
+    device: relay
+  - module: ./devices/httpcamera
+    device: httpCamera
+  - module: ./devices/device
+    device: device
+  - module: ./devices/sensor
+    device: sensor
+  - module: proxiti
+    source: astronomy
+
+#- module: ./devices/lightTimer
+#  device: LightTimer
+
+sources:
+  - myZibase: {
+      type: Zibase,
+      ip: 192.168.0.15,
+      device_id: !secrets zibase_device_id,
+      token: !secrets zibase_token
+  }
+  - myIPX800: {
+      type: IPX800,
+      ip: 192.168.0.17,
+      macaddress: 00:04:A3:2D:68:E6,
+      update_url: /ipx800/update
+  }
+  - astronomy: {
+      type: astronomy,
+      location: "06030"
+  }
+  
+devices:
+  - sunset: { type: device, source: astronomy, id: sunset, name: "Coucher du soleil" }
+  - sunrise: { type: device, source: astronomy, id: sunrise, name: "Lever du soleil" }
+#- camera_interieure: { type: httpCamera, url: "http://192.168.0.5", name: "Caméra intérieure" }
+  #- camera_exterieure: { type: httpCamera, url: "http://192.168.0.6", name: "Caméra extérieure" }
+  - alarme:
+    - en_route: { type: device , source: myZibase, id: A1, name: "Alarme en route" }
+    - sirene_interieure: { type: relay, source: myIPX800, id: 1, name: "Sirène intérieure" }
+    - sirene_exterieure: { type: relay, source: myIPX800, id: 2, name: "Sirène extérieure" }
+
+  - piscine:
+     - filtration: { type: device, source: myZibase, id: "ZA8", name: "Filtration piscine" }
+     - pieuvre: { type: device, source: myZibase, id: "ZO11", name: "Pieuvre" }
+     - chlore_plus: { type: device, source: myZibase, id: "ZA14", name: "Chlore +" }
+     - chlore_moins: { type: device, source: myZibase, id: "ZO14", name: "Chlore -" }
+     - temperature: { type: sensor, source: myZibase, id: "OS439157539", attribute: "tem", name: "Température" }
+
+  - garages:
+    - porte: { type: sensor, source: myIPX800, id: "INPUT5", name: "Porte garage du bas ou jardin" }
+
+  - bureau: { type: sensor, source: myIPX800, id: "INPUT2", name: "Détecteur bureau"}
+  - salle_a_manger: { type: sensor, source: myIPX800, id: "INPUT6", name: "Détecteur salle à manger", transform: !!js/function 'function (newValue) {
+        return newValue == "1" ? "0" : "1";
+      }', camera: camera_interieure }
+
+  - petit_portail: { type: device, source: myZibase, id: "ZA3", name: "Petit Portail", camera: camera_exterieure }
+  - petit_portail_en_grand: { type: device, source: myZibase, id: "ZO10", name: "Petit Portail ouvert en grand", camera: camera_exterieure }
+  - grand_portail:
+     - grand_portail: { type: device, source: myZibase, id: "ZA10", name: "Grand Portail" }
+     - senseur_fermeture: { type: sensor, source: myZibase, id: "ZB9", name: "Universal sensor Grand Portail", transform: !!js/function 'function (newValue) {
+        return newValue == "1" ? "0" : "1";
+      }' }
+
+  - lampe_chambre_parents: { type: device, source: myZibase, id: "ZA4", name: "Lampe Chambre parents" }
+  - lampe_hall: { type: device, source: myZibase, id: "ZC9", name: "Spots Hall" }
+  - lampe_table_cuisine: { type: device, source: myZibase , id: "ZP4", name: "Spots Table Cuisine" }
+  - lampe_preau: { type: device, source: myZibase, id: "ZA5", name: "Lampe Préau" }
+  - prise_camera: { type: device, source: myZibase, id: "G2", name: "Prise Caméra" }
+  - lampe_rouge_bas: { type: device, source: myZibase, id: "ZC4", name: "Lampe rouge bas" }
+  - lampe_escalier: { type: device, source: myZibase, id: "ZB11", name: "Lampe escalier" }
+  - hall: { type: sensor, source: myIPX800, id: "INPUT3", name: "Détecteur hall" }
+  - escalier: { type: sensor, source: myIPX800, id: "INPUT4", name: "Détecteur escalier" }
+  - cuisine: { type: sensor, source: myIPX800, id: "INPUT1", name: "Détecteur cuisine" }
+  - pompes_aquarium : { type: device, source: myZibase, id: "ZC8", name: "Pompes aquarium" }
+  - lampes_aquarium : { type: device, source: myZibase, id: "ZP7", name: "Lampes UV aquarium" }
+#  - hallLightTimer: {
+#      type: LightTimer, 
+#      name: "Minuterie hall",
+#      sensors: [ hall ],
+#      #lights: [ lampe_hall ],
+#      duration: 3:00,
+#      off: [ sunrise, sunset ]
+#  }
+#  - stairLightTimer: {
+#      type: LightTimer, 
+#      name: "Minuterie escalier",
+#      sensors: [ hall, escalier ],
+#      #lights: [ lampe_escalier ],
+#      duration: 5:00,
+#      on: [ 23:00, 2:00 ],
+#      off: [ sunrise, sunset ],
+#      priority: off
+#  }
+#  - kitchenLightTimer: {
+#      type: LightTimer, 
+#      name: "Minuterie cuisine",
+#      sensors: [ cuisine ],
+#      #lights: [ lampe_table_cuisine ],
+#      duration: 10:00,
+#      off: [ sunrise, sunset ]
+#  }      
+      
+
+#rooms:
+#  - cuisine:
+#      name: Cuisine
+#  - hall:
+#      name: Hall
+
+#zones:
+
+#scenes:
+#  - init:
+#    - { action: stairLightTimer, attribute: activated, value: true }
+#    - { action: hallLightTimer, attribute: activated, value: true }
+#    - { action: kitchenLightTimer, attribute: activated, value: true }
+#  - normal:
+#    - minuterie-hall:
+#      - { action: hallLightTimer, attribute: duration, value: 10:00 }
+#    - aquarium:
+#      - { action: aquariumTimer, attribute: activated, value: true }
+#  - invitation:
+#    - minuterie-hall:
+#      - { action: hallLightTimer, attribute: duration, value: 15:00 }
+#    - aquarium:
+#      - { action: aquariumTimer, attribute: activated, value: false }
+#      - { device: lampes_aquarium, attribute: state, value: 'ON' }
+#      - { device: pompes_aquarium, attribute: state, value: 'ON' }
+
+#actions:
+#  - stairLightTimer:
+#      module: ./managers/lightTimerMgr
+#      class: LightTimer
+#      sensors: [ hall, escalier ]
+#      lights: [ lampe_escalier ]
+#      duration: 5:00
+#      on: [ 23:00, 2:00 ]
+#      off: [ sunrise, sunset ]
+#      priority: off
+#      #activated: false
+#  - kitchenLightTimer:
+#      module: ./managers/lightTimerMgr
+#      class: LightTimer
+#      sensors: [ cuisine ]
+#      lights: [ lampe_table_cuisine ]
+#      duration: 10:00
+#      off: [ sunrise, sunset ]      
+#     #activated: false
+#- push_notify:
+#    module: ./lib/pushbullet
+#    class: PushBullet
+#    key: !secrets pushbullet_key
+
+scenarios:
+  - scenario_with_expr:
+      trigger: 
+        state: cuisine
+      condition:
+        - {operator: =, left: this.msg.newValue, right: ON}
+      action:
+        - !!js/function 'function f(callback) {callback(null)}'      
+        #- push_notify:
+        #  text: "quelqu'un dans le hall !"
+#  - hallLightTimerLightsON:
+#      trigger:
+#        state: hallLightTimer
+#      condition: 
+#        - {operator: =, left: this.msg.newValue, right: ON}
+#        #- !!js/function 'function f(callback) {
+#        #    callback(null, this.msg.newValue == "ON");
+#        #  } '
+#      action:
+#        - { device: lampe_hall, attribute: state, value: 'ON' }
+#        - !!js/function 'function f(callback) {console.log("Hall lights ON!"); callback(null)}'
+#  - hallLightTimerLightsOFF:
+#      trigger:
+#        state: hallLightTimer
+#      condition: 
+#        - {operator: =, left: this.msg.newValue, right: OFF}
+#      action:
+#        - { device: lampe_hall, attribute: state, value: 'OFF' }
+#        - !!js/function 'function f(callback) {console.log("Hall lights OFF!"); callback(null)}'
+#  - stairLightTimerLightsON:
+#      trigger:
+#        state: stairLightTimer
+#      condition: 
+#        - {operator: =, left: this.msg.newValue, right: ON}
+#      action:
+#        - { device: lampe_escalier, attribute: state, value: 'ON' }
+#        - !!js/function 'function f(callback) {console.log("Stair lights ON!"); callback(null)}'
+#  - stairLightTimerLightsOFF:
+#      trigger:
+#        state: stairLightTimer
+#      condition: 
+#        - {operator: =, left: this.msg.newValue, right: OFF}
+#      action:
+#        - { device: lampe_escalier, attribute: state, value: 'OFF' }
+#        - !!js/function 'function f(callback) {console.log("Stair lights OFF!"); callback(null)}'
+#  - kitchenLightTimerLightsON:
+#      trigger:
+#        state: kitchenLightTimer
+#      condition: 
+#        - {operator: =, left: this.msg.newValue, right: ON}
+#      action:
+#        - { device: lampe_table_cuisine, attribute: state, value: 'ON' }
+#        - !!js/function 'function f(callback) {console.log("Kitchen lights ON!"); callback(null)}'
+#  - kitchenLightTimerLightsOFF:
+#      trigger:
+#        state: kitchenLightTimer
+#      condition: 
+#        - {operator: =, left: this.msg.newValue, right: OFF}
+#      action:
+#        - { device: lampe_table_cuisine, attribute: state, value: 'OFF' }
+#        - !!js/function 'function f(callback) {console.log("Kitchen lights OFF!"); callback(null)}'
+#  - scenario1:
+#      trigger: 
+#        state: cuisine
+#      condition: 
+#        - {operator: =, left: this.msg.newValue, right: ON}
+#      action:
+#        - !!js/function 'function f(callback) {callback(null)}'
+#      #  - push_notify:
+#      #    text: "quelqu'un dans le hall !"
+#  - scenario_with_functions:
+#      trigger: 
+#        state: cuisine
+#      condition: 
+#        - {operator: =, left: this.msg.newValue, right: ON}
+#      action:
+#        - notify_zibase: !!js/function 'function(callback) {
+#            console.log("setevent pour cuisine !!!!!");
+#            this.getSource("myZibase").setEvent(1, "I13");
+#            callback(null);
+#          }'
+#        #- push_notify:
+#        #  text: "quelqu'un dans le hall !"
+
+
+users:
+  - id: 1 # must be unique
+    name: 'Bruno'
+    initials: 'BC'
+    login: !secrets login_1
+    password: !secrets password_1
+    phone: !secrets phone_1
+    macaddress: 'e0:b5:2d:3f:76:ab'
+    avatar: !secrets avatar_1
+  - id: 2 # must be unique
+    name: 'Marie-Pierre'
+    initials: 'MPC'
+    login: !secrets login_2
+    password: !secrets password_2
+    phone: !secrets phone_2
+    macaddress: 'd8:c4:6a:bc:b3:2c'
+    avatar: !secrets avatar_2
+  - id: 3 # must be unique
+    name: 'Adam'
+    initials: 'AC'
+    login: !secrets login_3
+    password: !secrets password_3
+    phone: !secrets phone_3
+    macaddress: '40:6A:AB:6F:D7:45'
+    avatar: !secrets avatar_3
+  - id: 4 # must be unique
+    name: 'Julia'
+    initials: 'JC'
+    login: !secrets login_4
+    password: !secrets password_4
+    phone: !secrets phone_4
+    macaddress: 'B0:A2:E7:83:96:CB'
+    avatar: !secrets avatar_4
+
+
+
