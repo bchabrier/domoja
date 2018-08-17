@@ -29,14 +29,13 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     //id: id;
 
     private eventEmitter: events.EventEmitter;
-    private devicesByAttribute: { [attribute: string]: { [id: string]: GenericDevice } };
-    private devicesByPath: { [path: string]: GenericDevice }
+    private devicesByAttribute: { [attribute: string]: { [id: string]: GenericDevice } } = {};
+    private devicesByPath: { [path: string]: GenericDevice } = {};
     path: string;
 
     constructor(path: string) {
         this.eventEmitter = new events.EventEmitter();
-        this.devicesByAttribute = {};
-        this.devicesByPath = {};
+
         this.path = path;
     }
 
@@ -48,6 +47,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         Object.keys(this.devicesByPath).forEach(path => {
             this.devicesByPath[path].release();
         });
+        this.devicesByPath = null;
         this.devicesByAttribute = null;
 
         this.eventEmitter.removeAllListeners();
@@ -70,8 +70,8 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
             }
         });
 
-        this.devicesByAttribute[device.attribute][device.path] = null;
-        delete this.devicesByAttribute[device.attribute][device.path];
+        this.devicesByAttribute[device.attribute][device.id] = null;
+        delete this.devicesByAttribute[device.attribute][device.id];
 
         this.devicesByPath[device.path] = null;
         delete this.devicesByPath[device.path];

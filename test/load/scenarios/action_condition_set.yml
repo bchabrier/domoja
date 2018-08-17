@@ -2,7 +2,7 @@
 imports:
   - module: ./test/load/sources/fake_source
     source: fakeSource 
-  - module: ./devices/device
+  - module: ./core/devices/device
     device: device
 
 sources:
