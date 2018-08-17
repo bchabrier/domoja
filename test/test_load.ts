@@ -1,8 +1,8 @@
 import 'mocha';
 import rewire = require('rewire')
-import * as ToMock from '../lib/load'
+import * as ToMock from '../core/lib/load'
 
-let RewireToMock = rewire('../lib/load')
+let RewireToMock = rewire('../core/lib/load')
 const grammar: typeof ToMock & typeof RewireToMock = <any>RewireToMock
 
 import assert = require('assert');
@@ -155,7 +155,7 @@ describe('Module load', function () {
             assert.notEqual(doc, null);
         });
         */
-        it.skip('should load the current configuration file', function () {
+        it.only('should load the current configuration file', function () {
             doc = grammar.loadFileSync('./config/config.yml');
             assert.notEqual(doc, null);
         });

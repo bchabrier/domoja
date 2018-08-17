@@ -1,9 +1,6 @@
-import { Source, message } from '../sources/source';
+import { Source, message, ConfigLoader, InitObject, Parameters, GenericDevice } from 'domoja-core';
 import * as assert from 'assert'
 import { ZiBase, ZbAction, ZbProtocol, ZbResponse } from 'zibase';
-import { ConfigLoader } from '../lib/load';
-import { InitObject, Parameters } from '../lib/module';
-import { GenericDevice } from '../devices/genericDevice';
 
 export { ZbAction } from 'zibase';
 
@@ -12,82 +9,56 @@ var logger = require("tracer").colorConsole({
 	level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
-function messageHandler(handler: Function) {
-	return function _handleMessage (msg: {[x in string]?: any}) {
-		var newMsg = new message;
-		var anyNewMsg = newMsg as {[x in string]: any};
-		
-		for (var p in msg) {
-			switch (p) {
-				case 'value':
-					newMsg.newValue = msg[p];
-					break;
-				default:
-					anyNewMsg[p] = msg[p];
-			}
-		}
-		return handler(newMsg)
-	}
-}
-
 export class Zibase extends Source {
 	zibase: ZiBase;
-	constructor(ipAddr: string, deviceId: string, token: string, callback?: (err: Error) => void) {
-		super();
+	constructor(path: string, ipAddr: string, deviceId: string, token: string, callback?: (err: Error) => void) {
+		super(path);
 		this.zibase = new ZiBase(ipAddr, deviceId, token, callback);
+
+		// let's intercept the ZiBase's emitEvent to catch all change events
+		let self = this;
+		let initialEmitEvent = (this.zibase as any).emitEvent;
+		(this.zibase as any).emitEvent = function (event: string, arg1: any, arg2: any) {
+			if (arg2) {
+				var id = arg1;
+				var arg = arg2;
+				if (event == 'change') {
+					Object.keys(arg).forEach( k => {
+						if (k != "emitter") {
+							if (k == 'value') self.setDeviceState(id, arg[k]);
+							else self.setDeviceAttribute(id, k, arg[k]);
+						}
+					})
+				}
+				initialEmitEvent.call(self.zibase, event + ":" + id, arg);
+			} else {
+				initialEmitEvent.call(self.zibase, event, arg1);
+			}
+		};
 	}
 
-	on(event: string | symbol, listener: Function): this;
-	on(event: string, id: string, listener: (msg: message) => void): this;
-	on(event: any, ...arg2: any[]): this {
-		if (arguments.length == 2) {
-			var listener: Function = arguments[1];
-			this.zibase.on(event, messageHandler(listener));
-			return this;
-		}
-
-		var id: string = arguments[1];
-		var listener: Function = arguments[2];
-		this.zibase.on(event, id, messageHandler(listener));
-		return this;
-	}
-
-	once(event: string | symbol, listener: Function): this;
-	once(event: string, id: string, listener: (msg: message) => void): this;
-	once(event: any, ...arg2: any[]): this {
-		if (arguments.length == 2) {
-			var listener: Function = arguments[1];
-			this.zibase.once(event, messageHandler(listener));
-			return this
-		}
-
-		var id: string = arguments[1];
-		var listener: Function = arguments[2];
-		this.zibase.once(event, id, messageHandler(listener));
-		return this;
-	}
-	sendCommand(address: string, action: ZbAction, protocol?: ZbProtocol, dimLevel?: number, nbBurst?: number): void {
+	private sendCommand(address: string, action: ZbAction, protocol?: ZbProtocol, dimLevel?: number, nbBurst?: number): void {
 		return this.zibase.sendCommand(address, action, protocol, dimLevel, nbBurst)
 	}
-	getSensorInfo(idSensor: string, callback: (err: Error, value: { date: Date, v1: string, v2: string }) => void): void {
+	private getSensorInfo(idSensor: string, callback: (err: Error, value: { date: Date, v1: string, v2: string }) => void): void {
 		return this.zibase.getSensorInfo(idSensor, callback);
 	}
-	executeRemote(id: string, action: ZbAction): void {
+	private executeRemote(id: string, action: ZbAction): void {
 		return this.zibase.executeRemote(id, action);
 	}
-	processZiBaseData(response: ZbResponse): void {
+	private processZiBaseData(response: ZbResponse): void {
 		return this.zibase.processZiBaseData(response);
 	}
-	getVariable(numVar: number, callback: (err: Error, value: string) => void): void {
+	private getVariable(numVar: number, callback: (err: Error, value: string) => void): void {
 		return this.zibase.getVariable(numVar, callback);
 	}
-	getState(address: string, callback: (err: Error, value: string) => void): void {
+	private getState(address: string, callback: (err: Error, value: string) => void): void {
 		return this.zibase.getState(address, callback);
 	}
-	setEvent(action: ZbAction, address: string): void {
+	private setEvent(action: ZbAction, address: string): void {
 		return this.zibase.setEvent(action, address);
 	}
-	runScenario(scenario: number | string): boolean {
+	private runScenario(scenario: number | string): boolean {
 		return this.zibase.runScenario(scenario);
 	}
 
@@ -97,8 +68,8 @@ export class Zibase extends Source {
 	}
 
 
-	createInstance(configLoader: ConfigLoader, id: string, initObject: InitObject): Source {
-		return new Zibase(initObject.ip, initObject.device_id, initObject.token);
+	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
+		return new Zibase(path, initObject.ip, initObject.device_id, initObject.token);
 	}
 
 	getParameters(): Parameters {
@@ -120,14 +91,14 @@ export class Zibase extends Source {
 				return callback(null);
 			}
 		}
-		return callback(new Error('Unsupported attribute/value ' + attribute + '/' + value))
+		return callback(new Error('Unsupported attribute/value: ' + attribute + '/' + value))
 	}
 
 	release(): void {
 		this.deregisterListener();
 		(<any>this.zibase).removeAllListeners();
 		this.zibase = null;
-		this.removeAllListeners();
+		super.release();
 	}
 
 	static registerDeviceTypes(): void {

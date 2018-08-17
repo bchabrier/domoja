@@ -1,7 +1,7 @@
-import { Source, DEFAULT_SOURCE, DefaultSource } from '../../../sources/source';
-import { ConfigLoader } from '../../../lib/load';
-import { InitObject, Parameters } from '../../../lib/module';
-import { GenericDevice } from '../../../devices/genericDevice';
+import { Source, DEFAULT_SOURCE, DefaultSource } from '../../..';
+import { ConfigLoader } from '../../..';
+import { InitObject, Parameters } from '../../..';
+import { GenericDevice } from '../../..';
 
 var logger = require("tracer").colorConsole({
 	dateformat: "dd/mm/yyyy HH:MM:ss.l",

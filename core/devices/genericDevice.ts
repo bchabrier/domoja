@@ -1,11 +1,12 @@
-import assert = require('assert');
-import { Source, ID, message } from '../sources/source'
+import * as assert from 'assert';
+import { Source, ID, message, Event } from '../sources/source'
 import { camera } from './camera'
 import { InitObject, Parameters, DomoModule } from '../lib/module';
 import { ConfigLoader, getSource } from '../lib/load';
 import * as events from 'events';
+import * as persistence from '../persistence/persistence';
 
-import secrets = require("../secrets");
+//import secrets = require("../secrets");
 //const PushBullet = require('pushbullet');
 import fs = require('fs');
 //import sound = require('../lib/sound');
@@ -19,10 +20,10 @@ const logger = require("tracer").colorConsole({
 export type DeviceOptions = {
     transform?: (cb: any, transform?: any) => any,
     camera?: camera,
-    others?: {[K in string]: any}
+    others?: { [K in string]: any }
 }
 
-export type DeviceType = 'device' | 'sensor' | 'camera' | 'sirene' | string;
+export type DeviceType = 'device' | 'sensor' | 'camera' | 'relay';
 
 //export var pusher = new PushBullet(secrets.getPushBulletPassword());
 
@@ -31,7 +32,7 @@ export type DeviceType = 'device' | 'sensor' | 'camera' | 'sirene' | string;
 
 function transformFunction(callback: any, transform?: (value: string) => string) {
     if (transform != undefined) {
-        return function(msg: message) {
+        return function (msg: message) {
             var newMsg = new message;
 
             for (var a in msg) {
@@ -51,20 +52,25 @@ function transformFunction(callback: any, transform?: (value: string) => string)
     }
 }
 
-export abstract class GenericDevice /*extends events.EventEmitter*/ implements DomoModule {
+export abstract class GenericDevice implements DomoModule {
     [x: string]: any;
     name: string;
-    instanceFullname: string;
+    path: string;
     id: ID;
+    attribute: string;
     source: Source;
     type: DeviceType;
+    state: string;
+    persistence: persistence.persistence;
 
-    constructor(source: Source, type: DeviceType, instanceFullname: string, id: ID, name: string, options?: DeviceOptions) {
-        //super();
-
+    constructor(source: Source, type: DeviceType, instancePath: string, id: ID, attribute: string, name: string, options?: DeviceOptions) {
         this.source = source;
+
+        this.persistence = new persistence.persistence();
+
         this.id = id;
-        this.instanceFullname = instanceFullname;
+        this.path = instancePath;
+        this.attribute = attribute || 'state';
         this.name = name;
         this.type = type;
 
@@ -87,6 +93,11 @@ export abstract class GenericDevice /*extends events.EventEmitter*/ implements D
                 }
             }
         }
+
+        this.source.addDevice(this);
+
+
+
 
         var self = this;
 
@@ -114,17 +125,28 @@ export abstract class GenericDevice /*extends events.EventEmitter*/ implements D
 
     release(): void {
         if (this.source) {
-            let re = new RegExp(':' + this.id + '$')
-            this.source.eventNames().forEach(e => {
-                if (re.test(e.toString())) {
-                    this.source.removeAllListeners(e)
-                }
-            })
+            this.source.releaseDevice(this);
         }
+        this.persistence = null;
     }
 
     setAttribute(attribute: string, value: string, callback: (err: Error) => void): void {
         this.source.setAttribute(this, attribute, value, callback);
+    }
+
+    setState(newState: string, callback: (err: Error) => void): void {
+        if (newState != this.state) {
+            this.setAttribute('state', newState, err => {
+                if (!err) {
+                    this.source.setDeviceAttribute(this.id, this.attribute, newState);
+                }
+                callback(err);
+            })
+        }
+    }
+
+    getState() {
+        return this.state;
     }
 
     /*
@@ -202,29 +224,30 @@ export abstract class GenericDevice /*extends events.EventEmitter*/ implements D
     }
     */
 
-    private eventListener(callback: (msg: message) => void):  (msg: message) => void {
-      let self = this;
+    private eventListener(callback: (msg: message) => void): (msg: message) => void {
+        let self = this;
 
-        return function(msg: message) {
-          msg.emitter = self;
-          transformFunction(callback, self.transform)(msg);
-      }
+        return function (msg: message) {
+            msg.emitter = self;
+            transformFunction(callback, self.transform)(msg);
+        }
     }
 
-    on(event: string, callback: (msg: message) => void) {
+    on(event: Event, callback: (msg: message) => void) {
         var self = this;
-        this.source && this.source.on(event, this.id || this.instanceFullname, this.eventListener(callback));
+        this.source && this.source.on(event, this.id || this.path, this.eventListener(callback));
         return this;
     }
 
-    once(event: string, callback: (msg: message) => void) {
+    once(event: Event, callback: (msg: message) => void) {
         var self = this;
-        this.source && this.source.once(event, this.id || this.instanceFullname, this.eventListener(callback));
+        this.source && this.source.once(event, this.id || this.path, this.eventListener(callback));
         return this;
     };
 
-    removeListener(event: string, callback: (msg: message) => void): void {
-      this.source && this.source.removeListener(event, this.id || this.instanceFullname, this.eventListener(callback))
+    removeListener(event: Event, callback: (msg: message) => void): this {
+        this.source && this.source.removeListener(event, this.id || this.path, this.eventListener(callback))
+        return this;
     }
 }
 

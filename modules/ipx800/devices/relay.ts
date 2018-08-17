@@ -1,9 +1,6 @@
-import { GenericDevice } from '../devices/genericDevice'
-import { Source } from '../sources/source'
+import { GenericDevice, ConfigLoader, InitObject, Parameters } from 'domoja-core';
 import { IPX800 } from '../sources/ipx800'
-import { InitObject, Parameters } from '../lib/module';
 import { OptionsWithUrl, RequestResponse, RequestCallback } from 'request';
-import { ConfigLoader } from '../lib/load';
 
 const logger = require("tracer").colorConsole({
   dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -12,9 +9,9 @@ const logger = require("tracer").colorConsole({
 });
 
 
-export class sirene extends GenericDevice {
+export class relay extends GenericDevice {
   constructor(ipx800: IPX800, id: string, deviceId: number, name: string) {
-    super(ipx800, 'sirene', id, deviceId.toString(), name);
+    super(ipx800, 'relay', id, deviceId.toString(), name);
     this.config(0, 0);
   }
 
@@ -59,6 +56,6 @@ export class sirene extends GenericDevice {
   }
 
   createInstance(configLoader: ConfigLoader, id: string, initObject: InitObject): GenericDevice {
-    return new sirene(initObject.source, id, parseInt(initObject.id), initObject.name);
+    return new relay(initObject.source, id, parseInt(initObject.id), initObject.name);
   }
 }

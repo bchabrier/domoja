@@ -1,13 +1,13 @@
 import rewire = require('rewire');
-import * as ToMock from '../managers/userMgr'
-let RewireToMock = rewire('../managers/userMgr')
+import * as ToMock from '../core/managers/userMgr'
+let RewireToMock = rewire('../core/managers/userMgr')
 const userMgrModule: typeof ToMock & typeof RewireToMock = <any>RewireToMock
 let User = userMgrModule.User;
 type User = ToMock.User;
 const  userMgr = new userMgrModule.UserMgr;
 
 var assert = require("assert");
-var locationMgr = require('../managers/locationMgr');
+var locationMgr = require('../core/managers/locationMgr');
 
 describe('Module userMgr', function () {
   describe('class user', function () {

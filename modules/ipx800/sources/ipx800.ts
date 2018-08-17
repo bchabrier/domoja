@@ -1,10 +1,7 @@
-import { Source } from '../sources/source';
-var assert = require("assert");
+import { Source, ConfigLoader, GenericDevice, InitObject, Parameters } from 'domoja-core';
+import * as assert from 'assert';
 import * as request from 'request';
 import * as express from 'express';
-import { ConfigLoader } from '../lib/load';
-import { DeviceType, GenericDevice } from '../devices/genericDevice';
-import { InitObject, Parameters } from '../lib/module';
 import { Socket, createConnection } from 'net';
 
 var logger = require("tracer").colorConsole({
@@ -25,8 +22,8 @@ export class IPX800 extends Source {
 	input: ('0' | '1')[];
 	client: Socket;
 
-	constructor(macaddress: string, ip: string, port?: number) {
-		super();
+	constructor(path: string, macaddress: string, ip: string, port?: number) {
+		super(path);
 		this.macAddress = macaddress;
 		this.ip = ip;
 		this.port = port || 80;
@@ -55,15 +52,20 @@ export class IPX800 extends Source {
 			}
 		});
 		this.client.on('connect', () => {
-			logger.info('connected to IPX!');
+			logger.info('Connected to IPX!');
 		});
 
 		this.client.on('close', () => {
-			logger.info('disconnected from IPX');
 			//self.connect();
-			setTimeout(() => {
-				self.client.connect(8124);
-			}, 5000);
+			// if the socket is still here, let's try to reconnect
+			if (self.client) {
+				logger.info('Disconnected from IPX, trying to reconnect in 5 secs...');
+				setTimeout(() => {
+					self.client.connect(8124);
+				}, 5000);
+			} else {
+				logger.info('Disconnected from IPX');
+			}
 		});
 		this.client.connect(8124);
 	}
@@ -71,8 +73,10 @@ export class IPX800 extends Source {
 	release(): void {
 		this.client.end();
 		this.client = null;
-		this.removeAllListeners();
-		IPX800.ipxTab.splice(IPX800.ipxTab.indexOf(this));
+		super.release();
+		IPX800.ipxTab = IPX800.ipxTab.filter(element => {
+			return element !== this;
+		});
 	}
 
 	// fill in current values
@@ -107,58 +111,54 @@ export class IPX800 extends Source {
 	}
 
 	processInput(inputs: String): void {
-	for (var ii = 1; ii <= 32; ii++) {
-		var input: '0' | '1' = inputs [ii - 1] == '0' ? '0' : '1';
-		if (this.input[ii] != input) {
-			this.emitEvent("change", "INPUT" + ii, {
-				oldValue: this.input[ii],
-				newValue: input
-			})
-			this.input[ii] = input;
-			notifyHA(ii, input);
+		for (var ii = 1; ii <= 32; ii++) {
+			var input: '0' | '1' = inputs[ii - 1] == '0' ? '0' : '1';
+			if (this.input[ii] != input) {
+				this.setDeviceState("INPUT" + ii, input);
+				this.input[ii] = input;
+			}
 		}
 	}
-}
 
-createInstance(configLoader: ConfigLoader, id: string, initObject: InitObject): Source {
-	return new IPX800(initObject.macaddress, initObject.ip, initObject.port);
-}
+	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
+		return new IPX800(path, initObject.macaddress, initObject.ip, initObject.port);
+	}
 
-getParameters(): Parameters {
-	return {
-		ip: 'REQUIRED',
-		macaddress: 'REQUIRED',
-		update_url: 'REQUIRED'
+	getParameters(): Parameters {
+		return {
+			ip: 'REQUIRED',
+			macaddress: 'REQUIRED',
+			update_url: 'REQUIRED'
+		}
 	}
-}
 
-setAttribute(device: GenericDevice, attribute: string, value: string, callback: (err: Error) => void): void {
-	if(attribute == 'state') {
-	if (value == 'OFF') {
-		//this.sendCommand(device.id, ZbAction.OFF);
-		//return callback(null);
-	}
-	if (value == 'ON') {
-		//this.sendCommand(device.id, ZbAction.ON);
-		//return callback(null);
-	}
-}
-return callback(new Error('Unsupported attribute/value ' + attribute + '/' + value))
+	setAttribute(device: GenericDevice, attribute: string, value: string, callback: (err: Error) => void): void {
+		if (attribute == 'state') {
+			if (value == 'OFF') {
+				//this.sendCommand(device.id, ZbAction.OFF);
+				//return callback(null);
+			}
+			if (value == 'ON') {
+				//this.sendCommand(device.id, ZbAction.ON);
+				//return callback(null);
+			}
+		}
+		return callback(new Error('Unsupported attribute/value ' + attribute + '/' + value))
 	}
 
 	static registerDeviceTypes(): void {
-	Source.registerDeviceType(this, 'sensor', {
-		source: 'REQUIRED',
-		id: 'REQUIRED',
-		transform: 'OPTIONAL',
-		camera: 'OPTIONAL' // added for alarm (should be an array)
-	});
+		Source.registerDeviceType(this, 'sensor', {
+			source: 'REQUIRED',
+			id: 'REQUIRED',
+			transform: 'OPTIONAL',
+			camera: 'OPTIONAL' // added for alarm (should be an array)
+		});
 
-	Source.registerDeviceType(this, 'sirene', {
-		source: 'REQUIRED',
-		id: 'REQUIRED'
-	});
-}
+		Source.registerDeviceType(this, 'relay', {
+			source: 'REQUIRED',
+			id: 'REQUIRED'
+		});
+	}
 }
 export function processIPX800Data(req: express.Request, res: express.Response) {
 	logger.trace("req.query =", req.query)
@@ -187,21 +187,3 @@ export function processIPX800Data(req: express.Request, res: express.Response) {
 	res.send('Done');
 };
 
-function notifyHA(i: number, input: '0' | '1') {
-	var request = require('request');
-
-	request.post(
-		{
-			url: 'http://localhost:8123/api/states/binary_sensor.ipx800_INPUT' + i,
-			headers: {
-				'x-ha-access': 'thepass1',
-			},
-			json: true,
-			body: {
-				'state': input == '1' ? 'on' : 'off'
-			}
-		}, function (error: Error, response: express.Response, body: string) {
-			if (error) console.log(error);
-			//console.log(body);
-		});
-}

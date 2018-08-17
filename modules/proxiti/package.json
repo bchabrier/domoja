@@ -1,10 +1,9 @@
 {
-  "name": "domoja-zibase",
+  "name": "domoja-proxiti",
   "author": "Bruno Chabrier",
   "version": "0.0.0",
   "private": false,
-  "description": "ZiBase source for Domoja",
-  "main": "zibase.js",
+  "description": "Astronomy source for Domoja from http://www.proxiti.info/",
   "scripts": {
     "test": "mocha",
     "coveralls": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage",
@@ -18,20 +17,21 @@
     "url": "git+https://github.com/bchabrier/domoja.git"
   },
   "keywords": [
-    "zibase",
-    "zapi",
+    "astronomy",
     "home automation"
   ],
   "bugs": {
     "url": "https://github.com/bchabrier/domoja/issues"
   },
-  "homepage": "https://github.com/bchabrier/domoja/modules/zibase#readme",
+  "homepage": "https://github.com/bchabrier/domoja/modules/proxiti#readme",
   "dependencies": {
+    "cron": "^1.3.0",
     "domoja-core": "*",
-    "tracer": "^0.9.1",
-    "zibase": "^1.4.2"
+    "request": "^2.87.0",
+    "tracer": "^0.9.1"
   },
   "devDependencies": {
+    "@types/request": "^2.47.1",
     "coveralls": "^3.0.2",
     "istanbul": "^0.4.2",
     "mocha": "^5.2.0"

@@ -18,23 +18,19 @@
     "url": "git+https://github.com/bchabrier/domoja.git"
   },
   "keywords": [
-    "sample",
-    "zapi"
+    "home automation"
   ],
-  "license": "ISC",
   "bugs": {
     "url": "https://github.com/bchabrier/domoja/issues"
   },
   "homepage": "https://github.com/bchabrier/domoja/modules/sample#readme",
   "dependencies": {
-    "tracer": "^0.9.1"
+    "tracer": "^0.9.1",
+    "domoja-core": "*"
   },
   "devDependencies": {
     "coveralls": "^3.0.2",
-    "gh-pages": "^1.2.0",
-    "ink-docstrap": "*",
     "istanbul": "^0.4.2",
-    "mocha": "^5.2.0",
-    "mocha-lcov-reporter": "^1.2.0"
+    "mocha": "^5.2.0"
   }
 }

@@ -1,4 +1,4 @@
-import { ConfigLoader } from '../lib/load';
+import { ConfigLoader } from './load';
 
 export interface InitObject {
     [prop: string]: any

@@ -1,8 +1,10 @@
 
-import { DomoModule, InitObject, Parameters } from '../lib/module';
-import { Source, DEFAULT_SOURCE } from '../sources/source';
-import { GenericDevice, DeviceType } from '../devices/genericDevice';
-import { Scenario, StateScenario, ConditionFunction, ActionFunction } from '../scenarios/scenario'
+import { DomoModule, InitObject, Parameters } from '..';
+import * as domoja from '..'
+import { Source, DEFAULT_SOURCE } from '..';
+import { GenericDevice, DeviceType } from '..';
+import { Scenario, ConditionFunction, ActionFunction } from '../scenarios/scenario'
+import * as triggers from '../scenarios/trigger';
 import { Condition } from '../scenarios/condition'
 import { Action } from '../scenarios/action'
 import * as path from "path";
@@ -11,13 +13,14 @@ import Module = require('module');
 import async = require('async');
 import * as userMgr from '../managers/userMgr'
 type User = userMgr.User;
+import * as events from 'events';
 
 const { VM, VMScript } = require('vm2');
 
 import Parser = require("shitty-peg/dist/Parser");
 var logger = require("tracer").colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
-    level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:''-', 5:'error'
+    level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
 interface Map<T> {
@@ -67,7 +70,7 @@ type user = {
     [k: string]: string
 }
 */
-export class ConfigLoader {
+export class ConfigLoader extends events.EventEmitter {
     secrets: Map<string> = {};
     imports: Map<importItem> = {};
     sources: Map<sourceItem> = {};
@@ -81,9 +84,14 @@ export class ConfigLoader {
     private sandbox: {
         console: typeof console,
         assert: typeof assert,
+        setTimeout: typeof setTimeout,
+        clearTimeout: typeof clearTimeout,
+        setInterval: typeof setInterval,
+        clearInterval: typeof clearInterval,
         args: { args: any },
         getDevice: Function,
         getSource: Function,
+        setDeviceState: Function,
         msg: {
             oldValue: string,
             newValue: string
@@ -91,8 +99,13 @@ export class ConfigLoader {
     } = {
             console: console,
             assert: assert,
+            setTimeout: setTimeout,
+            clearTimeout: clearTimeout,
+            setInterval: setInterval,
+            clearInterval: clearInterval,
             getDevice: getDevice,
             getSource: getSource,
+            setDeviceState: setDeviceState,
             msg: <{ oldValue: string, newValue: string }>new Object(), // new Object needed to access outside of the sandbox
             args: <{ args: any[] }>new Object(), // new Object needed to access outside of the sandbox
         }
@@ -100,6 +113,7 @@ export class ConfigLoader {
 
 
     constructor(file: string) {
+        super();
     }
 
     public release(): void {
@@ -250,7 +264,8 @@ export class ConfigLoader {
 
     private getModuleClass(moduleName: string, className: string): new () => DomoModule {
         try {
-            let id = require.resolve(path.resolve(__dirname, '..', moduleName));
+            let p = moduleName.match(/^[/.]/) ? path.resolve(__dirname, '..', moduleName) : "domoja-" + moduleName
+            let id = require.resolve(p);
             let newModuleExports = this.rootModule.require(id);
             logger.info('Successfully imported class \'%s\' from \'%s\'.', className, moduleName);
             return newModuleExports[className];
@@ -307,7 +322,15 @@ export class ConfigLoader {
                 return self.vm.run(script);
             } catch (err) {
                 logger.error("%s: %s while executing script '%s'.", err.name, err.message, fct);
-                throw err;
+
+                // find the error location
+                let location = /.*[ :]([0-9]+):([0-9]+)/.exec(err.stack)
+                if (location) {
+                    let linePos = parseInt(location[1]);
+                    let charPos = parseInt(location[2]);
+                    err.message = err.message + "\n\n" + errorContext(fct, linePos, charPos);
+                }
+                logger.error(err.message);
             }
         }
     }
@@ -424,6 +447,7 @@ let USERS = Parser.token(/^users: */, '"users:"');
 
 let SCENARIOS = Parser.token(/^scenarios: */, '"scenarios:"');
 let TRIGGER = Parser.token(/^trigger: */, '"trigger:"');
+let AT = Parser.token(/^at: */, '"at:"');
 let STATE = Parser.token(/^state: */, '"state:"');
 let CONDITION = Parser.token(/^condition: */, '"condition:"');
 let ACTION = Parser.token(/^action: */, '"action:"');
@@ -457,13 +481,13 @@ function configDoc(c: Parser.Parse): void {
     if (users) {
         //document.importsComment = imports.comment;
         logger.debug("Adding %d user(s)...", users.users.length)
-       for (let u of users.users) {
-           let user = new userMgr.User("","","","","");
-           for (let k in u) {
-               (<any>user)[k] = (<any>u)[k]
-           }
-           document.userMgr.addUser(user);
-       }
+        for (let u of users.users) {
+            let user = new userMgr.User("", "", "", "", "");
+            for (let k in u) {
+                (<any>user)[k] = (<any>u)[k]
+            }
+            document.userMgr.addUser(user);
+        }
         logger.debug("Done add %d user(s).", users.users.length)
     }
     if (imports) {
@@ -752,13 +776,18 @@ function deviceTreeArray(c: Parser.Parse): Map<deviceItem> {
 
             },
         )
+
+        // eat comments
+        while (c.isNext(/^\n *#.*/)) {
+            c.skip(/^\n *#.*/);
+        }
+
     }, (c: Parser.Parse) => c.newline());
     return res;
 }
 
 function deviceItem(c: Parser.Parse): deviceItem {
     let document = <ConfigLoader>c.context().doc;
-
     c.pushContext({
         doc: document,
         type: "device",
@@ -820,22 +849,36 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
 function trigger(c: Parser.Parse): Scenario {
     c.skip(TRIGGER); eatComments(c);
     c.indent()
-    c.skip(STATE); eatComments(c);
 
+    let document = <domoja.ConfigLoader>c.context().doc;
+    let scenario = new Scenario(document);
 
-    let document = <ConfigLoader>c.context().doc;
-    let devices: string[] = [];
-    for (let d in c.context().devices) {
-        devices.push(d)
-    }
-    // make sure longer items are first so that they are
-    // catched first by c.oneOf
-    devices.sort((a, b) => { return b.length - a.length });
-    let device = c.oneOf(...devices)
-    eatComments(c);
+    c.many((c: Parser.Parse) => {
+        c.oneOf(
+            (c: Parser.Parse) => {
+                c.skip(STATE); eatComments(c);
+
+                let devices: string[] = [];
+                for (let d in c.context().devices) {
+                    devices.push(d)
+                }
+                // make sure longer items are first so that they are
+                // catched first by c.oneOf
+                devices.sort((a, b) => { return b.length - a.length });
+                let device = c.oneOf(...devices)
+                new triggers.StateTrigger(document, scenario, c.context().devices[device].name);
+            },
+            (c: Parser.Parse) => {
+                c.skip(AT); eatComments(c);
+                let when = c.oneOf('startup', STRING);
+                new triggers.AtTrigger(document, scenario, when);
+            }
+        );
+        eatComments(c);
+    }, (c: Parser.Parse) => { c.newline() });
     c.dedent()
     c.newline();
-    return new StateScenario(document, c.context().devices[device].name);
+    return scenario;
 }
 
 function condition(c: Parser.Parse): ConditionFunction {
@@ -1105,7 +1148,7 @@ function object(c: Parser.Parse): { [x: string]: value } {
     let allowedTypeValues: string[] = c.context().allowedTypeValues
 
     if (c.context().type == 'device') {
-        allowedKeys.push("type", "name", "source");
+        allowedKeys.push("type", "name", "source", "attribute", "id", "camera", "transform");
     }
     if (c.context().type == 'source') {
         allowedKeys.push("type");
@@ -1147,7 +1190,7 @@ function object(c: Parser.Parse): { [x: string]: value } {
             if (!c.isNext(/^ *['"]?source['"]? *:/)) {
                 logger.debug('Second attribute is not "source", using DEFAULT_SOURCE')
                 source = DEFAULT_SOURCE;
-                parameters = getDeviceParameters(c, obj['type'], source, 'DEFAULT_SOURCE')
+                parameters = getDeviceParameters(c, obj['type'] as DeviceType, source, 'DEFAULT_SOURCE')
                 Object.keys(parameters).forEach(key => {
                     if (allowedKeys.indexOf(key) == -1)
                         allowedKeys.push(key)
@@ -1190,9 +1233,18 @@ function object(c: Parser.Parse): { [x: string]: value } {
                     logger.debug('device has a source, getting allowed parameters from it')
                     hasSource = true;
                     //console.log(c.context().sources, val)
-                    source = c.context().sources[obj.source].source;
 
-                    parameters = getDeviceParameters(c, obj.type, source, obj.source)
+                    if (!c.context().sources[obj.source]) {
+                        let allowedSources: string[] = [];
+                        Object.keys(c.context().sources).forEach((s: string) => {
+                            allowedSources.push(s);
+                        });
+                            c.expected('a valid source ('  + allowedSources.join(' or ') + '). Did you import it?');
+                    } else {
+                        source = c.context().sources[obj.source].source;
+                    }
+
+                    parameters = getDeviceParameters(c, obj.type as DeviceType, source, obj.source)
                     Object.keys(parameters).forEach(key => {
                         if (allowedKeys.indexOf(key) == -1)
                             allowedKeys.push(key)
@@ -1321,7 +1373,7 @@ function userItem(c: Parser.Parse): User {
     c.context().parameters = params;
 
     let o = c.one(object);
-    let user = <User> objectToInitObject(c.context().doc, o)
+    let user = <User>objectToInitObject(c.context().doc, o)
 
     return user;
 }
@@ -1410,20 +1462,30 @@ export let sources: Map<sourceItem> = {};
 //export let deviceTypes: { [x: string]: Function } = {};
 export let devices: Map<deviceItem> = {};
 
-export function getDevice(deviceID: string): GenericDevice {
+export function getDevice(path: string): GenericDevice {
     //logger.debug(devices);
-    let d = findByID(devices, deviceID)
-    if (!d) logger.warn("Device '%s' not found, at:\n", deviceID, (new Error("Device not found").stack))
+    let d = findByPath(devices, path)
+    if (!d) logger.warn("Device '%s' not found, at:\n", path, (new Error("Device not found").stack))
     //    return d.device;
     return d ? d.device : undefined;
 }
 
 export function getSource(sourceID: string): Source {
     //logger.debug(sources)
-    let s = findByID(sources, sourceID)
+    let s = findByPath(sources, sourceID)
     if (!s) logger.warn("Source '%s' not found in", sourceID, sources, " at:\n", (new Error("Source not found")).stack)
     //    return s.source
     return s ? s.source : undefined;
+}
+
+function setDeviceState(path: string, state: string, callback: (err: Error) => void): void {
+    try {
+        getDevice(path).setState(state, (err) => {
+            callback && callback(err);
+        });
+    } catch (err) {
+        callback && callback(err);
+    }
 }
 
 function getID<T>(list: { [id: string]: T }, ID: string): string {
@@ -1438,7 +1500,7 @@ function getID<T>(list: { [id: string]: T }, ID: string): string {
     return undefined;
 }
 
-function findByID<T>(list: { [id: string]: T }, ID: string): T {
+function findByPath<T>(list: { [id: string]: T }, ID: string): T {
     let id = list[ID];
 
     if (id) return id;
@@ -1475,6 +1537,9 @@ export function reloadConfig(file?: string): void {
 
     currentConfig && currentConfig.release();
     currentConfig = doc;
+
+    logger.info('ConfigLoader emitted "startup"')
+    doc.emit('startup');
 }
 
 import { IVerifyOptions } from 'passport-local';
