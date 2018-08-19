@@ -15,6 +15,7 @@
     "url": "https://github.com/bchabrier/domoja/issues"
   },
   "dependencies": {
+    "@types/async": "^2.0.49",
     "@types/express": "^4.16.0",
     "@types/node": "^10.5.7",
     "async": "^2.6.1",
@@ -36,6 +37,7 @@
   },
   "devDependencies": {
     "@types/mocha": "^5.2.5",
+    "@types/rewire": "^2.5.28",
     "coveralls": "^3.0.2",
     "mocha": "^5.2.0",
     "nyc": "^12.0.2",
