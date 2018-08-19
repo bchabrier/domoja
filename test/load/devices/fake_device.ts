@@ -1,4 +1,4 @@
-import { Source, DEFAULT_SOURCE, DefaultSource } from '../../..';
+import { Source, DefaultSource } from '../../..';
 import { ConfigLoader } from '../../..';
 import { InitObject, Parameters } from '../../..';
 import { GenericDevice } from '../../..';
@@ -10,11 +10,11 @@ var logger = require("tracer").colorConsole({
 
 export class fakeDevice extends GenericDevice {
 
-    constructor(instanceFullname: string, name: string, parameter1: string, parameter2: string) {
-        super(DEFAULT_SOURCE, 'fakeDevice', instanceFullname, instanceFullname, name, {})
+    constructor(source: DefaultSource, instanceFullname: string, name: string, parameter1: string, parameter2: string) {
+		super(source, 'fakeDevice', instanceFullname, instanceFullname, name, {});
 	}
 	createInstance(configLoader: ConfigLoader, instanceFullname: string, initObject: InitObject): GenericDevice {
-		return new fakeDevice(instanceFullname, initObject.name, initObject.parameter1, initObject.parameter2);
+		return new fakeDevice(configLoader.DEFAULT_SOURCE, instanceFullname, initObject.name, initObject.parameter1, initObject.parameter2);
 	}
 }
 

@@ -1,7 +1,7 @@
 
 import { DomoModule, InitObject, Parameters } from '..';
 import * as domoja from '..'
-import { Source, DEFAULT_SOURCE } from '..';
+import { Source, DefaultSource } from '..';
 import { GenericDevice, DeviceType } from '..';
 import { Scenario, ConditionFunction, ActionFunction } from '../scenarios/scenario'
 import * as triggers from '../scenarios/trigger';
@@ -82,6 +82,7 @@ type Sandbox = {
     getDevice: typeof getDevice,
     getSource: typeof getSource,
     setDeviceState: typeof setDeviceState,
+    getDeviceState: typeof getDeviceState,
     msg: {
         oldValue: string,
         newValue: string
@@ -96,6 +97,7 @@ export class ConfigLoader extends events.EventEmitter {
     scenarios: Map<Scenario> = {};
     userMgr = new userMgr.UserMgr;
     comments: string[] = [];
+    DEFAULT_SOURCE: DefaultSource;
 
     rootModule: Module;
 
@@ -109,14 +111,16 @@ export class ConfigLoader extends events.EventEmitter {
         getDevice: getDevice,
         getSource: getSource,
         setDeviceState: setDeviceState,
+        getDeviceState: getDeviceState,
         msg: <{ oldValue: string, newValue: string }>new Object(), // new Object needed to access outside of the sandbox
         args: <{ args: any[] }>new Object(), // new Object needed to access outside of the sandbox
     }
 
 
 
-    constructor(file: string) {
+    constructor() {
         super();
+        this.DEFAULT_SOURCE = new DefaultSource;
     }
 
     public release(): void {
@@ -142,6 +146,9 @@ export class ConfigLoader extends events.EventEmitter {
             this.sources[e].source = null;
         });
         this.sources = undefined;
+
+        this.DEFAULT_SOURCE.release();
+
         /*
                 let id = require.resolve(path.resolve(__dirname, '..', moduleName));
                 // remove previous modules from rootModule
@@ -1118,7 +1125,6 @@ function stateAction(c: Parser.Parse): ActionFunction {
     logger.debug("found stateAction")
 
     return function (cb: (err: Error) => void) {
-        logger.error('tagada');
         let self = this as Sandbox;
         self.getDevice(device) && self.getDevice(device).setState(value, cb);
     }
@@ -1143,11 +1149,12 @@ function namedObject(c: Parser.Parse): { name: string, object: { [x: string]: va
 
 function getDeviceParameters(c: Parser.Parse, type: DeviceType, source: Source, sourcename: string): Parameters {
     let parameters: Parameters = {}
+    let document = <ConfigLoader>c.context().doc;
     try {
         parameters = source.getDeviceParameters(type);
     } catch (e) {
         logger.warn("Source '%s' does not support device type '%s' at %s%d:%d\n%s",
-            source == DEFAULT_SOURCE ? "DEFAULT_SOURCE" : sourcename,
+            source == document.DEFAULT_SOURCE ? "DEFAULT_SOURCE" : sourcename,
             type,
             c.source.name ? c.source.name + ":" : "", c.location().line(), c.location().column(),
             errorContext(c.source.body, c.location().line(), c.location().column()), e)
@@ -1206,7 +1213,7 @@ function object(c: Parser.Parse): { [x: string]: value } {
             //if (!c.isNext(/^ *(["'])source\1 *:/)) {
             if (!c.isNext(/^ *['"]?source['"]? *:/)) {
                 logger.debug('Second attribute is not "source", using DEFAULT_SOURCE')
-                source = DEFAULT_SOURCE;
+                source = document.DEFAULT_SOURCE;
                 parameters = getDeviceParameters(c, obj['type'] as DeviceType, source, 'DEFAULT_SOURCE')
                 Object.keys(parameters).forEach(key => {
                     if (allowedKeys.indexOf(key) == -1)
@@ -1464,7 +1471,7 @@ function eatCommentsBlock(c: Parser.Parse): string {
 
 export function loadFileSync(file: string) {
 
-    let document = new ConfigLoader(file);
+    let document = new ConfigLoader();
     document.parse(file);
     //console.log(document)
     //console.log(document.unparse());
@@ -1503,6 +1510,10 @@ function setDeviceState(path: string, state: string, callback: (err: Error) => v
     } catch (err) {
         callback && callback(err);
     }
+}
+
+function getDeviceState(path: string): string {
+    return getDevice(path).getState();
 }
 
 function getID<T>(list: { [id: string]: T }, ID: string): string {

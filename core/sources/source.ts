@@ -1,7 +1,7 @@
 import assert = require('assert');
-import { Parameters, InitObject, DomoModule } from '../lib/module';
-import { GenericDevice, DeviceType } from '../devices/genericDevice';
-import { ConfigLoader } from '../lib/load';
+import { Parameters, InitObject, DomoModule } from '../..';
+import { GenericDevice, DeviceType } from '../..';
+import { ConfigLoader } from '../..';
 import * as events from 'events';
 
 const logger = require("tracer").colorConsole({
@@ -43,7 +43,6 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     abstract createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source;
     abstract getParameters(): Parameters;
     abstract setAttribute(device: GenericDevice, attribute: string, value: string, callback: (err: Error) => void): void;
-
     release(): void {
         Object.keys(this.devicesByPath).forEach(path => {
             this.devicesByPath[path].release();
@@ -56,6 +55,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     }
 
     addDevice(device: GenericDevice): void {
+        logger.debug('Adding device "%s" (%s, %s, %s) to source "%s"...', device.path, device.id, device.attribute, device.name, this.path);
         this.devicesByPath[device.path] = device;
         if (!this.devicesByAttribute[device.attribute]) {
             this.devicesByAttribute[device.attribute] = {}
@@ -79,9 +79,10 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     }
 
     setDeviceAttribute(id: ID, attribute: string, value: string) {
+        logger.debug('setDeviceAttribute', id, attribute, value, this);
         if (this.devicesByAttribute[attribute]) {
             let device = this.devicesByAttribute[attribute][id];
-            if (device) {
+            if (device && device.getState() != value) {
                 this.emitEvent('change', device.path, { oldValue: device.getState(), newValue: value })
                 device.state = value;
             } else {
@@ -146,11 +147,11 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     }
 
     emitEvent(event: Event, path: string, arg: any) {
-        this.eventEmitter.emit(event + ":" + path, arg);
         logger.info('Device "%s" (%s) emitted "%s": %s', path, this.devicesByPath[path].name, event, JSON.stringify(arg, function (arg, value) {
             if (arg !== "emitter")
                 return value;
         }));
+        this.eventEmitter.emit(event + ":" + path, arg);
     }
 
     on(event: string | symbol, listener: (...args: any[]) => void): this;
@@ -203,6 +204,7 @@ export class DefaultSource extends Source {
     constructor() {
         super('default');
     }
+
     createInstance(configLoader: ConfigLoader, id: string, initObject: InitObject): Source {
         return new DefaultSource;
     }
@@ -218,5 +220,3 @@ export class DefaultSource extends Source {
         return callback(new Error('Unsupported attribute/value: ' + attribute + '/' + value))
     }
 }
-
-export const DEFAULT_SOURCE = new DefaultSource;
