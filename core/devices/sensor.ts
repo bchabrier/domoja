@@ -12,8 +12,8 @@ const logger = require("tracer").colorConsole({
 });
 
 export class sensor extends GenericDevice {
-  constructor(source: Source, instanceFullname: string, id: ID, attribute: string, name: string, options?: DeviceOptions) {
-    super(source, 'sensor', instanceFullname, id, attribute, name, options);
+  constructor(source: Source, path: string, id: ID, attribute: string, name: string, options?: DeviceOptions) {
+    super(source, 'sensor', path, id, attribute, name, options);
 
   let self = this;
     this.on("change", function (msg) {
@@ -64,8 +64,8 @@ export class sensor extends GenericDevice {
     });
   };
 
-  createInstance(configLoader: ConfigLoader, instanceFullname: string, initObject: InitObject): GenericDevice {
-    return new sensor(initObject.source, instanceFullname, initObject.id, initObject.attribute, initObject.name, {
+  createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): GenericDevice {
+    return new sensor(initObject.source, path, initObject.id, initObject.attribute, initObject.name, {
       transform: initObject.transform,
       camera: initObject.camera
     });

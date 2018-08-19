@@ -12,16 +12,16 @@ export class secretSource extends Source {
 	secretParameter: string;
 	publicParameter: string;
 
-	constructor(secretParameter: string, publicParameter: string) {
-		super();
+	constructor(path: string, secretParameter: string, publicParameter: string) {
+		super(path);
 		this.secretParameter = secretParameter
 		this.publicParameter = publicParameter
 	}
 
 	release(): void { }
 
-	createInstance(configLoader: ConfigLoader, id: string, initObject: InitObject): Source {
-		return new secretSource(initObject["secret-parameter"], initObject["public-parameter"]);
+	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
+		return new secretSource(path, initObject["secret-parameter"], initObject["public-parameter"]);
 	}
 
 	getParameters(): Parameters {

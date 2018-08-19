@@ -29,15 +29,25 @@ export abstract class Trigger {
             }
             // check conditions
             this.scenario.checkConditions((err: Error, success: boolean) => {
-                if (success) {
+                if (!err && success) {
                     // run actions
                     this.scenario.runActions((err: Error) => {
+                        if (err) {
+                            logger.debug('Got error %s while running actions.', err);
+                            logger.debug(err.stack);
+                        } else {
+                            logger.debug('Successfully run all actions.');
+                        }
+                        logger.debug('Resetting sandbox.');
                         this.doc.setSandboxMsg({});
-                        if (err) throw err;
                     });
                 } else {
+                    if (err) {
+                        logger.debug('Got error %s while checking conditions.', err);
+                        logger.debug(err.stack);
+                    } 
+                    logger.debug('Resetting sandbox.');
                     this.doc.setSandboxMsg({});
-                    if (err) throw err;
                 }
             });
         }

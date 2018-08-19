@@ -1,15 +1,15 @@
 
 imports:
-  - module: ./sources/demo
+  - module: ./core/sources/demo
     source: demo
-  - module: ipx800
-    device: relay
-  - module: ./devices/httpcamera
+  - module: ./core/devices/httpcamera
     device: httpCamera
-  - module: ./devices/device
+  - module: ./core/devices/device
     device: device
-  - module: ./devices/sensor
+  - module: ./core/devices/sensor
     device: sensor
+  - module: ./core/devices/variable
+    device: variable
   - module: proxiti
     source: astronomy
 
@@ -64,8 +64,15 @@ devices:
   - hall: { type: sensor, source: demo, id: "INPUT3", name: "Détecteur hall" }
   - escalier: { type: sensor, source: demo, id: "INPUT4", name: "Détecteur escalier" }
   - cuisine: { type: sensor, source: demo, id: "INPUT1", name: "Détecteur cuisine" }
-  - pompes_aquarium : { type: device, source: demo, id: "ZC8", name: "Pompes aquarium" }
-  - lampes_aquarium : { type: device, source: demo, id: "ZP7", name: "Lampes UV aquarium" }
+
+  - aquarium:
+    - pompes : { type: device, source: demo, id: "ZC8", name: "Pompes aquarium" }
+    - lampes : { type: device, source: demo, id: "ZP7", name: "Lampes UV aquarium" }
+    - lampes_start : { type: variable, name: "Heure allumage aquarium" }
+    - lampes_end : { type: variable, name: "Heure extinction aquarium" }
+    - lampes_end : { type: variable, name: "Heure extinction aquarium" }
+    - pompes_start : { type: variable, name: "Heure démarrage pompes aquarium" }
+    - pompes_end : { type: variable, name: "Heure arrêt pompes aquarium" }
 #  - hallLightTimer: {
 #      type: LightTimer, 
 #      name: "Minuterie hall",
@@ -159,9 +166,10 @@ scenarios:
         at: startup
       action:
        - !!js/function 'function f(callback) {
+         return callback(null);
           var self = this;
           function pgm(device) {
-            var onAt = 30000 * Math.random(); 
+            var onAt = 20000 + 30000 * Math.random(); 
             var offAt = onAt + 2000 + 30000 * Math.random(); 
             setTimeout(() => { self.setDeviceState(device, "ON");}, onAt);
             setTimeout(() => { self.setDeviceState(device, "OFF"); pgm(device);}, offAt);
@@ -172,7 +180,18 @@ scenarios:
           pgm("bureau");
           callback(null);
          }'      
-         
+  - aquarium:
+      trigger:
+        state: sunset
+      action:
+        - !!js/function 'function f(callback) {
+          console.log("coucou")
+          true && this.setDeviceState("aquarium.lampes_start", this.msg.newValue, (err) => {
+            console.log("dans qsdf", err)
+            callback(err)});
+            false && callback(null)
+         }'   
+        - { device: aquarium.lampes_start, state: 'OFF' }
 
 #  - hallLightTimerLightsON:
 #      trigger:
@@ -251,37 +270,37 @@ scenarios:
 
 users:
   - id: 1 # must be unique
-    name: 'Bruno'
-    initials: 'BC'
-    login: !secrets login_1
-    password: !secrets password_1
-    phone: !secrets phone_1
-    macaddress: 'e0:b5:2d:3f:76:ab'
-    avatar: !secrets avatar_1
+    name: 'Luc'
+    initials: 'LC'
+    login: Luc
+    password: demo
+    phone: phone_1
+    macaddress: 'e0:b5:2d:3a:76:ab'
+    avatar: ...
   - id: 2 # must be unique
-    name: 'Marie-Pierre'
-    initials: 'MPC'
-    login: !secrets login_2
-    password: !secrets password_2
-    phone: !secrets phone_2
-    macaddress: 'd8:c4:6a:bc:b3:2c'
-    avatar: !secrets avatar_2
+    name: 'Karen'
+    initials: 'KC'
+    login: Karen
+    password: demo
+    phone: phone_2
+    macaddress: 'd8:c2:6a:bc:b3:2c'
+    avatar: ...
   - id: 3 # must be unique
-    name: 'Adam'
-    initials: 'AC'
-    login: !secrets login_3
-    password: !secrets password_3
-    phone: !secrets phone_3
-    macaddress: '40:6A:AB:6F:D7:45'
-    avatar: !secrets avatar_3
+    name: 'Stéphane'
+    initials: 'SC'
+    login: Stéphane
+    password: demo
+    phone: phone_3
+    macaddress: '40:6A:AE:6F:D7:45'
+    avatar: ...
   - id: 4 # must be unique
-    name: 'Julia'
-    initials: 'JC'
-    login: !secrets login_4
-    password: !secrets password_4
-    phone: !secrets phone_4
-    macaddress: 'B0:A2:E7:83:96:CB'
-    avatar: !secrets avatar_4
+    name: 'Nathalie'
+    initials: 'NC'
+    login: Nathalie
+    password: demo
+    phone: phone_4
+    macaddress: 'B1:A2:E7:83:96:CB'
+    avatar: ...
 
 
 

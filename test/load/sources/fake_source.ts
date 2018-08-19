@@ -10,14 +10,14 @@ var logger = require("tracer").colorConsole({
 
 export class fakeSource extends Source {
 
-	constructor() {
-		super();
+	constructor(path: string) {
+		super(path);
 	}
 
 	release(): void { }
 
-	createInstance(configLoader: ConfigLoader, id: string, initObject: InitObject): Source {
-		return new fakeSource();
+	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
+		return new fakeSource(path);
 	}
 
 	getParameters(): Parameters {

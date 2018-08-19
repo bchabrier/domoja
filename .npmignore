@@ -24,6 +24,7 @@ build/
 *.js
 
 .nyc_output/
-secrets.*
+/secrets.ts
 .vscode/
 modules/
+core/

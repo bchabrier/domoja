@@ -48,6 +48,7 @@ Domoja collects information from and interacts with devices through sources. You
 The framework supports a range of devices:
 - device: a generic device with attributes which can be set or get.
 - relay: a particular switch, for which delays can be configured.
+- variable: a special device that contains a value which can be read or written.
 
 
 

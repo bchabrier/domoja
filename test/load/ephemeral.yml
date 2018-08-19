@@ -1,9 +1,9 @@
 # this file is for ephemeral tests
 
 imports:
-  - module: ./devices/lightTimer
+  - module: ./core/devices/lightTimer
     device: LightTimer
-  - module: ./devices/httpcamera
+  - module: ./core/devices/httpcamera
     device: httpCamera
 
 devices:

@@ -7,7 +7,7 @@ import { ConfigLoader, getDevice, getSource } from '..'
 
 var logger = require("tracer").colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
-    level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:''-', 5:'error'
+    level: 2 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:''-', 5:'error'
 });
 
 export type ConditionFunction = (cb: (err: Error, condition: boolean) => void) => void;
@@ -62,7 +62,7 @@ export class Scenario {
     runActions(cb?: (err: Error) => void): void {
         logger.debug("Calling actions...");
         this.action.call(this.doc["sandbox"], function endActions(err: Error) {
-            logger.debug("All actions have been run.");
+            logger.debug("Actions have been run.");
             cb && cb(err);
         });
     }

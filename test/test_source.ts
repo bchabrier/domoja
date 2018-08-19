@@ -14,8 +14,8 @@ describe('Module sources', function () {
   describe('class Source', function () {
 
     class derivedSource extends Source {
-      createInstance(configLoader: ConfigLoader, id: string, initObject: InitObject): Source {
-        return new derivedSource();
+      createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
+        return new derivedSource(path);
       }
       getParameters(): Parameters {
         return {
@@ -48,9 +48,11 @@ describe('Module sources', function () {
       it('should release the object', function () {
         let source: Source = derivedSource.prototype.createInstance(null, null, null);
         assert(source);
-        assert.deepEqual(source['devices'], []);
+        assert.deepEqual(source['devicesByPath'], {});
+        assert.deepEqual(source['devicesByAttribute'], {});
         source.release();
-        assert.deepEqual(source['devices'], null);
+        assert.deepEqual(source['devicesByPath'], null);
+        assert.deepEqual(source['devicesByAttribute'], null);
         Object.keys(source).forEach(element => {
           assert.equal((source as any)[element], null);
         });
@@ -81,13 +83,41 @@ describe('Module sources', function () {
         let source: Source = derivedSource.prototype.createInstance(null, null, null);
         assert(source);
 
-        let dev1 = new device(source, 'Device 1', null, null);
-        let dev2 = new device(source, 'Device 2', null, null);
-        let dev3 = new device(source, 'Device 3', null, null);
-        let dev4 = new device(source, 'Device 4', null, null);
-        assert.deepEqual(source['devices'], [dev1, dev2, dev3, dev4]);
+        let dev1 = new device(source, 'Device 1', 'id1', 'attrA', null);
+        let dev2 = new device(source, 'Device 2', 'id2', 'attrA', null);
+        let dev3 = new device(source, 'Device 3', 'id3', 'attrB', null);
+        let dev4 = new device(source, 'Device 4', 'id4', 'attrB', null);
+        assert.deepEqual(source['devicesByPath'], {
+          'Device 1': dev1,
+          'Device 2': dev2,
+          'Device 3': dev3,
+          'Device 4': dev4
+        });
+        assert.deepEqual(source['devicesByAttribute'], {
+          'attrA': {
+            'id1': dev1,
+            'id2': dev2,
+          },
+          'attrB': {
+            'id3': dev3,
+            'id4': dev4,
+          },
+        });
         source.releaseDevice(dev2);
-        assert.deepEqual(source['devices'], [dev1, dev3, dev4]);
+        assert.deepEqual(source['devicesByPath'], {
+          'Device 1': dev1,
+          'Device 3': dev3,
+          'Device 4': dev4
+        });
+        assert.deepEqual(source['devicesByAttribute'], {
+          'attrA': {
+            'id1': dev1,
+          },
+          'attrB': {
+            'id3': dev3,
+            'id4': dev4,
+          },
+        });
         source.release();
       });
     });
@@ -97,9 +127,9 @@ describe('Module sources', function () {
         let source: Source = derivedSource.prototype.createInstance(null, null, null);
         assert(source);
 
-        let dev = new device(source, 'Device', null, null);
-        source.setDeviceState('Device', 'a state');
-
+        let dev = new device(source, 'Device', 'id', null, null);
+        source.setDeviceState(dev.id, 'a state');
+        assert.equal(dev.getState(), 'a state');
         source.release();
       });
     });

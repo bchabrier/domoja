@@ -155,7 +155,7 @@ describe('Module load', function () {
             assert.notEqual(doc, null);
         });
         */
-        it.only('should load the current configuration file', function () {
+        it('should load the current configuration file', function () {
         const confFile = './config/config.yml';
             if (!fs.existsSync(confFile)) {
                 this.skip();

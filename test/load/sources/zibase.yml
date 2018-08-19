@@ -1,17 +1,17 @@
 imports:
-  - module: ./sources/zibase
+  - module: ./core/sources/zibase
     source: Zibase
-  - module: ./sources/ipx800
+  - module: ./core/sources/ipx800
     source: IPX800
-  - module: ./devices/sirene
+  - module: ./core/devices/sirene
     device: sirene
-  - module: ./devices/lightTimer
+  - module: ./core/devices/lightTimer
     device: LightTimer
-  - module: ./devices/httpcamera
+  - module: ./core/devices/httpcamera
     device: httpCamera
-  - module: ./devices/device
+  - module: ./core/devices/device
     device: device
-  - module: ./devices/sensor
+  - module: ./core/devices/sensor
     device: sensor
 
 sources:

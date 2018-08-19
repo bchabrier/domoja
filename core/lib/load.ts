@@ -70,6 +70,24 @@ type user = {
     [k: string]: string
 }
 */
+
+type Sandbox = {
+    console: typeof console,
+    assert: typeof assert,
+    setTimeout: typeof setTimeout,
+    clearTimeout: typeof clearTimeout,
+    setInterval: typeof setInterval,
+    clearInterval: typeof clearInterval,
+    args: { args: any },
+    getDevice: typeof getDevice,
+    getSource: typeof getSource,
+    setDeviceState: typeof setDeviceState,
+    msg: {
+        oldValue: string,
+        newValue: string
+    }
+};
+
 export class ConfigLoader extends events.EventEmitter {
     secrets: Map<string> = {};
     imports: Map<importItem> = {};
@@ -81,34 +99,19 @@ export class ConfigLoader extends events.EventEmitter {
 
     rootModule: Module;
 
-    private sandbox: {
-        console: typeof console,
-        assert: typeof assert,
-        setTimeout: typeof setTimeout,
-        clearTimeout: typeof clearTimeout,
-        setInterval: typeof setInterval,
-        clearInterval: typeof clearInterval,
-        args: { args: any },
-        getDevice: Function,
-        getSource: Function,
-        setDeviceState: Function,
-        msg: {
-            oldValue: string,
-            newValue: string
-        }
-    } = {
-            console: console,
-            assert: assert,
-            setTimeout: setTimeout,
-            clearTimeout: clearTimeout,
-            setInterval: setInterval,
-            clearInterval: clearInterval,
-            getDevice: getDevice,
-            getSource: getSource,
-            setDeviceState: setDeviceState,
-            msg: <{ oldValue: string, newValue: string }>new Object(), // new Object needed to access outside of the sandbox
-            args: <{ args: any[] }>new Object(), // new Object needed to access outside of the sandbox
-        }
+    private sandbox: Sandbox = {
+        console: console,
+        assert: assert,
+        setTimeout: setTimeout,
+        clearTimeout: clearTimeout,
+        setInterval: setInterval,
+        clearInterval: clearInterval,
+        getDevice: getDevice,
+        getSource: getSource,
+        setDeviceState: setDeviceState,
+        msg: <{ oldValue: string, newValue: string }>new Object(), // new Object needed to access outside of the sandbox
+        args: <{ args: any[] }>new Object(), // new Object needed to access outside of the sandbox
+    }
 
 
 
@@ -328,7 +331,7 @@ export class ConfigLoader extends events.EventEmitter {
                 if (location) {
                     let linePos = parseInt(location[1]);
                     let charPos = parseInt(location[2]);
-                    err.message = err.message + "\n\n" + errorContext(fct, linePos, charPos);
+                    err.message = err.message + "\n\n" + errorContext(fct + '\n', linePos, charPos);
                 }
                 logger.error(err.message);
             }
@@ -910,7 +913,11 @@ function conditionArray(c: Parser.Parse): ConditionFunction {
                 callback(err, cond);
             });
         }, function (err: Error, result: boolean) {
-            logger.debug('Done calling %s conditions in series with result', N, result)
+            if (err) {
+                logger.debug('Got error %s while running %s conditions in series', err, N);
+            } else {
+                logger.debug('Done calling %s conditions in series with result', N, result);
+            }
             cb(err, result)
         });
     };
@@ -1032,11 +1039,19 @@ function actionArray(c: Parser.Parse): ActionFunction {
 
     let actionArrayFunction = function (cb: (err: Error) => void) {
         let self = this;
+        let n = 1;
+        let N = actions.length;
         async.eachSeries(actions, function (action, callback) {
-            logger.debug("Calling action '%s'...", action.name);
+            logger.debug("Calling action '%s' (%d/%d)...", action.name, n, N);
+            n++;
             action.fct.call(self, callback);
         }, function (err: Error) {
-            logger.debug('Done calling actions in series.')
+            if (err) {
+                logger.debug('Got error %s when calling %s actions in series.', err, N)
+            } else {
+                logger.debug('Done calling %d actions in series.', N)
+            }
+            cb(err);
         });
     };
     c.dedent();
@@ -1090,20 +1105,22 @@ function stateAction(c: Parser.Parse): ActionFunction {
     for (let d in c.context().devices) {
         devices.push(d)
     }
+    // make sure longer items are first so that they are
+    // catched first by c.oneOf
+    devices.sort((a, b) => { return b.length - a.length });
 
     let device = c.oneOf(...devices);
     c.skip(/^, */);
-    c.skip(/^attribute: */);
-    let attribute = c.one(stringValue);
-    c.skip(/^, */);
-    c.skip(/^value: */);
+    c.skip(/^state: */);
     let value = c.one(stringValue);
     c.skip(/^ *} */);
 
     logger.debug("found stateAction")
 
     return function (cb: (err: Error) => void) {
-        this.getDevice(device) && this.getDevice(device).setAttribute(attribute, value, cb)
+        logger.error('tagada');
+        let self = this as Sandbox;
+        self.getDevice(device) && self.getDevice(device).setState(value, cb);
     }
 }
 
@@ -1239,7 +1256,7 @@ function object(c: Parser.Parse): { [x: string]: value } {
                         Object.keys(c.context().sources).forEach((s: string) => {
                             allowedSources.push(s);
                         });
-                            c.expected('a valid source ('  + allowedSources.join(' or ') + '). Did you import it?');
+                        c.expected('a valid source (' + allowedSources.join(' or ') + '). Did you import it?');
                     } else {
                         source = c.context().sources[obj.source].source;
                     }
@@ -1512,7 +1529,7 @@ function findByPath<T>(list: { [id: string]: T }, ID: string): T {
     return undefined;
 }
 
-var sandbox; // for test and rewire
+var sandbox: Sandbox; // for test and rewire
 
 var currentConfig: ConfigLoader;
 

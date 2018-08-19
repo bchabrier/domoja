@@ -23,7 +23,7 @@ export type DeviceOptions = {
     others?: { [K in string]: any }
 }
 
-export type DeviceType = 'device' | 'sensor' | 'camera' | 'relay';
+export type DeviceType = 'device' | 'sensor' | 'variable' | 'camera' | 'relay';
 
 //export var pusher = new PushBullet(secrets.getPushBulletPassword());
 
@@ -129,19 +129,28 @@ export abstract class GenericDevice implements DomoModule {
         }
         this.persistence = null;
     }
-
-    setAttribute(attribute: string, value: string, callback: (err: Error) => void): void {
-        this.source.setAttribute(this, attribute, value, callback);
-    }
-
+    /*
+        setAttribute(attribute: string, value: string, callback: (err: Error) => void): void {
+            this.source.setAttribute(this, attribute, value, callback);
+        }
+    
+        setState(newState: string, callback: (err: Error) => void): void {
+            if (newState != this.state) {
+                this.setAttribute('state', newState, err => {
+                    if (!err) {
+                        this.source.setDeviceAttribute(this.id, this.attribute, newState);
+                    }
+                    callback(err);
+                })
+            }
+        }
+    */
     setState(newState: string, callback: (err: Error) => void): void {
         if (newState != this.state) {
-            this.setAttribute('state', newState, err => {
-                if (!err) {
-                    this.source.setDeviceAttribute(this.id, this.attribute, newState);
-                }
+            this.source.setAttribute(this, this.attribute, newState, err => {
+                this.source.setDeviceState(this.id, newState);
                 callback(err);
-            })
+            });
         }
     }
 

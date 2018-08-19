@@ -49,6 +49,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
             this.devicesByPath[path].release();
         });
         this.devicesByAttribute = null;
+        this.devicesByPath = null;
 
         this.eventEmitter.removeAllListeners();
         this.eventEmitter = null;
@@ -70,21 +71,19 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
             }
         });
 
-        this.devicesByAttribute[device.attribute][device.path] = null;
-        delete this.devicesByAttribute[device.attribute][device.path];
+        this.devicesByAttribute[device.attribute][device.id] = null;
+        delete this.devicesByAttribute[device.attribute][device.id];
 
         this.devicesByPath[device.path] = null;
         delete this.devicesByPath[device.path];
     }
 
-    setDeviceAttribute(id: ID, attribute: string, value: string): void {
+    setDeviceAttribute(id: ID, attribute: string, value: string) {
         if (this.devicesByAttribute[attribute]) {
-            let d = this.devicesByAttribute[attribute][id];
-            if (d) {
-                if (d && d.getState() != value) {
-                    this.emitEvent('change', d.path, { oldValue: d.getState(), newValue: value })
-                    d.state = value;
-                }
+            let device = this.devicesByAttribute[attribute][id];
+            if (device) {
+                this.emitEvent('change', device.path, { oldValue: device.getState(), newValue: value })
+                device.state = value;
             } else {
                 // here the space for discovered devices
                 logger.info('Discovered device {type=device, source=%s, id=%s, attribute=%s}', this.path, id, attribute);
@@ -92,8 +91,18 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         }
     }
 
-    setDeviceState(id: ID, state: string): void {
-        this.setDeviceAttribute(id, 'state', state);
+    setDeviceState(id: ID, value: string): void {
+        return this.setDeviceAttribute(id, 'state', value);
+    }
+
+    publishDeviceState(device: GenericDevice, value: string, callback: (err: Error) => void): void {
+        let id = device.id;
+        let attribute = device.attribute;
+
+        if (device.getState() != value) {
+            this.setAttribute(device, id, attribute, callback);
+        }
+
     }
 
     private static supportedDeviceTypes: {
@@ -201,6 +210,11 @@ export class DefaultSource extends Source {
         return {};
     }
     setAttribute(device: GenericDevice, attribute: string, value: string, callback: (err: Error) => void): void {
+        switch (attribute) {
+            case 'state':
+                // nothing to do
+                return callback(null);
+        }
         return callback(new Error('Unsupported attribute/value: ' + attribute + '/' + value))
     }
 }
