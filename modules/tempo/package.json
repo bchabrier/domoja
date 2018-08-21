@@ -1,0 +1,39 @@
+{
+  "name": "domoja-tempo",
+  "author": "Bruno Chabrier",
+  "version": "0.0.1",
+  "private": false,
+  "description": "EDF Tempo information for Domoja from https://particulier.edf.fr/fr/accueil/contrat-et-conso/options/ejp.html",
+  "scripts": {
+    "test": "mocha",
+    "coveralls": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage",
+    "cover": "istanbul cover ./node_modules/mocha/bin/_mocha",
+    "report": "istanbul report text-summary text",
+    "doc": "jsdoc -c ./jsdoc.conf.json -t ./node_modules/ink-docstrap/template/ -R README.md -d doc .",
+    "deploy": "./node_modules/gh-pages/bin/gh-pages -d doc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bchabrier/domoja.git"
+  },
+  "keywords": [
+    "astronomy",
+    "home automation"
+  ],
+  "bugs": {
+    "url": "https://github.com/bchabrier/domoja/issues"
+  },
+  "homepage": "https://github.com/bchabrier/domoja/modules/tempo#readme",
+  "dependencies": {
+    "cron": "^1.3.0",
+    "domoja-core": "file:../../core",
+    "request": "^2.88.0",
+    "tracer": "^0.9.1"
+  },
+  "devDependencies": {
+    "@types/request": "^2.47.1",
+    "coveralls": "^3.0.2",
+    "istanbul": "^0.4.2",
+    "mocha": "^5.2.0"
+  }
+}
