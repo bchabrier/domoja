@@ -9,12 +9,6 @@ var logger = require("tracer").colorConsole({
 
 //import * as cache from "./cache";
 var cronJob = require('cron').CronJob;
-var logger = require("tracer").colorConsole({
-	dateformat: "dd/mm/yyyy HH:MM:ss.l",
-	level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
-});
-
-
 
 // http://www.proxiti.info/horaires_soleil.php?o=06030
 // <tr><th>Date</th><th>Lever du Soleil</th><th>Coucher du Soleil</th><th>Durée du Jour</th><th>Soleil au Zénith</th><th>Début de l'Aube</th><th>Fin du Crépuscule</th></tr>
@@ -41,7 +35,7 @@ export class astronomy extends Source {
 		this.job = new cronJob({
 			cronTime: '00 01 * * *', // Runs every day at 1:00 AM.
 			onTick: function () {
-				self.RetryUpdateCache(function () {
+				self.RetryUpdate(function () {
 					logger.info("All astronomy info updated and stored in cache from CronJob.")
 				})
 			},
@@ -78,9 +72,9 @@ export class astronomy extends Source {
 		});
 	}
 
-	RetryUpdateCache(f: Function) {
+	RetryUpdate(f: Function) {
 		let self = this;
-		this.UpdateCache(function (err) {
+		this.Update(function (err) {
 			if (err == null) {
 				f();
 			} else {
@@ -88,13 +82,13 @@ export class astronomy extends Source {
 				var delay = 10;
 				logger.warn("Retrying in", delay, "mn");
 				setTimeout(function () {
-					self.RetryUpdateCache(f);
+					self.RetryUpdate(f);
 				}, delay * 60 * 1000);
 			}
 		});
 	}
 
-	UpdateCache(callback: (err: Error) => void) {
+	Update(callback: (err: Error) => void) {
 
 		let self = this;
 
