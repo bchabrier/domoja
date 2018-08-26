@@ -12,6 +12,8 @@ imports:
     device: variable
   - module: proxiti
     source: astronomy
+  - module: tempo
+    source: tempo
 
 #- module: ./devices/lightTimer
 #  device: LightTimer
@@ -21,10 +23,12 @@ sources:
       type: astronomy,
       location: "06030"
   }
+  - tempo: { type: tempo }
   - demo: { type: demo }
   
 devices:
   - sunset: { type: device, source: astronomy, id: sunset, name: "Coucher du soleil" }
+  - sunset_plus_30mn: { type: variable, name: "Coucher du soleil + 30mn" }
   - sunrise: { type: device, source: astronomy, id: sunrise, name: "Lever du soleil" }
 #- camera_interieure: { type: httpCamera, url: "http://192.168.0.5", name: "Caméra intérieure" }
   #- camera_exterieure: { type: httpCamera, url: "http://192.168.0.6", name: "Caméra extérieure" }
@@ -73,6 +77,10 @@ devices:
     - lampes_end : { type: variable, name: "Heure extinction aquarium" }
     - pompes_start : { type: variable, name: "Heure démarrage pompes aquarium" }
     - pompes_end : { type: variable, name: "Heure arrêt pompes aquarium" }
+
+  - tempo:
+    - couleur_du_jour : { type: device, source: tempo, id: couleurDuJour, name: "Couleur du jour" }
+
 #  - hallLightTimer: {
 #      type: LightTimer, 
 #      name: "Minuterie hall",
@@ -111,19 +119,19 @@ devices:
 
 #scenes:
 #  - init:
-#    - { action: stairLightTimer, attribute: activated, value: true }
-#    - { action: hallLightTimer, attribute: activated, value: true }
-#    - { action: kitchenLightTimer, attribute: activated, value: true }
+#    - { actions: stairLightTimer, attribute: activated, value: true }
+#    - { actions: hallLightTimer, attribute: activated, value: true }
+#    - { actions: kitchenLightTimer, attribute: activated, value: true }
 #  - normal:
 #    - minuterie-hall:
-#      - { action: hallLightTimer, attribute: duration, value: 10:00 }
+#      - { actions: hallLightTimer, attribute: duration, value: 10:00 }
 #    - aquarium:
-#      - { action: aquariumTimer, attribute: activated, value: true }
+#      - { actions: aquariumTimer, attribute: activated, value: true }
 #  - invitation:
 #    - minuterie-hall:
-#      - { action: hallLightTimer, attribute: duration, value: 15:00 }
+#      - { actions: hallLightTimer, attribute: duration, value: 15:00 }
 #    - aquarium:
-#      - { action: aquariumTimer, attribute: activated, value: false }
+#      - { actions: aquariumTimer, attribute: activated, value: false }
 #      - { device: lampes_aquarium, attribute: state, value: 'ON' }
 #      - { device: pompes_aquarium, attribute: state, value: 'ON' }
 
@@ -153,18 +161,18 @@ devices:
 
 scenarios:
   - scenario_with_expr:
-      trigger: 
-        state: cuisine
-      condition:
-        - {operator: =, left: this.msg.newValue, right: ON}
-      action:
+      triggers: 
+        - state: cuisine
+      conditions:
+        - {operator: =, left: this.msg.newValue, right: "ON"}
+      actions:
         - !!js/function 'function f(callback) {callback(null)}'      
         #- push_notify:
         #  text: "quelqu'un dans le hall !"
   - presence_simulator:
-      trigger:
-        at: startup
-      action:
+      triggers:
+        - at: startup
+      actions:
        - !!js/function 'function f(callback) {
          return callback(null);
           var self = this;
@@ -179,86 +187,120 @@ scenarios:
           pgm("cuisine");
           pgm("bureau");
           callback(null);
-         }'      
-  - aquarium:
-      trigger:
-        state: sunset
-      action:
+         }'     
+  - sunset_calculation:
+      triggers:
+        - state: sunset
+      actions:
         - !!js/function 'function f(callback) {
-          console.log("coucou")
-          true && this.setDeviceState("aquarium.lampes_start", this.msg.newValue, (err) => {
-            console.log("dans qsdf", err)
-            callback(err)});
-            false && callback(null)
-         }'   
-        - { device: aquarium.lampes_start, state: 'OFF' }
+          let sunset = new Date(this.getDeviceState("sunset"));
+          this.setDeviceState("sunset_plus_30mn", new Date(sunset.getTime() + 30 * 60 * 1000), callback);
+        }'   
+  - aquarium_set_Bleu:
+      triggers:
+        - state: tempo.couleur_du_jour
+        - state: sunset_plus_30mn
+      conditions:
+        - {operator: =, left: tempo.couleur_du_jour, right: "Bleu"}
+      actions:
+        - {device: aquarium.pompes_start, state: sunset}
+        - {device: aquarium.lampes_start, state: sunset_plus_30mn}
+  - aquarium_set_others:
+      triggers:
+        - state: tempo.couleur_du_jour
+      conditions:
+        - {operator: "!=", left: tempo.couleur_du_jour, right: "Bleu"}
+      actions:
+        - {device: aquarium.pompes_start, state: "21:30"}
+        - {device: aquarium.lampes_start, state: "22:00"}
+  - aquarium_lampes_start:
+      triggers:
+        - at: aquarium.lampes_start
+      actions:
+        - { device: aquarium.lampes, state: "ON" }
+  - aquarium_pompes_start:
+      triggers:
+        - at: aquarium.pompes_start
+      actions:
+        - { device: aquarium.pompes, state: "ON" }
+  - aquarium_lampes_stop:
+      triggers:
+        - cron: 00 30 23 * * * 
+      actions:
+        - { device: aquarium.lampes, state: "OFF" }
+  - aquarium_pompes_stop:
+      triggers:
+        - cron: 00 59 23 * * *
+      actions:
+        - { device: aquarium.pompes, state: "OFF" }
 
+        
 #  - hallLightTimerLightsON:
-#      trigger:
+#      trigg:
 #        state: hallLightTimer
-#      condition: 
+#      conditions: 
 #        - {operator: =, left: this.msg.newValue, right: ON}
 #        #- !!js/function 'function f(callback) {
 #        #    callback(null, this.msg.newValue == "ON");
 #        #  } '
-#      action:
+#      actions:
 #        - { device: lampe_hall, attribute: state, value: 'ON' }
 #        - !!js/function 'function f(callback) {console.log("Hall lights ON!"); callback(null)}'
 #  - hallLightTimerLightsOFF:
-#      trigger:
+#      trigg:
 #        state: hallLightTimer
-#      condition: 
+#      conditions: 
 #        - {operator: =, left: this.msg.newValue, right: OFF}
-#      action:
+#      actions:
 #        - { device: lampe_hall, attribute: state, value: 'OFF' }
 #        - !!js/function 'function f(callback) {console.log("Hall lights OFF!"); callback(null)}'
 #  - stairLightTimerLightsON:
-#      trigger:
+#      trigg:
 #        state: stairLightTimer
-#      condition: 
+#      conditions: 
 #        - {operator: =, left: this.msg.newValue, right: ON}
-#      action:
+#      actions:
 #        - { device: lampe_escalier, attribute: state, value: 'ON' }
 #        - !!js/function 'function f(callback) {console.log("Stair lights ON!"); callback(null)}'
 #  - stairLightTimerLightsOFF:
-#      trigger:
+#      trigg:
 #        state: stairLightTimer
-#      condition: 
+#      conditions: 
 #        - {operator: =, left: this.msg.newValue, right: OFF}
-#      action:
+#      actions:
 #        - { device: lampe_escalier, attribute: state, value: 'OFF' }
 #        - !!js/function 'function f(callback) {console.log("Stair lights OFF!"); callback(null)}'
 #  - kitchenLightTimerLightsON:
-#      trigger:
+#      trigg:
 #        state: kitchenLightTimer
-#      condition: 
+#      conditions: 
 #        - {operator: =, left: this.msg.newValue, right: ON}
-#      action:
+#      actions:
 #        - { device: lampe_table_cuisine, attribute: state, value: 'ON' }
 #        - !!js/function 'function f(callback) {console.log("Kitchen lights ON!"); callback(null)}'
 #  - kitchenLightTimerLightsOFF:
-#      trigger:
+#      trigg:
 #        state: kitchenLightTimer
-#      condition: 
+#      conditions: 
 #        - {operator: =, left: this.msg.newValue, right: OFF}
-#      action:
+#      actions:
 #        - { device: lampe_table_cuisine, attribute: state, value: 'OFF' }
 #        - !!js/function 'function f(callback) {console.log("Kitchen lights OFF!"); callback(null)}'
 #  - scenario1:
-#      trigger: 
+#      trigg: 
 #        state: cuisine
-#      condition: 
+#      conditions: 
 #        - {operator: =, left: this.msg.newValue, right: ON}
-#      action:
+#      actions:
 #        - !!js/function 'function f(callback) {callback(null)}'
 #      #  - push_notify:
 #      #    text: "quelqu'un dans le hall !"
 #  - scenario_with_functions:
-#      trigger: 
+#      trigg: 
 #        state: cuisine
-#      condition: 
+#      conditions: 
 #        - {operator: =, left: this.msg.newValue, right: ON}
-#      action:
+#      actions:
 #        - notify_zibase: !!js/function 'function(callback) {
 #            console.log("setevent pour cuisine !!!!!");
 #            this.getSource("demo").setEvent(1, "I13");

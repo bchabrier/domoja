@@ -1,4 +1,4 @@
-import { Source } from '../sources/source';
+import { Source } from '../..';
 import * as events from 'events';
 import { IVerifyOptions } from 'passport-local';
 

@@ -83,8 +83,9 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         if (this.devicesByAttribute[attribute]) {
             let device = this.devicesByAttribute[attribute][id];
             if (device && device.getState() != value) {
-                this.emitEvent('change', device.path, { oldValue: device.getState(), newValue: value })
+                let oldValue = device.getState();
                 device.state = value;
+                this.emitEvent('change', device.path, { oldValue: oldValue, newValue: value })
             } else {
                 // here the space for discovered devices
                 logger.info('Discovered device {type=device, source=%s, id=%s, attribute=%s}', this.path, id, attribute);
@@ -155,7 +156,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     }
 
     on(event: string | symbol, listener: (...args: any[]) => void): this;
-    on(event: Event, id: string, listener: (msg: message) => void): this;
+    on(event: Event, path: string, listener: (msg: message) => void): this;
     on(event: any, ...arg2: any[]): this {
         if (arguments.length == 2) {
             var listener: (...args: any[]) => void = arguments[1];
@@ -163,14 +164,14 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
             return this;
         }
 
-        var id: string = arguments[1];
+        var path: string = arguments[1];
         var listener: (...args: any[]) => void = arguments[2];
-        this.eventEmitter.on(event + ":" + id, listener);
+        this.eventEmitter.on(event + ":" + path, listener);
         return this;
     }
 
     once(event: string | symbol, listener: (...args: any[]) => void): this;
-    once(event: Event, id: string, listener: (msg: message) => void): this;
+    once(event: Event, path: string, listener: (msg: message) => void): this;
     once(event: any, ...arg2: any[]): this {
         if (arguments.length == 2) {
             var listener: (...args: any[]) => void = arguments[1];
@@ -178,14 +179,14 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
             return this;
         }
 
-        var id: string = arguments[1];
+        var path: string = arguments[1];
         var listener: (...args: any[]) => void = arguments[2];
-        this.eventEmitter.once(event + ":" + id, listener);
+        this.eventEmitter.once(event + ":" + path, listener);
         return this;
     }
 
     removeListener(event: string | symbol, listener: (...args: any[]) => void): this;
-    removeListener(event: Event, id: string, listener: (msg: message) => void): this;
+    removeListener(event: Event, path: string, listener: (msg: message) => void): this;
     removeListener(event: any, ...arg2: any[]): this {
         if (arguments.length == 2) {
             var listener: (...args: any[]) => void = arguments[1];
@@ -193,9 +194,9 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
             return this;
         }
 
-        var id: string = arguments[1];
+        var path: string = arguments[1];
         var listener: (...args: any[]) => void = arguments[2];
-        this.eventEmitter.removeListener(event + ":" + id, listener);
+        this.eventEmitter.removeListener(event + ":" + path, listener);
         return this;
     }
 }

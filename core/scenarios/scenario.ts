@@ -1,9 +1,6 @@
 //import { Condition } from '../scenarios/condition'
-import { Action } from './action'
 import { Trigger } from './trigger'
-import { GenericDevice } from '..'
-import { message } from '..'
-import { ConfigLoader, getDevice, getSource } from '..'
+import { ConfigLoader, getDevice, getSource } from '../..'
 
 var logger = require("tracer").colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -19,10 +16,12 @@ export class Scenario {
     triggers: Trigger[] = [];
     condition: ConditionFunction;
     action: ActionFunction;
-    doc: ConfigLoader
+    doc: ConfigLoader;
+    path: string;
 
-    constructor(doc: ConfigLoader) {
+    constructor(doc: ConfigLoader, path: string) {
         this.doc = doc;
+        this.path = path;
     }
 
     activate(callback?: (err: Error, s: Scenario) => void): void {

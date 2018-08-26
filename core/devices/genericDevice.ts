@@ -23,7 +23,12 @@ export type DeviceOptions = {
     others?: { [K in string]: any }
 }
 
-export type DeviceType = 'device' | 'sensor' | 'variable' | 'camera' | 'relay';
+export class CustomDeviceType {
+    name: string;
+    constructor(name: string) { this.name = name}
+}
+
+export type DeviceType = 'device' | 'sensor' | 'variable' | 'camera' | 'relay' | CustomDeviceType;
 
 //export var pusher = new PushBullet(secrets.getPushBulletPassword());
 
@@ -230,18 +235,18 @@ export abstract class GenericDevice implements DomoModule {
 
     on(event: Event, callback: (msg: message) => void) {
         var self = this;
-        this.source && this.source.on(event, this.id || this.path, this.eventListener(callback));
+        this.source.on(event, this.path, this.eventListener(callback));
         return this;
     }
 
     once(event: Event, callback: (msg: message) => void) {
         var self = this;
-        this.source && this.source.once(event, this.id || this.path, this.eventListener(callback));
+        this.source.once(event, this.path, this.eventListener(callback));
         return this;
     };
 
     removeListener(event: Event, callback: (msg: message) => void): this {
-        this.source && this.source.removeListener(event, this.id || this.path, this.eventListener(callback))
+        this.source.removeListener(event, this.path, this.eventListener(callback))
         return this;
     }
 }

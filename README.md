@@ -68,6 +68,7 @@ The following modules are currently available:
 - [domoja-ipx800](https://www.npmjs.com/package/domoja-ipx800): IPX800 source for Domoja
 - [domoja-proxiti](https://www.npmjs.com/package/domoja-proxiti): Astronomy source for Domoja from http://www.proxiti.info/
 - [domoja-sample](https://www.npmjs.com/package/domoja-sample): A sample Domoja module skeleton
+- [domoja-tempo](https://www.npmjs.com/package/domoja-tempo): EDF Tempo information for Domoja from https://particulier.edf.fr/fr/accueil/contrat-et-conso/options/ejp.html
 - [domoja-zibase](https://www.npmjs.com/package/domoja-zibase): ZiBase source for Domoja
 
 [//]: # (modulesList END)

@@ -26,7 +26,7 @@
   "homepage": "https://github.com/bchabrier/domoja/modules/sample#readme",
   "dependencies": {
     "tracer": "^0.9.1",
-    "domoja-core": "*"
+    "domoja-core": "file:../../core"
   },
   "devDependencies": {
     "coveralls": "^3.0.2",

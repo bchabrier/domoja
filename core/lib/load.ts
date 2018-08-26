@@ -1,10 +1,9 @@
 
-import { DomoModule, InitObject, Parameters } from '..';
-import * as domoja from '..'
-import { Source, DefaultSource } from '..';
-import { GenericDevice, DeviceType } from '..';
-import { Scenario, ConditionFunction, ActionFunction } from '../scenarios/scenario'
-import * as triggers from '../scenarios/trigger';
+import { DomoModule, InitObject, Parameters } from '../..';
+import { Source, DefaultSource } from '../..';
+import { GenericDevice, DeviceType } from '../..';
+import { Scenario, ConditionFunction, ActionFunction } from '../../core/scenarios/scenario'
+import * as triggers from '../../core/scenarios/trigger';
 import { Condition } from '../scenarios/condition'
 import { Action } from '../scenarios/action'
 import * as path from "path";
@@ -84,6 +83,7 @@ type Sandbox = {
     setDeviceState: typeof setDeviceState,
     getDeviceState: typeof getDeviceState,
     msg: {
+        emitter: string,
         oldValue: string,
         newValue: string
     }
@@ -112,7 +112,7 @@ export class ConfigLoader extends events.EventEmitter {
         getSource: getSource,
         setDeviceState: setDeviceState,
         getDeviceState: getDeviceState,
-        msg: <{ oldValue: string, newValue: string }>new Object(), // new Object needed to access outside of the sandbox
+        msg: <{ emitter: string, oldValue: string, newValue: string }>new Object(), // new Object needed to access outside of the sandbox
         args: <{ args: any[] }>new Object(), // new Object needed to access outside of the sandbox
     }
 
@@ -246,13 +246,14 @@ export class ConfigLoader extends events.EventEmitter {
         if (moduleClass && moduleClass.prototype && moduleClass.prototype.createInstance) {
             return moduleClass.prototype.createInstance(this, instanceFullname, data);
         } else {
-            logger.error('Failed to instanciate \'%s\'', instanceFullname, (new Error).stack);
+            logger.error(new Error('Failed to instanciate \'' + instanceFullname + '\'').stack);
             return null;
         }
     }
 
-    public getDevice(d: string): GenericDevice {
-        return this.devices[d].device
+    public getDevice(path: string): GenericDevice {
+        //logger.error(d, this.devices[d]);
+        return this.devices[path].device
     }
 
     public getDevicesFromIds(ids: string[] | string): GenericDevice[] {
@@ -355,7 +356,11 @@ export class ConfigLoader extends events.EventEmitter {
             delete (<any>this.sandbox.msg)[p];
         }
         for (let p in msg) {
-            (<any>this.sandbox.msg)[p] = msg[p];
+            if (p == 'emitter') {
+                this.sandbox.msg.emitter = msg.emitter.path;
+            } else {
+                (<any>this.sandbox.msg)[p] = msg[p];
+            }
         }
 
     }
@@ -440,10 +445,14 @@ function objectToInitObject(document: ConfigLoader, object: plainObject): InitOb
     return initObject;
 }
 
-let STRING = Parser.token(/^([^ "'#},\n]+)|("[^"\n]*")|('[^'\n]*')/, 'String');
-let ID = Parser.token(/^[^\n:]+/, 'String');
+let STRING = Parser.token(/^([^ "'#},\n]+)|("[^"\n]*")|('[^'\n]*')/, 'string');
+let QUOTED_STRING = Parser.token(/^(("[^"\n]*")|('[^'\n]*'))/, 'quoted string');
+let INTERPRETED_STRING = Parser.token(/^[^ "'#},\n]+/, 'string');
+let ID = Parser.token(/^[^\n:{} ]+/, 'string');
 let COMMENT = Parser.token(/^ *(#[^\n]*|)/);
 let BLANKLINE = Parser.token(/^ +/);
+
+let DASH = Parser.token(/^- */, "-");
 
 let IMPORTS = Parser.token(/^imports: */, '"imports:"');
 let MODULE = Parser.token(/^module: */, '"module:"');
@@ -456,15 +465,14 @@ let SECRETS = Parser.token(/^secrets: */, '"secrets:"');
 let USERS = Parser.token(/^users: */, '"users:"');
 
 let SCENARIOS = Parser.token(/^scenarios: */, '"scenarios:"');
-let TRIGGER = Parser.token(/^trigger: */, '"trigger:"');
+let TRIGGERS = Parser.token(/^triggers: */, '"triggers:"');
 let AT = Parser.token(/^at: */, '"at:"');
 let STATE = Parser.token(/^state: */, '"state:"');
-let CONDITION = Parser.token(/^condition: */, '"condition:"');
-let ACTION = Parser.token(/^action: */, '"action:"');
+let CONDITIONS = Parser.token(/^conditions: */, '"conditions:"');
+let ACTIONS = Parser.token(/^actions: */, '"actions:"');
 
 let SECRETS_EXT = Parser.token(/^!secrets +/, '"!secrets"');
 let FUNCTION_EXT = Parser.token(/^!!js\/function +'[^']*' */, '"!secrets"');
-
 
 
 function configDoc(c: Parser.Parse): void {
@@ -526,13 +534,13 @@ function configDoc(c: Parser.Parse): void {
             // create the initObject
             let initObject: InitObject = objectToInitObject(document, device.object);
 
-            let instance = document.createInstance(device.name,
+            let instance = document.createInstance(e,
                 document.imports['devices.' + device.object.type].class,
                 initObject);
             if (instance instanceof GenericDevice)
                 device.device = instance;
             else {
-                logger.error('Instanciating %s did not create a GenericDevice:', device.name, instance);
+                logger.error('Instanciating %s did not create a GenericDevice:', e, instance);
             }
         })
         logger.debug("Done instanciating all %d devices.", N)
@@ -614,7 +622,7 @@ function importItem(c: Parser.Parse): importItem {
 
     let imports: Map<importItem> = c.context().imports;
     logger.debug('in importItem')
-    c.skip(/^- */);
+    c.skip(DASH);
     c.skip(MODULE);
     let module = c.one(stringValue)
     let comment1 = c.optional(c => c.one(COMMENT))
@@ -678,7 +686,7 @@ function sourcesArray(c: Parser.Parse): Map<sourceItem> {
     let res: Map<sourceItem> = {};
     c.context().sources = res;
     c.many((c: Parser.Parse) => {
-        c.skip(/^- */);
+        c.skip(DASH);
         let i = c.one(sourceItem);
         res[i.name] = i;
     }, (c: Parser.Parse) => c.newline());
@@ -751,7 +759,7 @@ function deviceTreeArray(c: Parser.Parse): Map<deviceItem> {
     let res: Map<deviceItem> = c.context().devices;
 
     c.many((c: Parser.Parse) => {
-        c.skip(/^- */);
+        c.skip(DASH);
         c.oneOf(
             (c: Parser.Parse) => {
                 logger.debug('trying subtree')
@@ -840,10 +848,12 @@ function scenariosArray(c: Parser.Parse): Map<scenarioItem> {
 
 function scenarioItem(c: Parser.Parse): scenarioItem {
     let document = <ConfigLoader>c.context().doc;
-    c.skip(/^- */);
+    c.skip(DASH);
     let i = trim(c.one(ID));
     c.skip(/^ *: */);
     c.indent()
+
+    c.context().currentScenario = i;
 
     let scenario = c.one(trigger);
     let cond = c.optional(condition);
@@ -857,13 +867,14 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
 }
 
 function trigger(c: Parser.Parse): Scenario {
-    c.skip(TRIGGER); eatComments(c);
+    c.skip(TRIGGERS); eatComments(c);
     c.indent()
 
-    let document = <domoja.ConfigLoader>c.context().doc;
-    let scenario = new Scenario(document);
+    let document = <ConfigLoader>c.context().doc;
+    let scenario = new Scenario(document, c.context().currentScenario);
 
     c.many((c: Parser.Parse) => {
+        c.skip(DASH);
         c.oneOf(
             (c: Parser.Parse) => {
                 c.skip(STATE); eatComments(c);
@@ -876,12 +887,42 @@ function trigger(c: Parser.Parse): Scenario {
                 // catched first by c.oneOf
                 devices.sort((a, b) => { return b.length - a.length });
                 let device = c.oneOf(...devices)
-                new triggers.StateTrigger(document, scenario, c.context().devices[device].name);
+                new triggers.StateTrigger(document, scenario, device);
             },
             (c: Parser.Parse) => {
                 c.skip(AT); eatComments(c);
-                let when = c.oneOf('startup', STRING);
-                new triggers.AtTrigger(document, scenario, when);
+                let when = c.one(STRING);
+                let err = true;
+                if (when == 'startup') {
+                    err = false;
+                }
+                sortedDeviceList(c).forEach(d => {
+                    if (when == d) err = false;
+                });
+                if (err) {
+                    c.expected('"startup" or <device> or <time> or <date>');
+                } else {
+                    new triggers.TimeTrigger(document, scenario, when);
+                }
+            },
+            (c: Parser.Parse) => {
+                c.skip(Parser.token(/^cron: */, '"cron:"')); eatComments(c);
+                //let pattern = Parser.token(/^((\*(\/\d+)?)|((\d+(-\d+)?)(,\d+(-\d+)?)*) [*] [*])/, 'a cron pattern, i.e. "*" or "1-3,5" or "*/2"');
+                let pattern = Parser.token(/^(((\*(\/\d+)?)|(\d+(-\d+)?)(,\d+(-\d+)?)*) *){6}/, 'a cron pattern, i.e. 6 times a "*" or "1-3,5" or "*/2" as in https://www.npmjs.com/package/cron');
+                let when = removeQuotes(c.one(pattern));
+                let err = true;
+                if (when == 'startup') {
+                    err = false;
+                }
+                sortedDeviceList(c).forEach(d => {
+                    if (when == d) err = false;
+                });
+                err = false;
+                if (err) {
+                    c.expected('"startup" or <device> or <time> or <date>');
+                } else {
+                    new triggers.TimeTrigger(document, scenario, when);
+                }
             }
         );
         eatComments(c);
@@ -892,7 +933,7 @@ function trigger(c: Parser.Parse): Scenario {
 }
 
 function condition(c: Parser.Parse): ConditionFunction {
-    c.skip(CONDITION);
+    c.skip(CONDITIONS);
     return c.one(conditionArray);
 }
 
@@ -903,7 +944,7 @@ function conditionArray(c: Parser.Parse): ConditionFunction {
     let conditions: NamedCondition[] = <any>c.many(
         (c: Parser.Parse) => {
             eatCommentsBlock(c);
-            c.skip(/^- */);
+            c.skip(DASH);
             return c.one(singleCondition)
         },
         (c: Parser.Parse) => { c.newline() });
@@ -934,9 +975,11 @@ function conditionArray(c: Parser.Parse): ConditionFunction {
 }
 
 function unnamedCondition(c: Parser.Parse): NamedCondition {
+    logger.debug("trying unnamedCondition with", currentSource(c))
     let document = <ConfigLoader>c.context().doc;
     let fct: ConditionFunction = <ConditionFunction><any>c.oneOf(
         (c: Parser.Parse) => {
+            logger.debug("trying ext function...")
             return document.sandboxedExtFunction(c.one(FUNCTION_EXT));
         },
         binaryCondition
@@ -946,7 +989,7 @@ function unnamedCondition(c: Parser.Parse): NamedCondition {
 }
 
 function singleCondition(c: Parser.Parse): NamedCondition {
-    logger.debug("trying singleCondition")
+    logger.debug("trying singleCondition with", currentSource(c))
     let res: { name: string, fct: ConditionFunction } = <any>c.oneOf(
         namedCondition,
         unnamedCondition
@@ -958,28 +1001,44 @@ function singleCondition(c: Parser.Parse): NamedCondition {
 
 
 function namedCondition(c: Parser.Parse): NamedCondition {
-    logger.debug("trying namedAction")
+    logger.debug("trying namedCondition with", currentSource(c))
     let name = trim(c.one(ID));
+    logger.debug("found ID", name);
     c.skip(/^ *: */);
 
     let f = c.one(unnamedCondition).fct;
-    logger.debug("found namedAction")
+    logger.debug("found namedCondition")
 
     return { name: name, fct: f };
+}
+
+
+function currentSource(c: Parser.Parse): string {
+    return '"' + c.source.body.substr(c.offset, 30).replace('\n', '\\n') + '..."';
 }
 
 function binaryCondition(c: Parser.Parse): ConditionFunction {
     let document = <ConfigLoader>c.context().doc;
 
+    logger.debug("trying binaryCondition with", currentSource(c));
+
     c.skip(/^{ */)
     c.skip(/^operator: */)
-    let operator = c.oneOf("=");
+    logger.debug("trying operator with", currentSource(c));
+    let operator = removeQuotes(c.oneOf(
+        Parser.token(/^(["']?)=\1/, '"="'),
+        Parser.token(/^(["']?)!=\1/, '"!="'),
+    ));
+    logger.debug("found operator:", operator);
+
     c.skip(/^, */)
     c.skip(/^left: */)
     let left = c.one(expression)
+    logger.debug("found left:", left);
     c.skip(/^, */)
     c.skip(/^right: */)
     let right = c.one(expression)
+    logger.debug("found right:", right);
     c.skip(/^ *} */)
 
     let binaryExpression: (left: string, right: string) => boolean;
@@ -987,6 +1046,9 @@ function binaryCondition(c: Parser.Parse): ConditionFunction {
     switch (operator) {
         case '=': binaryExpression = (left: string, right: string) => { return left == right };
             break;
+        case '!=': binaryExpression = (left: string, right: string) => { return left != right };
+            break;
+        default: logger.error('Binary operator "%s" not yet supported!', operator);
     }
 
     return (cb: (err: Error, cond: boolean) => void) => {
@@ -1005,30 +1067,61 @@ function binaryCondition(c: Parser.Parse): ConditionFunction {
 type ExpressionFunction = (cb: (err: Error, result: string) => void) => void;
 
 function expression(c: Parser.Parse): ExpressionFunction {
-    let document = <ConfigLoader>c.context().doc;
+    logger.debug('Trying expression with', currentSource(c));
 
-    let res = c.oneOf(
-        stringValue
+    return <any>c.oneOf(
+        quotedStringExpression,
+        interpretedExpression,
     );
 
-    if (typeof res == 'string') {
-        if (/^this\./.test(res)) {
-            return <ExpressionFunction>document.sandboxedFunction("function (cb) {" +
-                //"console.log('this. expression: %s', " + res + ");" +
-                "cb(null, " + res + ");" +
-                "}")
-        }
+}
+
+function interpretedExpression(c: Parser.Parse): ExpressionFunction {
+    let document = <ConfigLoader>c.context().doc;
+
+    logger.debug('Trying interpreted expression with', currentSource(c));
+
+    let res = c.one(INTERPRETED_STRING);
+
+    logger.debug('Found interpreted expression:', res);
+
+    if (/^this\./.test(res)) {
+        // e.g. this.msg.oldValue
+        return <ExpressionFunction>document.sandboxedFunction("function (cb) {" +
+            //"console.log('this. expression: %s', " + res + ");" +
+            "cb(null, " + res + ");" +
+            "}")
+    } else if (c.context().devices[res]) {
+        // e.g. aquarium.lampes_start
+        return <ExpressionFunction>document.sandboxedFunction("function (cb) {" +
+            //"console.log('this. expression: %s', " + res + ");" +
+            "cb(null, this.getDeviceState('" + res + "'));" +
+            "}")
+    } else {
+        logger.error('Unsupported expression "%s"', res);
         return function (cb: (err: Error, result: string) => void) {
-            logger.debug("String expression '%s'.", res)
             cb(null, res);
         }
     }
-    return res;
 }
+
+function quotedStringExpression(c: Parser.Parse): ExpressionFunction {
+    logger.debug('Trying quoted string expression with', currentSource(c));
+
+    let res = c.one(QUOTED_STRING);
+
+    logger.debug('Found quoted string expression:', res);
+
+    return function (cb: (err: Error, result: string) => void) {
+        logger.debug("Quoted string expression '%s'.", res)
+        cb(null, removeQuotes(res));
+    }
+}
+
 
 function action(c: Parser.Parse): ActionFunction {
     logger.debug('trying action:')
-    c.skip(ACTION);
+    c.skip(ACTIONS);
     logger.debug('found action:')
     return c.one(actionArray);
 }
@@ -1039,7 +1132,7 @@ function actionArray(c: Parser.Parse): ActionFunction {
     c.indent();
     let actions: NamedAction[] = <any>c.many(
         (c: Parser.Parse) => {
-            c.skip(/^- */);
+            c.skip(DASH);
             return c.one(singleAction);
         },
         (c: Parser.Parse) => { c.newline() });
@@ -1102,12 +1195,7 @@ function namedAction(c: Parser.Parse): NamedAction {
     return { name: name, fct: f };
 }
 
-function stateAction(c: Parser.Parse): ActionFunction {
-    logger.debug("trying stateAction")
-    c.skip(/^ *{ */);
-    c.skip(/^device: */);
-
-    let document = <ConfigLoader>c.context().doc;
+function sortedDeviceList(c: Parser.Parse): string[] {
     let devices: string[] = [];
     for (let d in c.context().devices) {
         devices.push(d)
@@ -1116,17 +1204,42 @@ function stateAction(c: Parser.Parse): ActionFunction {
     // catched first by c.oneOf
     devices.sort((a, b) => { return b.length - a.length });
 
-    let device = c.oneOf(...devices);
+    return devices;
+}
+
+function stateAction(c: Parser.Parse): ActionFunction {
+    logger.debug("trying stateAction")
+    c.skip(/^ *{ */);
+    c.skip(/^device: */);
+
+    let document = <ConfigLoader>c.context().doc;
+
+    let device = c.oneOf(...sortedDeviceList(c));
     c.skip(/^, */);
     c.skip(/^state: */);
-    let value = c.one(stringValue);
+    let value = c.oneOf(
+        QUOTED_STRING,
+        INTERPRETED_STRING);
     c.skip(/^ *} */);
 
-    logger.debug("found stateAction")
+    logger.debug("found stateAction");
 
-    return function (cb: (err: Error) => void) {
-        let self = this as Sandbox;
-        self.getDevice(device) && self.getDevice(device).setState(value, cb);
+    if (value.length > 1 && value.charAt(0) == value.charAt(value.length - 1) &&
+        (value.charAt(0) == "'" || value.charAt(0) == '"')) {
+        // quoted string
+        let str = removeQuotes(value);
+        return function (cb: (err: Error) => void) {
+            let self = this as Sandbox;
+            self.getDevice(device) && self.getDevice(device).setState(str, cb);
+        }
+    } else if (c.context().devices[value]) {
+        // interpreted string
+        return function (cb: (err: Error) => void) {
+            let self = this as Sandbox;
+            self.getDevice(device) && self.getDevice(device).setState(self.getDeviceState(value), cb);
+        }
+    } else {
+        logger.error('Unsupported state expression "%s".', value);
     }
 }
 
@@ -1317,14 +1430,19 @@ function object(c: Parser.Parse): { [x: string]: value } {
     return obj;
 }
 
+function removeQuotes(s: string): string {
+    if (s.length < 2) return s;
+    let c = s.charAt(0);
+    if (c == s.charAt(s.length - 1) && (c == '"' || c == "'")) return s.substr(1, s.length - 2)
+    return s
+}
+
 function stringValue(c: Parser.Parse): string {
     let s = c.oneOf(
         STRING,
     );
-    if (s && (s.charAt(0) == "'" || s.charAt(0) == '"')) {
-        s = s.substr(1, s.length - 2)
-    }
-    return s;
+
+    return removeQuotes(s);
 }
 
 function array(c: Parser.Parse): Array<string> {
@@ -1381,7 +1499,7 @@ function usersArray(c: Parser.Parse): User[] {
     return res;
 }
 function userItem(c: Parser.Parse): User {
-    c.skip(/^- */);
+    c.skip(DASH);
     c.context().type = 'object';
     let params: Parameters = {
         "id": 'REQUIRED',
@@ -1458,7 +1576,7 @@ function eatCommentsBlock(c: Parser.Parse): string {
         } else if (c.isNext(COMMENT)) {
             logger.debug('comment')
             block += c.one(COMMENT) + '\n';
-            logger.debug('=>', block)
+            //logger.debug('=>', block)
             c.newline();
         } else {
             logger.debug('rien')
@@ -1486,29 +1604,32 @@ export let sources: Map<sourceItem> = {};
 //export let deviceTypes: { [x: string]: Function } = {};
 export let devices: Map<deviceItem> = {};
 
-export function getDevice(path: string): GenericDevice {
+export function getDevice(shortPath: string): GenericDevice {
     //logger.debug(devices);
-    let d = findByPath(devices, path)
-    if (!d) logger.warn("Device '%s' not found, at:\n", path, (new Error("Device not found").stack))
+    let d = findByShortPath(devices, shortPath)
+    if (!d) logger.warn(new Error("Device " + shortPath + " not found").stack);
     //    return d.device;
     return d ? d.device : undefined;
 }
 
 export function getSource(sourceID: string): Source {
     //logger.debug(sources)
-    let s = findByPath(sources, sourceID)
-    if (!s) logger.warn("Source '%s' not found in", sourceID, sources, " at:\n", (new Error("Source not found")).stack)
+    let s = findByShortPath(sources, sourceID)
+    if (!s) logger.warn(new Error("Source '" + sourceID + "' not found in" + sources).stack);
     //    return s.source
     return s ? s.source : undefined;
 }
 
-function setDeviceState(path: string, state: string, callback: (err: Error) => void): void {
+function standardErrorHandler(err: Error) {
+    err && logger.error(err.message);
+}
+
+function setDeviceState(path: string, state: string, callback: (err: Error) => void = standardErrorHandler): void {
+
     try {
-        getDevice(path).setState(state, (err) => {
-            callback && callback(err);
-        });
+        getDevice(path).setState(state, callback);
     } catch (err) {
-        callback && callback(err);
+        callback(err);
     }
 }
 
@@ -1516,24 +1637,24 @@ function getDeviceState(path: string): string {
     return getDevice(path).getState();
 }
 
-function getID<T>(list: { [id: string]: T }, ID: string): string {
-    logger.debug('Looking for ID %s', ID);
-    var len = ID.length + 1;
-    for (var d in list) {
-        if (d.substr(d.length - len) == '.' + ID) {
-            logger.debug('Found ID %s for %s', d, ID);
-            return d;
+function getPath<T>(list: { [path: string]: T }, shortPath: string): string {
+    logger.debug('Looking for short path %s', shortPath);
+    var len = shortPath.length + 1;
+    for (var path in list) {
+        if (path.substr(path.length - len) == '.' + shortPath) {
+            logger.debug('Found path %s for %s', path, shortPath);
+            return path;
         }
     }
     return undefined;
 }
 
-function findByPath<T>(list: { [id: string]: T }, ID: string): T {
-    let id = list[ID];
+function findByShortPath<T>(list: { [path: string]: T }, shortPath: string): T {
+    let path = list[shortPath];
 
-    if (id) return id;
+    if (path) return path;
 
-    let d = getID(list, ID);
+    let d = getPath(list, shortPath);
 
     if (d) return list[d];
 
@@ -1554,20 +1675,24 @@ export function reloadConfig(file?: string): void {
 
     if (!file) file = confFile;
 
-    let doc = loadFileSync(file);
-    if (!doc) return;
+    try {
+        let doc = loadFileSync(file);
+        if (!doc) return;
 
-    sandbox = doc["sandbox"];
+        sandbox = doc["sandbox"];
 
-    sources = doc.sources;
-    //deviceTypes = doc.deviceTypes;
-    devices = doc.devices;
+        sources = doc.sources;
+        //deviceTypes = doc.deviceTypes;
+        devices = doc.devices;
 
-    currentConfig && currentConfig.release();
-    currentConfig = doc;
+        currentConfig && currentConfig.release();
+        currentConfig = doc;
 
-    logger.info('ConfigLoader emitted "startup"')
-    doc.emit('startup');
+        logger.info('ConfigLoader emitted "startup"')
+        doc.emit('startup');
+    } catch (e) {
+        logger.error(e.stack);
+    }
 }
 
 import { IVerifyOptions } from 'passport-local';

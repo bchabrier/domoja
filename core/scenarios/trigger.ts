@@ -1,6 +1,8 @@
 
-import { GenericDevice, ConfigLoader, message } from '..';
-import { Scenario } from './scenario';
+import { GenericDevice, ConfigLoader, message } from '../..';
+import { Scenario } from '../../core/scenarios/scenario';
+
+import { CronJob } from 'cron';
 
 var logger = require("tracer").colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -10,23 +12,17 @@ var logger = require("tracer").colorConsole({
 export abstract class Trigger {
     doc: ConfigLoader;
     scenario: Scenario;
-    handler: (m: message) => void;
+    handler: (m?: message) => void;
 
     constructor(doc: ConfigLoader, scenario: Scenario) {
         this.doc = doc;
         scenario.addTrigger(this);
         this.scenario = scenario;
 
-        this.handler = (msg: message) => {
-            if (msg) {
-                let boxedMsg: { [key: string]: any } = {};
-                Object.keys(msg).forEach((k) => {
-                    if (k != "emitter") {
-                        boxedMsg[k] = (msg as { [key: string]: any })[k];
-                    }
-                })
-                this.doc.setSandboxMsg(boxedMsg);
-            }
+        this.handler = (msg?: message) => {
+            logger.info('Scenario "%s" triggers...', this.scenario.path);
+            msg && this.doc.setSandboxMsg(msg);
+
             // check conditions
             this.scenario.checkConditions((err: Error, success: boolean) => {
                 if (!err && success) {
@@ -45,7 +41,7 @@ export abstract class Trigger {
                     if (err) {
                         logger.debug('Got error %s while checking conditions.', err);
                         logger.debug(err.stack);
-                    } 
+                    }
                     logger.debug('Resetting sandbox.');
                     this.doc.setSandboxMsg({});
                 }
@@ -58,8 +54,12 @@ export abstract class Trigger {
 
 }
 
-export class AtTrigger extends Trigger {
+var cronRE = /([*\d-,]+ *){6}/;
+
+export class TimeTrigger extends Trigger {
     when: string;
+    cronJob: CronJob;
+    atHandler: (msg: message) => void;
 
     constructor(doc: ConfigLoader, scenario: Scenario, when: string) {
         super(doc, scenario);
@@ -67,16 +67,44 @@ export class AtTrigger extends Trigger {
     }
 
     activate(callback?: (err: Error, trigger: Trigger) => void): void {
-        switch (this.when) {
-            case 'startup':
-                this.doc.on('startup', this.handler)
-                break;
-            default:
+        if (this.when == 'startup') {
+            this.doc.on('startup', this.handler);
+        } else if (this.doc.devices[this.when]) {
+            // use state as date
+            this.atHandler = (msg) => {
+                let d = new Date(msg.newValue);
+
+                this.cronJob && this.cronJob.stop();
+                this.cronJob = new CronJob(d, this.handler);
+                this.cronJob.start();
+                logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates())
+            }
+            this.doc.devices[this.when].device.on('change', this.atHandler);
+        } else if (this.when.match(cronRE)) {
+            // cronjob
+            this.cronJob = new CronJob(this.when, () => {
+                this.handler();
+                logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates())
+            });
+            this.cronJob.start();
+            logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates())
+        } else {
+            logger.error('Unsupported expression "%s".', this.when);
         }
         callback && callback(null, this);
     }
     deactivate(callback?: (err: Error, trigger: Trigger) => void): void {
-        this.doc.removeListener("change", this.handler)
+        if (this.when == 'startup') {
+            this.doc.removeListener('startup', this.handler);
+        } else if (this.doc.devices[this.when]) {
+            this.doc.devices[this.when].device.removeListener('change', this.atHandler);
+            this.cronJob && this.cronJob.stop();
+            this.cronJob = null;
+        } else if (this.when.match(cronRE)) {
+            this.cronJob && this.cronJob.stop();
+            this.cronJob = null;
+        }
+
         callback && callback(null, this);
     }
 
