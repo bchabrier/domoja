@@ -23,7 +23,7 @@ scenarios:
       triggers: 
         - state: the_device   
       conditions:
-        - binary-condition: { operator: =, left: 1, right: 1 }
+        - binary-condition: { operator: =, left: "1", right: "1" }
       actions:
         - !!js/function 'function(callback) {
             this.actionDone();

@@ -1381,7 +1381,7 @@ function object(c: Parser.Parse): { [x: string]: value } {
                         source = c.context().sources[obj.source].source;
                     }
 
-                    parameters = getDeviceParameters(c, obj.type as DeviceType, source, obj.source)
+                    parameters = getDeviceParameters(c, obj.type, source, obj.source)
                     Object.keys(parameters).forEach(key => {
                         if (allowedKeys.indexOf(key) == -1)
                             allowedKeys.push(key)
