@@ -17,9 +17,9 @@ devices:
 
 scenarios:
   - scenario:
-      trigger: 
-        state: the_device   
-      action:
+      triggers: 
+        - state: the_device   
+      actions:
         - action1: !!js/function 'function(callback) {
             callback(null);
           }'

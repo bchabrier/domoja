@@ -1,6 +1,6 @@
 import assert = require('assert');
 import { Parameters, InitObject, DomoModule } from '../..';
-import { GenericDevice, DeviceType } from '../..';
+import { GenericDevice, DeviceType, CustomDeviceType } from '../..';
 import { ConfigLoader } from '../..';
 import * as events from 'events';
 
@@ -133,7 +133,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         });
     }
 
-    getDeviceParameters(type: DeviceType): Parameters {
+    getDeviceParameters(type: string): Parameters {
         logger.debug("Looking for parameters for device type '%s' in", type, Source.supportedDeviceTypes);
         for (var i in Source.supportedDeviceTypes) {
             let element = Source.supportedDeviceTypes[i];

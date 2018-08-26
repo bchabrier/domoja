@@ -20,16 +20,16 @@ devices:
 
 scenarios:
   - scenario:
-      trigger: 
-        state: the_device   
-      condition:
+      triggers: 
+        - state: the_device   
+      conditions:
         - named_condition: !!js/function 'function f(callback) {
          assert.equal(this.msg.oldValue, -1);
          assert.equal(this.msg.newValue, 1);
          this.argsPassedToCondition();     
          callback(null, this.setConditionResult);
       } ' 
-      action:
+      actions:
         - !!js/function 'function(callback) {
             assert.equal(this.msg.oldValue, -1);
             assert.equal(this.msg.newValue, 1);

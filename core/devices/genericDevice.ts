@@ -26,6 +26,7 @@ export type DeviceOptions = {
 export class CustomDeviceType {
     name: string;
     constructor(name: string) { this.name = name}
+    toString(): string { return this.name}
 }
 
 export type DeviceType = 'device' | 'sensor' | 'variable' | 'camera' | 'relay' | CustomDeviceType;

@@ -18,16 +18,16 @@ devices:
 
 scenarios:
   - scenario:
-      trigger: 
-        state: the_device   
-      condition:
+      triggers: 
+        - state: the_device   
+      conditions:
         - first_condition: !!js/function 'function f(callback) {
          callback(null, this.msg.newValue == 1 || this.msg.newValue == 2);
       } ' 
         - second_condition: !!js/function 'function f(callback) {
          callback(null, this.msg.newValue == 2);
       } ' 
-      action:
+      actions:
         - !!js/function 'function(callback) {
             assert.equal(this.msg.newValue, 2);
             this.actionDone();

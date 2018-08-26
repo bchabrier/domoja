@@ -1260,7 +1260,7 @@ function namedObject(c: Parser.Parse): { name: string, object: { [x: string]: va
     return { name: name, object: obj };
 }
 
-function getDeviceParameters(c: Parser.Parse, type: DeviceType, source: Source, sourcename: string): Parameters {
+function getDeviceParameters(c: Parser.Parse, type: string, source: Source, sourcename: string): Parameters {
     let parameters: Parameters = {}
     let document = <ConfigLoader>c.context().doc;
     try {
@@ -1327,7 +1327,7 @@ function object(c: Parser.Parse): { [x: string]: value } {
             if (!c.isNext(/^ *['"]?source['"]? *:/)) {
                 logger.debug('Second attribute is not "source", using DEFAULT_SOURCE')
                 source = document.DEFAULT_SOURCE;
-                parameters = getDeviceParameters(c, obj['type'] as DeviceType, source, 'DEFAULT_SOURCE')
+                parameters = getDeviceParameters(c, obj['type'], source, 'DEFAULT_SOURCE')
                 Object.keys(parameters).forEach(key => {
                     if (allowedKeys.indexOf(key) == -1)
                         allowedKeys.push(key)

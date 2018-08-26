@@ -20,11 +20,11 @@ devices:
 
 scenarios:
   - scenario:
-      trigger: 
-        state: the_device   
-      condition:
+      triggers: 
+        - state: the_device   
+      conditions:
         - binary-condition: { operator: =, left: 1, right: 1 }
-      action:
+      actions:
         - !!js/function 'function(callback) {
             this.actionDone();
             callback(null);
