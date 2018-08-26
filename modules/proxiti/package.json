@@ -1,7 +1,7 @@
 {
   "name": "domoja-proxiti",
   "author": "Bruno Chabrier",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": false,
   "description": "Astronomy source for Domoja from http://www.proxiti.info/",
   "scripts": {
