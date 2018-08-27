@@ -32,6 +32,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     private devicesByAttribute: { [attribute: string]: { [id: string]: GenericDevice } };
     private devicesByPath: { [path: string]: GenericDevice }
     path: string;
+    private discoveredDevices: { [id_attribute: string]: boolean } = {};
 
     constructor(path: string) {
         this.eventEmitter = new events.EventEmitter();
@@ -88,7 +89,10 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
                 this.emitEvent('change', device.path, { oldValue: oldValue, newValue: value })
             } else {
                 // here the space for discovered devices
-                logger.info('Discovered device {type=device, source=%s, id=%s, attribute=%s}', this.path, id, attribute);
+                if (!this.discoveredDevices[id + '_' + attribute]) {
+                    this.discoveredDevices[id + '_' + attribute] = true;
+                    logger.info('Discovered device {type=device, source=%s, id=%s, attribute=%s}', this.path, id, attribute);
+                }
             }
         }
     }
