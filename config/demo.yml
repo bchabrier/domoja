@@ -70,6 +70,7 @@ devices:
   - cuisine: { type: sensor, source: demo, id: "INPUT1", name: "Détecteur cuisine" }
 
   - aquarium:
+    - controle : { type: variable, name: "Commande de l'aquarium: ON/OFF/AUTO"} 
     - pompes : { type: device, source: demo, id: "ZC8", name: "Pompes aquarium" }
     - lampes : { type: device, source: demo, id: "ZP7", name: "Lampes UV aquarium" }
     - lampes_start : { type: variable, name: "Heure allumage aquarium" }
@@ -196,6 +197,29 @@ scenarios:
           let sunset = new Date(this.getDeviceState("sunset"));
           this.setDeviceState("sunset_plus_30mn", new Date(sunset.getTime() + 30 * 60 * 1000), callback);
         }'   
+  - aquarium_controle_init:
+    triggers:
+      - at: startup
+    conditions:
+      - {operator: =, left: this.msg.newValue, right: "undefined"}
+    actions:
+        - { device: aquarium.controle, state: "AUTO" }
+  - aquarium_controle_ON:
+    triggers:
+      - state: aquarium.controle
+    conditions:
+      - {operator: =, left: this.msg.newValue, right: "ON"}
+    actions:
+        - { device: aquarium.lampes, state: "ON" }
+        - { device: aquarium.pompes, state: "ON" }
+  - aquarium_controle_OFF:
+    triggers:
+      - state: aquarium.controle
+    conditions:
+      - {operator: =, left: this.msg.newValue, right: "OFF"}
+    actions:
+        - { device: aquarium.lampes, state: "OFF" }
+        - { device: aquarium.pompes, state: "OFF" }
   - aquarium_set_Bleu:
       triggers:
         - state: tempo.couleur_du_jour
@@ -216,21 +240,29 @@ scenarios:
   - aquarium_lampes_start:
       triggers:
         - at: aquarium.lampes_start
+      conditions:
+        - {operator: =, left: aquarium.controle, right: "AUTO"}
       actions:
         - { device: aquarium.lampes, state: "ON" }
   - aquarium_pompes_start:
       triggers:
         - at: aquarium.pompes_start
+      conditions:
+        - {operator: =, left: aquarium.controle, right: "AUTO"}
       actions:
         - { device: aquarium.pompes, state: "ON" }
   - aquarium_lampes_stop:
       triggers:
         - cron: 00 30 23 * * * 
+      conditions:
+        - {operator: =, left: aquarium.controle, right: "AUTO"}
       actions:
         - { device: aquarium.lampes, state: "OFF" }
   - aquarium_pompes_stop:
       triggers:
         - cron: 00 59 23 * * *
+      conditions:
+        - {operator: =, left: aquarium.controle, right: "AUTO"}
       actions:
         - { device: aquarium.pompes, state: "OFF" }
 
