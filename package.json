@@ -51,9 +51,9 @@
   },
   "scripts": {
     "start": "ts-node app",
-    "testonly": "ts-mocha test/**/*.ts",
-    "test-watch": "ts-mocha test/**/*.ts -w --watch-extensions ts,yml",
-    "test": "nyc --extension .ts npm run testonly",
+    "test": "nyc --extension .ts npm run test:only",
+    "test:only": "ts-mocha test/**/*.ts $WATCHPARAMS",
+    "test:watch": "WATCHPARAMS='-w --watch-extensions ts,yml' npm run test:only",
     "report": "nyc report",
     "coverage": "nyc report --reporter=text-lcov | coveralls"
   }
