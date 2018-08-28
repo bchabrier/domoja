@@ -143,7 +143,7 @@ export abstract class GenericDevice implements DomoModule {
                 this.source.setDeviceState(this.id, newState);
                 callback(err);
             });
-        }
+        } else callback(null);
     }
 
     getState() {
