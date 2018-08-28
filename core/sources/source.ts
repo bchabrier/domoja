@@ -53,6 +53,8 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
 
         this.eventEmitter.removeAllListeners();
         this.eventEmitter = null;
+
+        this.discoveredDevices = null;
     }
 
     addDevice(device: GenericDevice): void {
