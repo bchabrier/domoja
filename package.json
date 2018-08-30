@@ -56,6 +56,7 @@
     "test:watch": ": watch running test suite; WATCHPARAMS='-w --watch-extensions ts,yml' npm run test:only",
     "watch": ": watch running domoja; handler() { kill $PID; exit; } ; trap handler INT; while true; do npm run start & PID=$!; inotifywait -e modify -e move -e create -e delete -r . @node_modules @.git --exclude .yml; pkill -P $(pgrep -P $PID); kill $PID; done",
     "report": ": generate coverage report; nyc report",
-    "coverage": ": publish coverage report to coveralls; nyc report --reporter=text-lcov | coveralls"
+    "coverage": ": publish coverage report to coveralls; nyc report --reporter=text-lcov | coveralls",
+    "swagger": ": run swagger generation; swaggerGen -c ./swaggerConfig.json"
   }
 }
