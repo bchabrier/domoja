@@ -54,7 +54,7 @@
     "test": ": run test coverage; nyc --extension .ts npm run test:only",
     "test:only": ": run test suite once; ts-mocha test/**/*.ts $WATCHPARAMS; tput cnorm",
     "test:watch": ": watch running test suite; WATCHPARAMS='-w --watch-extensions ts,yml' npm run test:only",
-    "watch": ": watch running domoja; handler() { kill $PID; exit; } ; trap handler INT; while true; do npm run start & PID=$!; inotifywait -e modify -e move -e create -e delete -r . --exclude node_modules --exclude .git --exclude .yml; kill $PID; done",
+    "watch": ": watch running domoja; handler() { kill $PID; exit; } ; trap handler INT; while true; do npm run start & PID=$!; inotifywait -e modify -e move -e create -e delete -r . @node_modules @.git --exclude .yml; pkill -P $(pgrep -P $PID); kill $PID; done",
     "report": ": generate coverage report; nyc report",
     "coverage": ": publish coverage report to coveralls; nyc report --reporter=text-lcov | coveralls"
   }
