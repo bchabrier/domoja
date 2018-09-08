@@ -137,12 +137,9 @@ export abstract class GenericDevice implements DomoModule {
     }
 
     setState(newState: string, callback: (err: Error) => void): void {
+        logger.debug('setState of device "%s" to "%s"', this.path, newState);
         if (newState != this.state) {
-            this.source.setAttribute(this, this.attribute, newState, err => {
-                if (err) logger.error('error', err);
-                this.source.setDeviceState(this.id, newState);
-                callback(err);
-            });
+            this.source.setAttribute(this.id, this.attribute, newState, callback);
         } else callback(null);
     }
 

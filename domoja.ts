@@ -9,7 +9,13 @@ var logger = require("tracer").colorConsole({
 
 var fsmonitor = require('fsmonitor');
 
-import * as domoja from 'domoja-core';
+import * as core from './core';
+import { Server } from 'typescript-rest';
+
+import * as apis from './api';
+
+//console.log(HelloService);
+
 
 import * as express from 'express';
 var http = require('http')
@@ -21,21 +27,23 @@ var fs = require('fs');
 var runWithMocha = /.*mocha$/.test(process.argv[1]);
 //var refreshData = require('./routes/refreshData')
 
-function reloadConfig() {
-  let demo = true;
+const CONFIG_FILE = './config/demo.yml';
+//const CONFIG_FILE = null;
 
-  domoja.reloadConfig(demo ? './config/demo.yml' : null);
+function reloadConfig() {
+
+  core.reloadConfig(CONFIG_FILE);
 
   // start managers
   //domoMgr.run(); // must be loaded after reloadConfig
   if (!runWithMocha) {
   }
- /* 
-  refreshData.setConfig({
-    // "name of data" (string): [ category, type, object containing, "attribute" ]
-
-  });
-  */
+  /* 
+   refreshData.setConfig({
+     // "name of data" (string): [ category, type, object containing, "attribute" ]
+ 
+   });
+   */
 }
 
 
@@ -56,13 +64,13 @@ fsmonitor.watch('./config', null, function (change: {
   reloadConfig();
 });
 
-reloadConfig();
 
+function createApp(port: Number, prod: boolean, listeningCallback?: () => void): express.Application {
+  let app: express.Application = express();
 
-
-
-function createApp(port: Number, prod: boolean) {
-  var app = express();
+  let apiTab: Function[] = [];
+  Object.keys(apis).forEach(a => apiTab.push((<any>apis)[a]));
+  Server.buildServices(app, ...apiTab);
 
   if (prod) {
     //protection pour n'autoriser que mon BB 9900 sur le port 80
@@ -103,8 +111,8 @@ function createApp(port: Number, prod: boolean) {
   app.get('/presence', presence.presence);
 */
 
-  domoja.configure(app, 
-    domoja.checkUser, /*  function check(username, password, done) {
+  core.configure(app,
+    core.checkUser, /*  function check(username, password, done) {
       logger.debug('user check !');
       if (username === validuser.username &&
         password === validuser.password) {
@@ -118,7 +126,7 @@ function createApp(port: Number, prod: boolean) {
       }
       return done(null, false);
     },*/
-    domoja.findUserById, /* function findById(id, fn) {
+    core.findUserById, /* function findById(id, fn) {
       logger.debug('finding user ', id);
       if (id === validuser.username) {
         return fn(null, validuser);
@@ -160,42 +168,42 @@ function createApp(port: Number, prod: boolean) {
     };
   };
 
-  auth = domoja.checkAuthenticated;
+  auth = core.checkAuthenticated;
   function serve(req: express.Request, res: express.Response) {
     res.sendFile(path.normalize(__dirname + (prod ? '/www' : '/app') + req.path));
   }
-/*
-  app.get('/users', auth, user.list);
-  app.get('/tempo', auth, tempo.index);
-  app.get('/sensors.xml', auth, tempo.getZibaseSensors);
-  app.get('/proxy', auth, proxy.index);
-  app.all('/domo/getInfosPiscine', auth, piscine.index);
-  app.all('/domo/getTempPiscineStats', auth, piscine.piscine_temperature_stats);
-  app.all('/domo/refreshData', auth, refreshData.refreshData);
-  app.get('/domo/calcul_filtration', auth, piscine.calcul_filtration);
-  app.get('/domo/setFiltration', auth, poolMgr.setFiltration);
-  app.get('/domo/setAlarm', auth, alarmMgr.setAlarm);
-  app.all('/domo/getAlerts', auth, alarmMgr.getAlerts);
-  app.all('/domo/getAlertImage', auth, alarmMgr.getAlertImage);
-  app.get('/domo/tab_temp_duration', auth, piscine.tab_temp_duration);
-  app.get('/domo/horaires_astronomie', auth, astronomy.getAllTimes);
-  app.all('/domo/switch', auth, switchLight.switch);
-  app.all('/domo/ouvrePetitPortail', auth, portails.ouvrePetitPortail);
-  app.all('/domo/ouvreGrandPortail', auth, portails.ouvreGrandPortail);
-*/
+  /*
+    app.get('/users', auth, user.list);
+    app.get('/tempo', auth, tempo.index);
+    app.get('/sensors.xml', auth, tempo.getZibaseSensors);
+    app.get('/proxy', auth, proxy.index);
+    app.all('/domo/getInfosPiscine', auth, piscine.index);
+    app.all('/domo/getTempPiscineStats', auth, piscine.piscine_temperature_stats);
+    app.all('/domo/refreshData', auth, refreshData.refreshData);
+    app.get('/domo/calcul_filtration', auth, piscine.calcul_filtration);
+    app.get('/domo/setFiltration', auth, poolMgr.setFiltration);
+    app.get('/domo/setAlarm', auth, alarmMgr.setAlarm);
+    app.all('/domo/getAlerts', auth, alarmMgr.getAlerts);
+    app.all('/domo/getAlertImage', auth, alarmMgr.getAlertImage);
+    app.get('/domo/tab_temp_duration', auth, piscine.tab_temp_duration);
+    app.get('/domo/horaires_astronomie', auth, astronomy.getAllTimes);
+    app.all('/domo/switch', auth, switchLight.switch);
+    app.all('/domo/ouvrePetitPortail', auth, portails.ouvrePetitPortail);
+    app.all('/domo/ouvreGrandPortail', auth, portails.ouvreGrandPortail);
+  */
   var oneYear = 31557600000;
-  var cacheOptions: { maxAge?: Number} = {
+  var cacheOptions: { maxAge?: Number } = {
     maxAge: oneYear
   }
   if (!prod)
     cacheOptions = {};
 
   // / is not forbidden, as it goes to login page
-  app.get("/", domoja.ensureAuthenticated, function (req, res) {
+  app.get("/", core.ensureAuthenticated, function (req, res) {
     res.sendFile(path.normalize(__dirname + (prod ? "/www" : "/app") + "/index.html"), cacheOptions);
   });
 
-  app.get("/index.html", domoja.ensureAuthenticated, function (req, res) {
+  app.get("/index.html", core.ensureAuthenticated, function (req, res) {
     res.sendFile(path.normalize(__dirname + (prod ? "/www" : "/app") + "/index.html"), cacheOptions);
   });
 
@@ -242,10 +250,16 @@ function createApp(port: Number, prod: boolean) {
     app.all(/^(.*)$/, auth, handler);
   }
 
+  app.listen(app.get('port'), function () {
+    app.set('port', this.address().port); // in case app.get('port') is null
+    console.log('Express server listening on port ' + app.get('port'));
+    listeningCallback && listeningCallback.apply(this);
+  });
+
   return app;
 }
 
-function getHandlerWithCacheOptions(cacheOptions: { maxAge?: Number}) {
+function getHandlerWithCacheOptions(cacheOptions: { maxAge?: Number }) {
   return function handler(req: express.Request, res: express.Response) {
     var targetFile = req.path;
     console.log('Sending static file', targetFile);
@@ -259,23 +273,19 @@ function getHandlerWithCacheOptions(cacheOptions: { maxAge?: Number}) {
   }
 }
 
-var app_prod = createApp(3000, true);
-var app = createApp(3001, false);
 
-var server;
-var server_sec;
-var server_prod;
-var server_80;
 
 if (!runWithMocha) {
-  var app_prod = createApp(4000, true);
-  var app = createApp(4001, false);
+  //var app_prod = createApp(4000, true);
+  //var app_prod = createApp(3000, true);
+  //var app = createApp(3001, false);
+  let server = createApp(4001, false);
+  Server.swagger(server, './dist/swagger.yaml', '/api-docs', null, ['http']);
 
-  server = http.createServer(app).listen(app.get('port'), function () {
-    console.log("Express server listening on port " + app.get('port'));
-  });
+
 
   logger.error(__dirname);
+  reloadConfig();
 
   /*
 

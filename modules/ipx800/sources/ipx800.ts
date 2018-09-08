@@ -111,10 +111,11 @@ export class IPX800 extends Source {
 	}
 
 	processInput(inputs: String): void {
+		let now = new Date;
 		for (var ii = 1; ii <= 32; ii++) {
 			var input: '0' | '1' = inputs[ii - 1] == '0' ? '0' : '1';
 			if (this.input[ii] != input) {
-				this.setDeviceState("INPUT" + ii, input);
+				this.updateAttribute("INPUT" + ii, 'state', input, now);
 				this.input[ii] = input;
 			}
 		}
@@ -132,7 +133,7 @@ export class IPX800 extends Source {
 		}
 	}
 
-	setAttribute(device: GenericDevice, attribute: string, value: string, callback: (err: Error) => void): void {
+	doSetAttribute(id: string, attribute: string, value: string, callback: (err: Error) => void): void {
 		if (attribute == 'state') {
 			if (value == 'OFF') {
 				//this.sendCommand(device.id, ZbAction.OFF);
@@ -143,7 +144,7 @@ export class IPX800 extends Source {
 				//return callback(null);
 			}
 		}
-		return callback(new Error('Unsupported attribute/value ' + attribute + '/' + value))
+		return callback(new Error('Device "' + id + '" does not support attribute/value "' + attribute + '/' + value + '"'));
 	}
 
 	static registerDeviceTypes(): void {

@@ -25,8 +25,8 @@ export class Zibase extends Source {
 				if (event == 'change') {
 					Object.keys(arg).forEach( k => {
 						if (k != "emitter") {
-							if (k == 'value') self.setDeviceState(id, arg[k]);
-							else self.setDeviceAttribute(id, k, arg[k]);
+							//if (k == 'value') self.setAttribute(id, arg[k]);
+							self.updateAttribute(id, k, arg[k], new Date);
 						}
 					})
 				}
@@ -80,14 +80,14 @@ export class Zibase extends Source {
 		}
 	}
 
-	setAttribute(device: GenericDevice, attribute: string, value: string, callback: (err: Error) => void): void {
+	doSetAttribute(id: string, attribute: string, value: string, callback: (err: Error) => void): void {
 		if (attribute == 'state') {
 			if (value == 'OFF') {
-				this.sendCommand(device.id, ZbAction.OFF);
+				this.sendCommand(id, ZbAction.OFF);
 				return callback(null);
 			}
 			if (value == 'ON') {
-				this.sendCommand(device.id, ZbAction.ON);
+				this.sendCommand(id, ZbAction.ON);
 				return callback(null);
 			}
 		}

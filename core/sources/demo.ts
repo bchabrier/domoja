@@ -7,7 +7,7 @@ export class demo extends Source {
     getParameters(): Parameters {
         return {};
     }
-    setAttribute(device: GenericDevice, attribute: string, value: string, callback: (err: Error) => void): void {
+    doSetAttribute(id: string, attribute: string, value: string, callback: (err: Error) => void): void {
         return callback(null);
     }
 

@@ -3,7 +3,7 @@
 {
   "compilerOptions": {
     "noImplicitAny": true,
-    "target": "es2017",
+    "target": "es5",
     "module": "commonjs",
     //"allowJs": true,
     "rootDir": ".",
@@ -12,8 +12,6 @@
       // add node as an option
       "node"
    ],
-   "experimentalDecorators": true,
-   "emitDecoratorMetadata": true
 },
   "exclude" : [
     "./build",

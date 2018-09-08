@@ -1,0 +1,67 @@
+{
+	"basePath": "/",
+	"definitions": {},
+	"info": {
+		"description": "A Typescript framework for home automation",
+		"title": "domoja",
+		"version": "0.0.13"
+	},
+	"paths": {
+		"/devices/{id}": {
+			"get": {
+				"operationId": "DevicesServiceGet",
+				"produces": [
+					"text/html"
+				],
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Retrieves a device",
+				"parameters": [
+					{
+						"description": "path of the device",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"type": "string"
+					}
+				]
+			},
+			"post": {
+				"operationId": "DevicesServiceSendCommand",
+				"produces": [
+					"text/html"
+				],
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Sends a command to a device",
+				"consumes": [
+					"application/x-www-form-urlencoded"
+				],
+				"parameters": [
+					{
+						"description": "path of the device",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"description": "command sent to the device",
+						"in": "formData",
+						"name": "command",
+						"required": true,
+						"type": "string"
+					}
+				]
+			}
+		}
+	},
+	"swagger": "2.0",
+	"securityDefinitions": {}
+}

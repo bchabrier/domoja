@@ -90,6 +90,7 @@ type Sandbox = {
 };
 
 export class ConfigLoader extends events.EventEmitter {
+    released: boolean = false;
     secrets: Map<string> = {};
     imports: Map<importItem> = {};
     sources: Map<sourceItem> = {};
@@ -124,6 +125,9 @@ export class ConfigLoader extends events.EventEmitter {
     }
 
     public release(): void {
+        if (this.released) return;
+        this.released = true;
+
         logger.info('Releasing %d scenario(s)...', Object.keys(this.scenarios).length)
         Object.keys(this.scenarios).forEach(e => {
             this.scenarios[e].deactivate();

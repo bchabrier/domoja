@@ -31,7 +31,7 @@ export class secretSource extends Source {
 		}
 	}
 
-	setAttribute(device: GenericDevice, attribute: string, value: string, callback: (err: Error) => void): void {
+	doSetAttribute(id: string, attribute: string, value: string, callback: (err: Error) => void): void {
 		if (attribute == 'state') {
 			if (value == 'OFF') {
 				//this.sendCommand(device.id, ZbAction.OFF);

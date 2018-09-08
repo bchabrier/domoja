@@ -6,7 +6,7 @@ const sourceModule: typeof ToMock & typeof RewireToMock = <any>RewireToMock
 type Source = ToMock.Source;
 */
 
-var assert = require("assert");
+import * as assert from 'assert';
 import { Source, Parameters, ConfigLoader, InitObject, GenericDevice } from '..';
 import { device } from '../core/devices/device';
 
@@ -22,7 +22,7 @@ describe('Module sources', function () {
           param1: 'REQUIRED'
         };
       }
-      setAttribute(device: GenericDevice, attribute: string, value: string, callback: (err: Error) => void): void {
+      doSetAttribute(id: string, attribute: string, value: string, callback: (err: Error) => void): void {
         // do nothing
         callback(null);
       }
@@ -122,13 +122,13 @@ describe('Module sources', function () {
       });
     });
 
-    describe('#setDeviceState', function () {
+    describe('#updateAttribute', function () {
       it('should set the state of a device', function () {
         let source: Source = derivedSource.prototype.createInstance(null, null, null);
         assert(source);
 
-        let dev = new device(source, 'Device', 'id', null, null);
-        source.setDeviceState(dev.id, 'a state');
+        let dev = new device(source, 'Device', 'id', 'attr', null);
+        source.updateAttribute(dev.id, dev.attribute, 'a state');
         assert.equal(dev.getState(), 'a state');
         source.release();
       });

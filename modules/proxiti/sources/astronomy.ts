@@ -54,8 +54,8 @@ export class astronomy extends Source {
 		}
 	}
 
-	setAttribute(device: GenericDevice, attribute: string, value: string, callback: (err: Error) => void): void {
-		return callback(new Error('Unsupported attribute/value ' + attribute + '/' + value))
+	doSetAttribute(id: string, attribute: string, value: string, callback: (err: Error) => void): void {
+		return callback(new Error('Device "' + id + '" does not support attribute/value "' + attribute + '/' + value + '"'));
 	}
 
 	release(): void {
@@ -144,8 +144,8 @@ export class astronomy extends Source {
 							assert.equal(rematch.length, 3)
 
 							//						var t = 60 * rematch[1] + (rematch[2] - 0)
-							var d = new Date;
-							var t2 = new Date(d.getFullYear(), d.getMonth(), d.getDate(), parseInt(rematch[1]), parseInt(rematch[2]), 0);
+							var now = new Date;
+							var t2 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(rematch[1]), parseInt(rematch[2]), 0);
 
 							// keep in cache
 							logger.debug("Putting in cache '" + f + "' (" + match[f] + ") with value '" + t + "'.");
@@ -153,27 +153,27 @@ export class astronomy extends Source {
 
 							switch (f) {
 								case LEVER_DU_SOLEIL:
-									self.setDeviceState("sunrise", t2.toString());
+									self.updateAttribute("sunrise", "state", t2.toString(), now);
 									sunriseTime = t2;
 									break;
 								case COUCHER_DU_SOLEIL:
-									self.setDeviceState("sunset", t2.toString());
+									self.updateAttribute("sunset", "state", t2.toString(), now);
 									sunsetTime = t2;
 									break;
 								case DUREE_DU_JOUR:
-									self.setDeviceState("dayDuration", t2.toString());
+									self.updateAttribute("dayDuration", "state", t2.toString(), now);
 									dayDuration = t2;
 									break;
 								case SOLEIL_AU_ZENITH:
-									self.setDeviceState("zenithTime", t2.toString());
+									self.updateAttribute("zenithTime", "state", t2.toString(), now);
 									zenithTime = t2;
 									break;
 								case DEBUT_DE_L_AUBE:
-									self.setDeviceState("dawnTime", t2.toString());
+									self.updateAttribute("dawnTime", "state", t2.toString(), now);
 									dawnTime = t2;
 									break;
 								case FIN_DU_CREPUSCULE:
-									self.setDeviceState("duskTime", t2.toString());
+									self.updateAttribute("duskTime", "state", t2.toString(), now);
 									duskTime = t2;
 									break;
 							}

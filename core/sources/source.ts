@@ -43,7 +43,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
 
     abstract createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source;
     abstract getParameters(): Parameters;
-    abstract setAttribute(device: GenericDevice, attribute: string, value: string, callback: (err: Error) => void): void;
+    abstract doSetAttribute(id: string, attribute: string, value: string, callback: (err: Error) => void): void;
     release(): void {
         Object.keys(this.devicesByPath).forEach(path => {
             this.devicesByPath[path].release();
@@ -81,38 +81,45 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         delete this.devicesByPath[device.path];
     }
 
-    setDeviceAttribute(id: ID, attribute: string, value: string) {
-        logger.debug('setDeviceAttribute', id, attribute, value, this);
-        if (this.devicesByAttribute[attribute]) {
+    updateAttribute(id: ID, attribute: string, value: string, lastUpdateDate: Date = new Date) {
+        logger.debug('updateAttribute', id, attribute, value);
+        if (this.isAttributeSupported(id, attribute)) {
             let device = this.devicesByAttribute[attribute][id];
             if (device && device.getState() != value) {
                 let oldValue = device.getState();
                 device.state = value;
-                this.emitEvent('change', device.path, { oldValue: oldValue, newValue: value })
-            } else {
-                // here the space for discovered devices
-                if (!this.discoveredDevices[id + '_' + attribute]) {
-                    this.discoveredDevices[id + '_' + attribute] = true;
-                    logger.info('Discovered device {type=device, source=%s, id=%s, attribute=%s}', this.path, id, attribute);
-                }
+                return this.emitEvent('change', device.path, { oldValue: oldValue, newValue: value })
             }
         }
-    }
-
-    setDeviceState(id: ID, value: string): void {
-        return this.setDeviceAttribute(id, 'state', value);
-    }
-
-    publishDeviceState(device: GenericDevice, value: string, callback: (err: Error) => void): void {
-        let id = device.id;
-        let attribute = device.attribute;
-
-        if (device.getState() != value) {
-            this.setAttribute(device, id, attribute, callback);
+        // here the space for discovered devices
+        if (!this.discoveredDevices[id + '_' + attribute]) {
+            this.discoveredDevices[id + '_' + attribute] = true;
+            logger.info('Discovered device {type=device, source=%s, id=%s, attribute=%s}', this.path, id, attribute);
         }
-
     }
 
+    setAttribute(id: ID, attribute: string, value: string, callback: (err: Error) => void): void {
+        logger.debug('setAttribute(id="%s", attribute="%s", value="%s")', id, attribute, value);
+        this.doSetAttribute(id, attribute, value, err => {
+            err || this.updateAttribute(id, attribute, value);
+            callback(err);
+        })
+    }
+
+    isAttributeSupported(id: ID, attribute: string) {
+        return this.devicesByAttribute && this.devicesByAttribute[attribute] && this.devicesByAttribute[attribute][id]
+    }
+    /*
+        publishDeviceState(device: GenericDevice, value: string, callback: (err: Error) => void): void {
+            let id = device.id;
+            let attribute = device.attribute;
+    
+            if (device.getState() != value) {
+                this.updateAttribute(id, attribute, callback);
+            }
+    
+        }
+    */
     private static supportedDeviceTypes: {
         source: new () => Source,
         deviceType: DeviceType,
@@ -218,12 +225,11 @@ export class DefaultSource extends Source {
     getParameters(): Parameters {
         return {};
     }
-    setAttribute(device: GenericDevice, attribute: string, value: string, callback: (err: Error) => void): void {
-        switch (attribute) {
-            case 'state':
-                // nothing to do
-                return callback(null);
+    doSetAttribute(id: string, attribute: string, value: string, callback: (err: Error) => void): void {
+        if (this.isAttributeSupported(id, attribute)) {
+            // nothing to do
+            return callback(null);
         }
-        return callback(new Error('Unsupported attribute/value: ' + attribute + '/' + value))
+        return callback(new Error('Device "' + id + '" does not support attribute/value "' + attribute + '/' + value + '"'));
     }
 }

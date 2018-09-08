@@ -72,3 +72,7 @@ The following modules are currently available:
 - [domoja-zibase](https://www.npmjs.com/package/domoja-zibase): ZiBase source for Domoja
 
 [//]: # (modulesList END)
+
+## API
+
+Domoja provides a REST/JSON api, which is available throug Swagger at [/api-docs(http://localhost/api-docs)].
