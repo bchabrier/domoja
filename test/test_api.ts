@@ -120,5 +120,14 @@ describe('Module api', function () {
             }, done);
         });
     });
+    describe('/api-docs', function () {
+        it('should deliver Swagger pages', function (done) {
+            doRequest('GET', '/api-docs/', null, (body) => {
+                //console.log(body);
+                assert.ok(body.match(/swagger/));
+                done();
+            }, done);           
+        })
+    });
 });
 

@@ -250,9 +250,11 @@ function createApp(port: Number, prod: boolean, listeningCallback?: () => void):
     app.all(/^(.*)$/, auth, handler);
   }
 
+  Server.swagger(app, './dist/swagger.yaml', '/api-docs', null, ['http']);
+
   app.listen(app.get('port'), function () {
     app.set('port', this.address().port); // in case app.get('port') is null
-    console.log('Express server listening on port ' + app.get('port'));
+    console.log('Express %s server listening on port %s', app.get('env'), app.get('port'));
     listeningCallback && listeningCallback.apply(this);
   });
 
@@ -280,7 +282,6 @@ if (!runWithMocha) {
   //var app_prod = createApp(3000, true);
   //var app = createApp(3001, false);
   let server = createApp(4001, false);
-  Server.swagger(server, './dist/swagger.yaml', '/api-docs', null, ['http']);
 
 
 
