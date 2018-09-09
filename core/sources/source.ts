@@ -94,7 +94,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         // here the space for discovered devices
         if (!this.discoveredDevices[id + '_' + attribute]) {
             this.discoveredDevices[id + '_' + attribute] = true;
-            logger.info('Discovered device {type=device, source=%s, id=%s, attribute=%s}', this.path, id, attribute);
+            logger.info('Discovered device {type=device, source=%s, id=%s, attribute=%s} with value: %s', this.path, id, attribute, value);
         }
     }
 
