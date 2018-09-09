@@ -28,9 +28,11 @@ const FIN_DU_CREPUSCULE = 7;
 export class astronomy extends Source {
 	job: any;
 	request: request.Request;
+	location: number;
 
-	constructor(path: string) {
+	constructor(path: string, location: number) {
 		super(path);
+		this.location = location;
 		let self = this;
 		this.job = new CronJob({
 			cronTime: '00 01 * * *', // Runs every day at 1:00 AM.
@@ -45,7 +47,7 @@ export class astronomy extends Source {
 	}
 
 	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-		return new astronomy(path);
+		return new astronomy(path, initObject.location);
 	}
 
 	getParameters(): Parameters {
@@ -93,7 +95,7 @@ export class astronomy extends Source {
 
 		let self = this;
 
-		this.request = request.get("http://www.proxiti.info/horaires_soleil.php?o=06030", function (err, response, bodyString) {
+		this.request = request.get("http://www.proxiti.info/horaires_soleil.php?o=" + this.location, function (err, response, bodyString) {
 
 			var clearRe = /<center>|<\/center>|<span[^>]*>|<\/span>|<br \/>/g
 
