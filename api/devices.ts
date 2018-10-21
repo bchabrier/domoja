@@ -2,6 +2,7 @@ import { Errors, Path, Preprocessor, GET, POST, PathParam, FormParam } from 'typ
 import * as express from 'express';
 
 import { devices } from '../core/lib/load';
+import { GenericDevice } from '../core/devices/genericDevice';
 
 function deviceIdValidator(req: express.Request): express.Request {
 
@@ -18,8 +19,32 @@ function deviceIdValidator(req: express.Request): express.Request {
   return req;
 }
 
+function deviceAsJSON(device: GenericDevice) {
+  return {
+    id: device.id,
+    path: device.path,
+    state: device.getState(),
+    lastUpdateDate: device.lastUpdateDate,
+    name: device.name,
+    type: device.type,
+    source: device.source.path,
+    widget: device.widget,
+    tags: device.tags
+  }
+}
+
 @Path('/devices')
 export class DevicesService {
+  /**
+   * Retrieves the list of devices
+   */
+  @GET
+  getDevices() {
+    return Object.keys(devices).map(name => {
+      return deviceAsJSON(devices[name].device)
+    });
+  }
+
   /**
    * Retrieves a device
    * @param name path of the device
@@ -29,11 +54,7 @@ export class DevicesService {
   @Preprocessor(deviceIdValidator)
   get(@PathParam('id') name: string) {
     let device = devices[name].device;
-    return {
-      id: device.id,
-      path: device.path,
-      state: device.getState()
-    }
+    return deviceAsJSON(device);
   }
 
   /**

@@ -5,6 +5,17 @@ info:
     title: domoja
     version: 0.0.13
 paths:
+    /devices:
+        get:
+            operationId: DevicesServiceGetDevices
+            produces:
+                - text/html
+            responses:
+                '204':
+                    description: 'No content'
+            description: 'Retrieves the list of devices'
+            summary: null
+            parameters: []
     '/devices/{id}':
         get:
             operationId: DevicesServiceGet
@@ -46,5 +57,16 @@ paths:
                     name: command
                     required: true
                     type: string
+    /pages:
+        get:
+            operationId: PagesServiceGetPages
+            produces:
+                - text/html
+            responses:
+                '204':
+                    description: 'No content'
+            description: 'Retrieves the list of devices'
+            summary: null
+            parameters: []
 swagger: '2.0'
 securityDefinitions: {}

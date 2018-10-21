@@ -1,4 +1,3 @@
-
 import { DomoModule, InitObject, Parameters } from '../..';
 import { Source, DefaultSource } from '../..';
 import { GenericDevice, DeviceType } from '../..';
@@ -9,15 +8,16 @@ import { Action } from '../scenarios/action'
 import * as path from "path";
 import * as fs from 'fs';
 import Module = require('module');
-import async = require('async');
+import * as async from 'async';
 import * as userMgr from '../managers/userMgr'
 type User = userMgr.User;
 import * as events from 'events';
 
 const { VM, VMScript } = require('vm2');
 
-import Parser = require("shitty-peg/dist/Parser");
-var logger = require("tracer").colorConsole({
+import * as Parser from "shitty-peg/dist/Parser";
+
+var logger = require('tracer').colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
     level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
@@ -60,6 +60,13 @@ type scenarioItem = {
     scenario: Scenario
 };
 
+type pageItem = {
+    name: string,
+    title: string,
+    page: string,
+    args: Map<string>
+};
+
 /*
 type user = {
     login: string,
@@ -96,6 +103,7 @@ export class ConfigLoader extends events.EventEmitter {
     sources: Map<sourceItem> = {};
     devices: Map<deviceItem> = {};
     scenarios: Map<Scenario> = {};
+    pages: Map<pageItem> = {};
     userMgr = new userMgr.UserMgr;
     comments: string[] = [];
     DEFAULT_SOURCE: DefaultSource;
@@ -475,6 +483,11 @@ let STATE = Parser.token(/^state: */, '"state:"');
 let CONDITIONS = Parser.token(/^conditions: */, '"conditions:"');
 let ACTIONS = Parser.token(/^actions: */, '"actions:"');
 
+let PAGES = Parser.token(/^pages: */, '"pages:"');
+let TITLE = Parser.token(/^title: */, '"title:"');
+let PAGE = Parser.token(/^page: */, '"page:"');
+let ARGS = Parser.token(/^args: */, '"args:"');
+
 let SECRETS_EXT = Parser.token(/^!secrets +/, '"!secrets"');
 let FUNCTION_EXT = Parser.token(/^!!js\/function +'[^']*' */, '"!secrets"');
 
@@ -494,6 +507,9 @@ function configDoc(c: Parser.Parse): void {
     let scenarios = c.optional(scenariosSection);
     logger.debug('scenarios done')
     eatCommentsBlock(c);
+    let pages = c.optional(pagesSection);
+    logger.debug('pages done')
+    eatCommentsBlock(c);
     let users = c.optional(usersSection);
     logger.debug('users done')
 
@@ -510,7 +526,7 @@ function configDoc(c: Parser.Parse): void {
             }
             document.userMgr.addUser(user);
         }
-        logger.debug("Done add %d user(s).", users.users.length)
+        logger.debug("Done adding %d user(s).", users.users.length)
     }
     if (imports) {
         //document.importsComment = imports.comment;
@@ -565,6 +581,9 @@ function configDoc(c: Parser.Parse): void {
         logger.debug("Done activating all %d scenarios.", N)
     }
 
+    if (pages) {
+        document.pages = pages.pages;
+    }
 }
 
 function secretsSection(c: Parser.Parse): void {
@@ -1016,6 +1035,70 @@ function namedCondition(c: Parser.Parse): NamedCondition {
     return { name: name, fct: f };
 }
 
+function pagesSection(c: Parser.Parse): { comment: string, pages: Map<pageItem> } {
+
+    let res: { comment: string, pages: Map<pageItem> } = {
+        comment: eatCommentsBlock(c),
+        pages: {}
+    }
+
+    c.skip(PAGES);
+    c.indent()
+    res.pages = c.one(pagesArray);
+    c.dedent();
+
+    return res;
+}
+
+function pagesArray(c: Parser.Parse): Map<pageItem> {
+    let res: Map<pageItem> = {};
+    c.context().pages = res;
+    c.many((c: Parser.Parse) => {
+        let i = c.one(pageItem);
+        res[i.name] = i;
+    }, (c: Parser.Parse) => c.newline());
+    return res;
+}
+
+function pageItem(c: Parser.Parse): pageItem {
+    let document = <ConfigLoader>c.context().doc;
+    c.skip(DASH);
+    let i = trim(c.one(ID));
+    c.skip(/^ *: */);
+    c.indent();
+
+    let p: pageItem = {
+        name: i,
+        title: undefined,
+        page: undefined,
+        args: {}
+    }
+    c.skip(TITLE)
+    p.title = c.one(stringValue);
+    c.newline();
+    c.skip(PAGE);
+    p.page = c.one(stringValue);
+    c.newline();
+    c.optional(c => {
+        c.skip(ARGS);
+        c.indent();
+        c.many((c: Parser.Parse) => {
+            c.skip(DASH);
+            let key = c.one(ID);
+            c.skip(/^ *: */);
+            let val = c.one(stringValue)
+            p.args[key] = val;
+        }, (c: Parser.Parse) => c.newline())
+        c.dedent();
+    });
+    c.dedent();
+
+    return p;
+}
+
+
+
+
 
 function currentSource(c: Parser.Parse): string {
     return '"' + c.source.body.substr(c.offset, 30).replace('\n', '\\n') + '..."';
@@ -1228,13 +1311,32 @@ function stateAction(c: Parser.Parse): ActionFunction {
 
     logger.debug("found stateAction");
 
+    let isString = false;
     if (value.length > 1 && value.charAt(0) == value.charAt(value.length - 1) &&
         (value.charAt(0) == "'" || value.charAt(0) == '"')) {
         // quoted string
-        let str = removeQuotes(value);
+        isString = true;
+        value = removeQuotes(value);
+    }
+
+    let today = new Date().toDateString();
+    let date: Date = undefined;
+    if (new Date(value).toString() != 'Invalid Date') {
+        date = new Date(value);
+    } else if (new Date(today + ' ' + value).toString() != 'Invalid Date') {
+        date = new Date(today + ' ' + value);
+    }
+
+    if (date) {
+        // date value
         return function (cb: (err: Error) => void) {
             let self = this as Sandbox;
-            self.getDevice(device) && self.getDevice(device).setState(str, cb);
+            self.getDevice(device) && self.getDevice(device).setState(date, cb);
+        }
+    } else if (isString) {
+        return function (cb: (err: Error) => void) {
+            let self = this as Sandbox;
+            self.getDevice(device) && self.getDevice(device).setState(value, cb);
         }
     } else if (c.context().devices[value]) {
         // interpreted string
@@ -1289,7 +1391,7 @@ function object(c: Parser.Parse): { [x: string]: value } {
     let allowedTypeValues: string[] = c.context().allowedTypeValues
 
     if (c.context().type == 'device') {
-        allowedKeys.push("type", "name", "source", "attribute", "id", "camera", "transform");
+        allowedKeys.push("type", "name", "source", "attribute", "id", "camera", "widget", "tags", "transform");
     }
     if (c.context().type == 'source') {
         allowedKeys.push("type");
@@ -1607,6 +1709,15 @@ export function loadFileSync(file: string) {
 export let sources: Map<sourceItem> = {};
 //export let deviceTypes: { [x: string]: Function } = {};
 export let devices: Map<deviceItem> = {};
+export let pages: Map<pageItem> = {};
+
+export function getDevices(): GenericDevice[] {
+    let res: GenericDevice[] = []
+    for (var d in devices) {
+        res.push(devices[d].device)
+    }
+    return res;
+}
 
 export function getDevice(shortPath: string): GenericDevice {
     //logger.debug(devices);
@@ -1688,6 +1799,7 @@ export function reloadConfig(file?: string): void {
         sources = doc.sources;
         //deviceTypes = doc.deviceTypes;
         devices = doc.devices;
+        pages = doc.pages;
 
         currentConfig && currentConfig.release();
         currentConfig = doc;
@@ -1700,6 +1812,7 @@ export function reloadConfig(file?: string): void {
 }
 
 import { IVerifyOptions } from 'passport-local';
+import { isUndefined } from 'util';
 
 export function checkUser(username: string, password: string, done: (error: any, user?: any, options?: IVerifyOptions) => void) {
     return currentConfig.userMgr.checkUser(username, password, done);

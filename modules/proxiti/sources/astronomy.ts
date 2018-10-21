@@ -97,6 +97,8 @@ export class astronomy extends Source {
 
 		this.request = request.get("http://www.proxiti.info/horaires_soleil.php?o=" + this.location, function (err, response, bodyString) {
 
+			if (err) return callback(err);
+
 			var clearRe = /<center>|<\/center>|<span[^>]*>|<\/span>|<br \/>/g
 
 			var cBodyString = bodyString.replace(clearRe, "")

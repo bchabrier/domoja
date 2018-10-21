@@ -1,4 +1,4 @@
-import { GenericDevice, DeviceOptions } from '..'
+import { GenericDevice, DeviceOptions, WidgetType } from '..'
 import { Source, message, ID, DefaultSource } from '..'
 import * as assert from 'assert';
 import { InitObject, Parameters } from '..';
@@ -12,8 +12,8 @@ const logger = require("tracer").colorConsole({
 });
 
 export class sensor extends GenericDevice {
-  constructor(source: Source, path: string, id: ID, attribute: string, name: string, options?: DeviceOptions) {
-    super(source, 'sensor', path, id, attribute, name, options);
+  constructor(source: Source, path: string, id: ID, attribute: string, name: string, initObject: InitObject, options?: DeviceOptions) {
+    super(source, 'sensor', path, id, attribute, name, initObject, options);
 
   let self = this;
     this.on("change", function (msg) {
@@ -65,7 +65,7 @@ export class sensor extends GenericDevice {
   };
 
   createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): GenericDevice {
-    return new sensor(initObject.source, path, initObject.id, initObject.attribute, initObject.name, {
+    return new sensor(initObject.source, path, initObject.id, initObject.attribute, initObject.name, initObject, {
       transform: initObject.transform,
       camera: initObject.camera
     });

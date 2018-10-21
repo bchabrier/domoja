@@ -7,6 +7,21 @@
 		"version": "0.0.13"
 	},
 	"paths": {
+		"/devices": {
+			"get": {
+				"operationId": "DevicesServiceGetDevices",
+				"produces": [
+					"text/html"
+				],
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Retrieves the list of devices",
+				"parameters": []
+			}
+		},
 		"/devices/{id}": {
 			"get": {
 				"operationId": "DevicesServiceGet",
@@ -59,6 +74,21 @@
 						"type": "string"
 					}
 				]
+			}
+		},
+		"/pages": {
+			"get": {
+				"operationId": "PagesServiceGetPages",
+				"produces": [
+					"text/html"
+				],
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Retrieves the list of devices",
+				"parameters": []
 			}
 		}
 	},

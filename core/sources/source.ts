@@ -1,4 +1,4 @@
-import assert = require('assert');
+import * as assert from 'assert';
 import { Parameters, InitObject, DomoModule } from '../..';
 import { GenericDevice, DeviceType, CustomDeviceType } from '../..';
 import { ConfigLoader } from '../..';
@@ -19,6 +19,7 @@ export class message {
     id: ID;
     oldValue: string;
     newValue: string;
+    date: Date;
     state?: string;
     dev?: string;
     tem?: string;
@@ -88,7 +89,8 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
             if (device && device.getState() != value) {
                 let oldValue = device.getState();
                 device.state = value;
-                return this.emitEvent('change', device.path, { oldValue: oldValue, newValue: value })
+                device.lastUpdateDate = new Date;
+                return this.emitEvent('change', device.path, { oldValue: oldValue, newValue: value, date: device.lastUpdateDate })
             }
         }
         // here the space for discovered devices

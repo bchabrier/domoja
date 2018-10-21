@@ -26,7 +26,7 @@ export class Zibase extends Source {
 					Object.keys(arg).forEach( k => {
 						if (k != "emitter") {
 							//if (k == 'value') self.setAttribute(id, arg[k]);
-							self.updateAttribute(id, k, arg[k], new Date);
+							self.updateAttribute(id, (k=='value')?'state':k, arg[k], new Date);
 						}
 					})
 				}

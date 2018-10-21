@@ -10,7 +10,7 @@ import rewire = require('rewire')
 import * as ToMock from '../domoja'
 let RewireToMock = rewire('../domoja')
 const domoja: typeof ToMock & typeof RewireToMock = <any>RewireToMock
-const createApp: (port: Number, prod: boolean, listeningCallback?: () => void) => express.Application = domoja.__get__('createApp');
+const DomojaServer: new (port: Number, prod: boolean, listeningCallback?: () => void) => any = domoja.__get__('DomojaServer');
 
 import * as apis from '../api';
 import { InternalServer } from '../node_modules/typescript-rest/dist/server-container';
@@ -19,10 +19,10 @@ describe('Module api', function () {
     this.timeout(5000);
 
     function doRequest(method: 'GET' | 'POST', path: string, formData: Object, onSuccess: (body: string) => void, onError: (err: Error) => void) {
-        let server = createApp(null, false, () => {
+        let server = new DomojaServer(null, false, () => {
             let data = querystring.stringify(formData);
 
-            let req = http.request('http://localhost:' + server.get('port') + path, {
+            let req = http.request('http://localhost:' + server.app.get('port') + path, {
                 method: method,
                 headers: method == 'POST' ? {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -58,7 +58,7 @@ describe('Module api', function () {
                 // remove processor duplicates
                 classData.methods.forEach(function (method) {
                     let uniqueProcessors: any[] = [];
-                    method.processors.forEach(p => {
+                    method.processors && method.processors.forEach(p => {
                         let found = false;
                         for (let i = 0; i < uniqueProcessors.length; i++) {
                             if (p.name == uniqueProcessors[i].name) {
@@ -76,6 +76,21 @@ describe('Module api', function () {
         });
     });
 
+    describe('GET /devices', function () {
+        it('should return the devices', function (done) {
+            reloadConfig('./test/load/devices/device.yml');
+            doRequest('GET', '/devices', null, (body) => {
+                //console.log(body);
+                let result = JSON.parse(body);
+                assert.notEqual(result, null);
+                assert.ok(Array.isArray(result));
+                assert.equal(result.length, 1)
+                assert.equal(result[0].id, 'id');
+                assert.equal(result[0].path, 'simple_device');
+                done();
+            }, done);
+        });
+    });
     describe('GET /devices/:id', function () {
         it('should return a device', function (done) {
             reloadConfig('./test/load/devices/device.yml');
@@ -96,8 +111,7 @@ describe('Module api', function () {
                 done();
             }, done);
         });
-    });
-    describe('POST /devices/:id', function () {
+    }); describe('POST /devices/:id', function () {
         it('should set the state of a device', function (done) {
             reloadConfig('./test/load/devices/device.yml');
             doRequest('POST', '/devices/simple_device', {
@@ -126,7 +140,7 @@ describe('Module api', function () {
                 //console.log(body);
                 assert.ok(body.match(/swagger/));
                 done();
-            }, done);           
+            }, done);
         })
     });
 });

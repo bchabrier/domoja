@@ -83,10 +83,10 @@ describe('Module sources', function () {
         let source: Source = derivedSource.prototype.createInstance(null, null, null);
         assert(source);
 
-        let dev1 = new device(source, 'Device 1', 'id1', 'attrA', null);
-        let dev2 = new device(source, 'Device 2', 'id2', 'attrA', null);
-        let dev3 = new device(source, 'Device 3', 'id3', 'attrB', null);
-        let dev4 = new device(source, 'Device 4', 'id4', 'attrB', null);
+        let dev1 = new device(source, 'Device 1', 'id1', 'attrA', null, null);
+        let dev2 = new device(source, 'Device 2', 'id2', 'attrA', null, null);
+        let dev3 = new device(source, 'Device 3', 'id3', 'attrB', null, null);
+        let dev4 = new device(source, 'Device 4', 'id4', 'attrB', null, null);
         assert.deepEqual(source['devicesByPath'], {
           'Device 1': dev1,
           'Device 2': dev2,
@@ -127,7 +127,7 @@ describe('Module sources', function () {
         let source: Source = derivedSource.prototype.createInstance(null, null, null);
         assert(source);
 
-        let dev = new device(source, 'Device', 'id', 'attr', null);
+        let dev = new device(source, 'Device', 'id', 'attr', null, null);
         source.updateAttribute(dev.id, dev.attribute, 'a state');
         assert.equal(dev.getState(), 'a state');
         source.release();

@@ -8,7 +8,7 @@ import * as persistence from '../persistence/persistence';
 
 //import secrets = require("../secrets");
 //const PushBullet = require('pushbullet');
-import fs = require('fs');
+import * as fs from 'fs';
 //import sound = require('../lib/sound');
 
 const logger = require("tracer").colorConsole({
@@ -17,19 +17,23 @@ const logger = require("tracer").colorConsole({
     // 0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
+type TransformFunction = (cb: any, transform?: (value: string) => string) => any;
+
 export type DeviceOptions = {
-    transform?: (cb: any, transform?: any) => any,
+    transform?: string | TransformFunction,
     camera?: camera,
     others?: { [K in string]: any }
 }
 
 export class CustomDeviceType {
     name: string;
-    constructor(name: string) { this.name = name}
-    toString(): string { return this.name}
+    constructor(name: string) { this.name = name }
+    toString(): string { return this.name }
 }
 
 export type DeviceType = 'device' | 'sensor' | 'variable' | 'camera' | 'relay' | CustomDeviceType;
+
+export type WidgetType = 'text' | 'toggle';
 
 //export var pusher = new PushBullet(secrets.getPushBulletPassword());
 
@@ -58,6 +62,27 @@ function transformFunction(callback: any, transform?: (value: string) => string)
     }
 }
 
+function mappingFunction(mapping: string): TransformFunction {
+    let transformRE = /(.*?)=>([^,]+)(,.*?=>[^,]+)*/
+    if (!transformRE.test(mapping)) return undefined;
+
+    let mappings: Map<string, string> = new Map();
+    let match: RegExpExecArray;
+    let input = mapping;
+    do {
+        match = transformRE.exec(input);
+        if (match) {
+            mappings.set(match[1], match[2]);
+            input = match[3] && match[3].substr(1);
+        }
+    }
+    while (input);
+
+    return transformFunction((value: string) => { 
+        return mappings.get(value) || mappings.get('*') || value;
+    });
+}
+
 export abstract class GenericDevice implements DomoModule {
     [x: string]: any;
     name: string;
@@ -66,10 +91,12 @@ export abstract class GenericDevice implements DomoModule {
     attribute: string;
     source: Source;
     type: DeviceType;
+    widget: WidgetType;
     state: string;
     persistence: persistence.persistence;
+    lastUpdateDate: Date;
 
-    constructor(source: Source, type: DeviceType, instancePath: string, id: ID, attribute: string, name: string, options?: DeviceOptions) {
+    constructor(source: Source, type: DeviceType, instancePath: string, id: ID, attribute: string, name: string, initObject: InitObject, options?: DeviceOptions) {
         this.source = source;
 
         this.persistence = new persistence.persistence();
@@ -79,12 +106,23 @@ export abstract class GenericDevice implements DomoModule {
         this.attribute = attribute || 'state';
         this.name = name;
         this.type = type;
+        this.widget = initObject.widget;
+        this.tags = initObject.tags;
 
         if (options !== undefined) {
             for (var option in options) {
                 switch (option) {
                     case 'transform':
-                        this.transform = options[option];
+                        let transform = options[option];
+                        if (typeof transform == 'string') {
+                            this.transform = mappingFunction(transform);
+                            if (!this.transform) {
+                                logger.warn('Error in transform "%s" of device "%s".', transform, this.path);
+                            }
+                        } else {
+                            this.transform = transform;
+                        }
+
                         break;
                     case 'camera':
                         this.camera = options[option];
@@ -136,7 +174,9 @@ export abstract class GenericDevice implements DomoModule {
         this.persistence = null;
     }
 
-    setState(newState: string, callback: (err: Error) => void): void {
+    setState(newState: string | Date, callback: (err: Error) => void): void {
+        if (newState instanceof Date) return this.setState(newState.toString(), callback);
+
         logger.debug('setState of device "%s" to "%s"', this.path, newState);
         if (newState != this.state) {
             this.source.setAttribute(this.id, this.attribute, newState, callback);

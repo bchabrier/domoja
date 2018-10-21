@@ -1,4 +1,4 @@
-import { GenericDevice, DeviceOptions } from '..'
+import { GenericDevice, DeviceOptions, WidgetType } from '..'
 import { Source, message, ID, DefaultSource } from '..'
 import * as assert from 'assert';
 import { InitObject, Parameters } from '..';
@@ -12,12 +12,12 @@ const logger = require("tracer").colorConsole({
 });
 
 export class variable extends GenericDevice {
-  constructor(source: Source, path: string, name: string) {
-    super(source, 'variable', path, path, 'state', name);
+  constructor(source: Source, path: string, name: string, initObject: InitObject) {
+    super(source, 'variable', path, path, 'state', name, initObject);
   };
 
   createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): GenericDevice {
-    return new variable(configLoader.DEFAULT_SOURCE, path, initObject.name);
+    return new variable(configLoader.DEFAULT_SOURCE, path, initObject.name, initObject);
   }
 
 }

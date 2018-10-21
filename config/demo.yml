@@ -1,7 +1,5 @@
 
 imports:
-  - module: ./core/sources/demo
-    source: demo
   - module: ./core/devices/httpcamera
     device: httpCamera
   - module: ./core/devices/device
@@ -10,80 +8,89 @@ imports:
     device: sensor
   - module: ./core/devices/variable
     device: variable
+  - module: ipx800
+    device: relay
   - module: proxiti
     source: astronomy
   - module: tempo
     source: tempo
 
+  - module: ./core/sources/demo
+    source: demo
 #- module: ./devices/lightTimer
 #  device: LightTimer
 
 sources:
+  - myZibase: {
+      type: demo
+  }
+  - myIPX800: {
+      type: demo
+  }
   - astronomy: {
       type: astronomy,
       location: "06030"
   }
   - tempo: { type: tempo }
-  - demo: { type: demo }
   
 devices:
-  - sunset: { type: device, source: astronomy, id: sunset, name: "Coucher du soleil" }
-  - sunset_plus_30mn: { type: variable, name: "Coucher du soleil + 30mn" }
-  - sunrise: { type: device, source: astronomy, id: sunrise, name: "Lever du soleil" }
-#- camera_interieure: { type: httpCamera, url: "http://192.168.0.5", name: "Caméra intérieure" }
-  #- camera_exterieure: { type: httpCamera, url: "http://192.168.0.6", name: "Caméra extérieure" }
+  - sunset: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunset, name: "Coucher du soleil" }
+  - sunset_plus_30mn: { type: variable, widget: text, tags: 'astronomy', name: "Coucher du soleil + 30mn" }
+  - sunrise: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunrise, name: "Lever du soleil" }
+#- camera_interieure: { type: variable, url: "http://192.168.0.5", name: "Caméra intérieure" }
+  #- camera_exterieure: { type: variable, url: "http://192.168.0.6", name: "Caméra extérieure" }
   - alarme:
-    - en_route: { type: device , source: demo, id: A1, name: "Alarme en route" }
-    - sirene_interieure: { type: device, source: demo, id: 1, name: "Sirène intérieure" }
-    - sirene_exterieure: { type: device, source: demo, id: 2, name: "Sirène extérieure" }
+    - en_route: { type: device , widget: toggle, tags: 'alarme', source: myZibase, id: A1, name: "Alarme en route" }
+    - sirene_interieure: { type: variable, widget: toggle, tags: 'alarme', source: myIPX800, id: 1, name: "Sirène intérieure" }
+    - sirene_exterieure: { type: variable, widget: toggle, tags: 'alarme', source: myIPX800, id: 2, name: "Sirène extérieure" }
 
   - piscine:
-     - filtration: { type: device, source: demo, id: "ZA8", name: "Filtration piscine" }
-     - pieuvre: { type: device, source: demo, id: "ZO11", name: "Pieuvre" }
-     - chlore_plus: { type: device, source: demo, id: "ZA14", name: "Chlore +" }
-     - chlore_moins: { type: device, source: demo, id: "ZO14", name: "Chlore -" }
-     - temperature: { type: sensor, source: demo, id: "OS439157539", attribute: "tem", name: "Température" }
+     - filtration: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZA8", name: "Filtration piscine" }
+     - pieuvre: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZO11", name: "Pieuvre" }
+     - chlore_plus: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZA14", name: "Chlore +" }
+     - chlore_moins: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZO14", name: "Chlore -" }
+     - temperature: { type: sensor, widget: text, tags: 'piscine', source: myZibase, id: "OS439157539", attribute: "tem", name: "Température" }
 
   - garages:
-    - porte: { type: sensor, source: demo, id: "INPUT5", name: "Porte garage du bas ou jardin" }
+    - porte: { type: sensor, widget: walkingman, tags: 'détecteurs', source: myIPX800, id: "INPUT5", name: "Porte garage du bas ou jardin", transform: "0=>OFF,1=>ON" }
 
-  - bureau: { type: sensor, source: demo, id: "INPUT2", name: "Détecteur bureau"}
-  - salle_a_manger: { type: sensor, source: demo, id: "INPUT6", name: "Détecteur salle à manger", camera: camera_interieure }
+  - bureau: { type: sensor, widget: walkingman, tags: 'détecteurs', source: myIPX800, id: "INPUT2", name: "Détecteur bureau", transform: "0=>OFF,1=>ON" }
+  - salle_a_manger: { type: sensor, widget: walkingman, tags: 'détecteurs', source: myIPX800, id: "INPUT6", name: "Détecteur salle à manger", transform: "1=>OFF,0=>ON", camera: camera_interieure }
 
-  - petit_portail: { type: device, source: demo, id: "ZA3", name: "Petit Portail", camera: camera_exterieure }
-  - petit_portail_en_grand: { type: device, source: demo, id: "ZO10", name: "Petit Portail ouvert en grand", camera: camera_exterieure }
+  - petit_portail: { type: device, tags: 'détecteurs, entrée, portails', source: myZibase, id: "ZA3", name: "Petit Portail", camera: camera_exterieure }
+  - petit_portail_en_grand: { type: device, tags: 'détecteurs', source: myZibase, id: "ZO10", name: "Petit Portail ouvert en grand", camera: camera_exterieure }
   - grand_portail:
-     - grand_portail: { type: device, source: demo, id: "ZA10", name: "Grand Portail" }
-     - senseur_fermeture: { type: sensor, source: demo, id: "ZB9", name: "Universal sensor Grand Portail", transform: !!js/function 'function (newValue) {
-        return newValue == "1" ? "0" : "1";
+     - grand_portail: { type: device, tags: 'détecteurs, portails', source: myZibase, id: "ZA10", name: "Grand Portail" }
+     - senseur_fermeture: { type: sensor, tags: 'détecteurs', source: myZibase, id: "ZB9", name: "Universal sensor Grand Portail", transform: !!js/function 'function (newValue) {
+        return newValue == "1" ? "OFF" : "ON";
       }' }
 
-  - lampe_chambre_parents: { type: device, source: demo, id: "ZA4", name: "Lampe Chambre parents" }
-  - lampe_hall: { type: device, source: demo, id: "ZC9", name: "Spots Hall" }
-  - lampe_table_cuisine: { type: device, source: demo , id: "ZP4", name: "Spots Table Cuisine" }
-  - lampe_preau: { type: device, source: demo, id: "ZA5", name: "Lampe Préau" }
-  - prise_camera: { type: device, source: demo, id: "G2", name: "Prise Caméra" }
-  - lampe_rouge_bas: { type: device, source: demo, id: "ZC4", name: "Lampe rouge bas" }
-  - lampe_escalier: { type: device, source: demo, id: "ZB11", name: "Lampe escalier" }
-  - hall: { type: sensor, source: demo, id: "INPUT3", name: "Détecteur hall" }
-  - escalier: { type: sensor, source: demo, id: "INPUT4", name: "Détecteur escalier" }
-  - cuisine: { type: sensor, source: demo, id: "INPUT1", name: "Détecteur cuisine" }
+  - lampe_chambre_parents: { type: device, widget: toggle, tags: 'lampes', source: myZibase, id: "ZA4", name: "Lampe Chambre parents" }
+  - lampe_hall: { type: device, widget: light:bulb:yellow, tags: 'lampes', source: myZibase, id: "ZC9", name: "Spots Hall" }
+  - lampe_table_cuisine: { type: device, widget: toggle, tags: 'lampes', source: myZibase , id: "ZP4", name: "Spots Table Cuisine" }
+  - lampe_preau: { type: device, widget: toggle, tags: 'lampes entrée', source: myZibase, id: "ZA5", name: "Lampe Préau" }
+  - prise_camera: { type: device, widget: toggle, source: myZibase, id: "G2", name: "Prise Caméra" }
+  - lampe_rouge_bas: { type: device, widget: toggle, tags: 'lampes', source: myZibase, id: "ZC4", name: "Lampe rouge bas" }
+  - lampe_escalier: { type: device, widget: toggle, tags: 'lampes', source: myZibase, id: "ZB11", name: "Lampe escalier" }
+  - hall: { type: sensor, widget: walkingman, tags: 'détecteurs', source: myIPX800, id: "INPUT3", name: "Détecteur hall", transform: "0=>OFF,1=>ON" }
+  - escalier: { type: sensor, widget: walkingman, tags: 'détecteurs', source: myIPX800, id: "INPUT4", name: "Détecteur escalier", transform: "0=>OFF,1=>ON" }
+  - cuisine: { type: sensor, widget: walkingman, tags: 'détecteurs', source: myIPX800, id: "INPUT1", name: "Détecteur cuisine", transform: "0=>OFF,1=>ON" }
 
   - aquarium:
-    - controle : { type: variable, name: "Commande de l'aquarium: ON/OFF/AUTO"} 
-    - pompes : { type: device, source: demo, id: "ZC8", name: "Pompes aquarium" }
-    - lampes : { type: device, source: demo, id: "ZP7", name: "Lampes UV aquarium" }
-    - lampes_start : { type: variable, name: "Heure allumage aquarium" }
-    - lampes_end : { type: variable, name: "Heure extinction aquarium" }
-    - lampes_end : { type: variable, name: "Heure extinction aquarium" }
-    - pompes_start : { type: variable, name: "Heure démarrage pompes aquarium" }
-    - pompes_end : { type: variable, name: "Heure arrêt pompes aquarium" }
+    - controle : { type: variable, widget: "tristate:AUTO,ON,OFF:primary,secondary,danger", tags: 'aquarium-page', name: "Commande de l'aquarium"} 
+    - pompes : { type: device, widget: toggle, tags: 'aquarium-page', source: myZibase, id: "ZC8", name: "Pompes aquarium" }
+    - lampes : { type: device, widget: toggle, tags: 'aquarium-page', source: myZibase, id: "ZP7", name: "Lampes UV aquarium" }
+    - lampes_start : { type: variable, widget: text, tags: 'aquarium', name: "Heure allumage aquarium" }
+    - lampes_end : { type: variable, widget: text, tags: 'aquarium', name: "Heure extinction aquarium" }
+    - pompes_start : { type: variable, widget: text, tags: 'aquarium', name: "Heure démarrage pompes aquarium" }
+    - pompes_end : { type: variable, widget: text, tags: 'aquarium', name: "Heure arrêt pompes aquarium" }
 
   - tempo:
-    - couleur_du_jour : { type: device, source: tempo, id: couleurDuJour, name: "Couleur du jour" }
+    - couleur_du_jour : { type: device, widget: tempo-color, tags: 'tempo', source: tempo, id: couleurDuJour, name: "Couleur du jour" }
+    - couleur_de_demain : { type: device, widget: tempo-color, tags: 'tempo', source: tempo, id: couleurDeDemain, name: "Couleur de demain" }
 
 #  - hallLightTimer: {
-#      type: LightTimer, 
+#      type: variable, 
 #      name: "Minuterie hall",
 #      sensors: [ hall ],
 #      #lights: [ lampe_hall ],
@@ -91,7 +98,7 @@ devices:
 #      off: [ sunrise, sunset ]
 #  }
 #  - stairLightTimer: {
-#      type: LightTimer, 
+#      type: variable, 
 #      name: "Minuterie escalier",
 #      sensors: [ hall, escalier ],
 #      #lights: [ lampe_escalier ],
@@ -101,7 +108,7 @@ devices:
 #      priority: off
 #  }
 #  - kitchenLightTimer: {
-#      type: LightTimer, 
+#      type: variable, 
 #      name: "Minuterie cuisine",
 #      sensors: [ cuisine ],
 #      #lights: [ lampe_table_cuisine ],
@@ -161,6 +168,25 @@ devices:
 #    key: !secrets pushbullet_key
 
 scenarios:
+  - presence_simulator:
+      triggers:
+        - at: startup
+      actions:
+       - !!js/function 'function f(callback) {
+         //return callback(null);
+          var self = this;
+          function pgm(device) {
+            var onAt = 20000 + 30000 * Math.random(); 
+            var offAt = onAt + 2000 + 30000 * Math.random(); 
+            setTimeout(() => { self.setDeviceState(device, "0");}, onAt);
+            setTimeout(() => { self.setDeviceState(device, "1"); pgm(device);}, offAt);
+          }
+          pgm("hall");
+          pgm("escalier");
+          pgm("cuisine");
+          pgm("bureau");
+          callback(null);
+         }'     
   - scenario_with_expr:
       triggers: 
         - state: cuisine
@@ -170,25 +196,6 @@ scenarios:
         - !!js/function 'function f(callback) {callback(null)}'      
         #- push_notify:
         #  text: "quelqu'un dans le hall !"
-  - presence_simulator:
-      triggers:
-        - at: startup
-      actions:
-       - !!js/function 'function f(callback) {
-         return callback(null);
-          var self = this;
-          function pgm(device) {
-            var onAt = 20000 + 30000 * Math.random(); 
-            var offAt = onAt + 2000 + 30000 * Math.random(); 
-            setTimeout(() => { self.setDeviceState(device, "ON");}, onAt);
-            setTimeout(() => { self.setDeviceState(device, "OFF"); pgm(device);}, offAt);
-          }
-          pgm("hall");
-          pgm("escalier");
-          pgm("cuisine");
-          pgm("bureau");
-          callback(null);
-         }'     
   - sunset_calculation:
       triggers:
         - state: sunset
@@ -197,6 +204,12 @@ scenarios:
           let sunset = new Date(this.getDeviceState("sunset"));
           this.setDeviceState("sunset_plus_30mn", new Date(sunset.getTime() + 30 * 60 * 1000), callback);
         }'   
+  - aquarium_set_end:
+    triggers:
+      - at: startup
+    actions:
+        - { device: aquarium.lampes_end, state: 23:30 }
+        - { device: aquarium.pompes_end, state: 23:59 }
   - aquarium_controle_init:
     triggers:
       - at: startup
@@ -267,6 +280,38 @@ scenarios:
         - { device: aquarium.pompes, state: "OFF" }
 
         
+
+pages:
+  - Aquarium:
+      title: 'Aquarium'
+      page: list.html
+      args: 
+        - tag-list: 'aquarium-page'
+        - headers: false
+  - Entrée:
+      title: "Entrée"
+      page: list.html
+      args: 
+        - tag-list: 'entrée'
+        - headers: false
+  - Portails:
+      title: "Portails"
+      page: list.html
+      args: 
+        - tag-list: 'portails'
+        - headers: false
+  - Devices:
+      title: 'Tous les devices'
+      page: list.html
+      args: 
+        - tag-list: 'alarme, lampes, détecteurs, websockets, piscine, aquarium*:aquarium, astronomy, tempo, *:Autres'
+  
+
+
+
+
+
+
 #  - hallLightTimerLightsON:
 #      trigg:
 #        state: hallLightTimer
@@ -343,6 +388,14 @@ scenarios:
 
 
 users:
+  - id: 0 # must be unique
+    name: 'demouser'
+    initials: 'du'
+    login: demo
+    password: demo
+    phone: phone_1
+    macaddress: 'e4:b5:26:3a:73:ac'
+    avatar: ...  
   - id: 1 # must be unique
     name: 'Luc'
     initials: 'LC'

@@ -14,10 +14,14 @@ import { Server } from 'typescript-rest';
 
 import * as apis from './api';
 
+import * as socketio from 'socket.io';
+
 //console.log(HelloService);
 
 
 import * as express from 'express';
+import { ENODEV } from 'constants';
+import * as cors from 'cors';
 var http = require('http')
 var https = require('https')
 var basicAuth = require('basic-auth');
@@ -27,266 +31,290 @@ var fs = require('fs');
 var runWithMocha = /.*mocha$/.test(process.argv[1]);
 //var refreshData = require('./routes/refreshData')
 
-const CONFIG_FILE = './config/demo.yml';
+const CONFIG_FILE = process.argv[2] || './config/demo.yml';
 //const CONFIG_FILE = null;
 
-function reloadConfig() {
-
-  core.reloadConfig(CONFIG_FILE);
-
-  // start managers
-  //domoMgr.run(); // must be loaded after reloadConfig
-  if (!runWithMocha) {
-  }
-  /* 
-   refreshData.setConfig({
-     // "name of data" (string): [ category, type, object containing, "attribute" ]
- 
-   });
-   */
-}
 
 
-fsmonitor.watch('./config', null, function (change: {
-  addedFiles: string, modifiedFiles: string, removedFiles: string,
-  addedFolders: string, modifiedFolders: string, removedFolders: string,
-}) {
-  console.log("Change detected:\n" + change);
-
-  console.log("Added files:    %j", change.addedFiles);
-  console.log("Modified files: %j", change.modifiedFiles);
-  console.log("Removed files:  %j", change.removedFiles);
-
-  console.log("Added folders:    %j", change.addedFolders);
-  console.log("Modified folders: %j", change.modifiedFolders);
-  console.log("Removed folders:  %j", change.removedFolders);
-
-  reloadConfig();
-});
 
 
-function createApp(port: Number, prod: boolean, listeningCallback?: () => void): express.Application {
-  let app: express.Application = express();
+type http_type = 'HTTP' | 'HTTPS';
 
-  let apiTab: Function[] = [];
-  Object.keys(apis).forEach(a => apiTab.push((<any>apis)[a]));
-  Server.buildServices(app, ...apiTab);
+class DomojaServer {
+  app: express.Application;
+  nbWebsockets: { [key in http_type]: number } = { HTTP: 0, HTTPS: 0 }
+  ws: socketio.Server
 
-  if (prod) {
-    //protection pour n'autoriser que mon BB 9900 sur le port 80
-    app.use(function (req, res, next) {
-      if (req.socket.localPort != 80) {
-        next();
-      } else {
-        console.log('%s %s', req.method, req.url);
-        console.log(req.headers)
-        console.log(req.ip)
-        console.log(req.socket.localPort)
-      }
-    });
-  }
+  constructor(port: Number, prod: boolean, listeningCallback?: () => void) {
+    let self = this;
 
-  app.set('port', process.env.PORT || port);
-  //	app.set('views', __dirname + '/views');
-  //	app.set('view engine', 'jade');
-  //	app.use(express.favicon()); // use serve-favicon
-  app.use(require('morgan')('dev')); // logger
-  app.use(require('compression')());
-  //	app.use(app.router);
-  //	app.use(express.bodyParser());
-  //	app.use(express.methodOverride());
-  app.use(express.static(path.join(__dirname, 'public')));
+    this.app = express();
 
-  if (app.get('env') == 'development') {
-    //		app.use(express.errorHandler());
-  }
-
-  // services autoris�s
-  /*
-  app.get('/serial', serial.index);
-  app.get('/esp8266/update', esp8266.processData);
-  app.get('/ipx800/update', ipx800.processIPX800Data);
-  app.get('/test', proxy.test);
-  app.get('/getTempoInfos', tempo.getTempoInfos);
-  app.get('/presence', presence.presence);
-*/
-
-  core.configure(app,
-    core.checkUser, /*  function check(username, password, done) {
-      logger.debug('user check !');
-      if (username === validuser.username &&
-        password === validuser.password) {
-        logger.debug('user check passed');
-        return done(null, validuser);
-      }
-      if (username === validuser2.username &&
-        password === validuser2.password) {
-        logger.debug('user check passed');
-        return done(null, validuser2);
-      }
-      return done(null, false);
-    },*/
-    core.findUserById, /* function findById(id, fn) {
-      logger.debug('finding user ', id);
-      if (id === validuser.username) {
-        return fn(null, validuser);
-      }
-      if (id === validuser2.username) {
-        return fn(null, validuser2);
-      }
-      return fn(null, null);
-    },*/
-    require('./core/lib/token'),
-    '/login.html',
-    serve
-  );
-
-  // � partir de ce point les services doivent etre autoris�s
-  //	app.use(express.basicAuth('u', 'p'));
-  var auth = function (req: express.Request, res: express.Response, next: express.NextFunction) {
-    function unauthorized(res: express.Response) {
-      res.set('WWW-Authenticate', 'Basic realm=Authorization Required');
-      return res.sendStatus(401);
-    };
-
-    if (req.headers.origin === 'http://192.168.0.10:8100' && req.headers.host === '192.168.0.10:3000') {
-      console.log("authorized");
-      res.set('Access-Control-Allow-Origin', req.headers.origin);
-      return next();
+    if (!prod) {
+      this.app.use(cors({
+        origin: ['http://raspberrypi:8100', 'http://192.168.0.10:8100']
+      }));
     }
-    console.log("check authorized?");
 
-    var user = basicAuth(req);
-    if (!user || !user.name || !user.pass) {
-      return unauthorized(res);
-    };
+    this.app.set('env', prod ? 'production' : 'development');
 
-    if (user.name === 'foo' && user.pass === 'bar') {
-      return next();
-    } else {
-      return unauthorized(res);
-    };
-  };
+    this.app.set('port', process.env.PORT || port);
+    //	app.set('views', __dirname + '/views');
+    //	app.set('view engine', 'jade');
+    //	app.use(express.favicon()); // use serve-favicon
+    this.app.use(require('morgan')('dev')); // logger
+    this.app.use(require('compression')());
+    //	app.use(app.router);
+    //	app.use(express.bodyParser());
+    //	app.use(express.methodOverride());
+    //app.use(express.static(path.join(__dirname, 'public')));
 
-  auth = core.checkAuthenticated;
-  function serve(req: express.Request, res: express.Response) {
-    res.sendFile(path.normalize(__dirname + (prod ? '/www' : '/app') + req.path));
-  }
-  /*
-    app.get('/users', auth, user.list);
-    app.get('/tempo', auth, tempo.index);
-    app.get('/sensors.xml', auth, tempo.getZibaseSensors);
-    app.get('/proxy', auth, proxy.index);
-    app.all('/domo/getInfosPiscine', auth, piscine.index);
-    app.all('/domo/getTempPiscineStats', auth, piscine.piscine_temperature_stats);
-    app.all('/domo/refreshData', auth, refreshData.refreshData);
-    app.get('/domo/calcul_filtration', auth, piscine.calcul_filtration);
-    app.get('/domo/setFiltration', auth, poolMgr.setFiltration);
-    app.get('/domo/setAlarm', auth, alarmMgr.setAlarm);
-    app.all('/domo/getAlerts', auth, alarmMgr.getAlerts);
-    app.all('/domo/getAlertImage', auth, alarmMgr.getAlertImage);
-    app.get('/domo/tab_temp_duration', auth, piscine.tab_temp_duration);
-    app.get('/domo/horaires_astronomie', auth, astronomy.getAllTimes);
-    app.all('/domo/switch', auth, switchLight.switch);
-    app.all('/domo/ouvrePetitPortail', auth, portails.ouvrePetitPortail);
-    app.all('/domo/ouvreGrandPortail', auth, portails.ouvreGrandPortail);
+    //if (app.get('env') == 'development') {
+    //  		app.use(express..errorHandler());
+    //}
+
+    // services autorisés
+    /*
+    app.get('/serial', serial.index);
+    app.get('/esp8266/update', esp8266.processData);
+    app.get('/ipx800/update', ipx800.processIPX800Data);
+    app.get('/test', proxy.test);
+    app.get('/getTempoInfos', tempo.getTempoInfos);
+    app.get('/presence', presence.presence);
   */
-  var oneYear = 31557600000;
-  var cacheOptions: { maxAge?: Number } = {
-    maxAge: oneYear
-  }
-  if (!prod)
-    cacheOptions = {};
 
-  // / is not forbidden, as it goes to login page
-  app.get("/", core.ensureAuthenticated, function (req, res) {
-    res.sendFile(path.normalize(__dirname + (prod ? "/www" : "/app") + "/index.html"), cacheOptions);
-  });
+    let apiTab: Function[] = [];
+    Object.keys(apis).forEach(a => apiTab.push((<any>apis)[a]));
+    Server.buildServices(this.app, ...apiTab);
 
-  app.get("/index.html", core.ensureAuthenticated, function (req, res) {
-    res.sendFile(path.normalize(__dirname + (prod ? "/www" : "/app") + "/index.html"), cacheOptions);
-  });
+    Server.swagger(this.app, './dist/swagger.yaml', '/api-docs', null, ['http']);
 
-  /*
-      app.all(/^(.*)$/, auth, function(req, res, next) {
-    console.log(req.protocol + '://' + req.get('host') + req.originalUrl);
-    next();
+    this.serveUI(this.app,
+      '/login.html', '/../helloWorld/src', '/index.html',
+      [
+        '/build'
+      ],
+      [],
+      this.app.get('env')
+    );
+
+    let server = this.app.listen(this.app.get('port'), function () {
+      self.app.set('port', this.address().port); // in case app.get('port') is null
+      console.log('Express %s server listening on port %s', self.app.get('env'), self.app.get('port'));
+      listeningCallback && listeningCallback.apply(self);
+    });
+
+    this.ws = socketio.listen(server);
+    this.ws.sockets.on('connection', function (socket) {
+      let http_string: http_type = 'HTTP' // to be changed
+      logger.error("websocket connected with", http_string);
+      self.nbWebsockets[http_string]++;
+
+      /*
+        socket.emit('news', {
+        hello : 'world'
+        });
+  
+        socket.on('my other event', function(data) {
+        console.log(data);
+        });
+      */
+
+      socket.on('disconnect', function () {
+        logger.error("websocket disconnected with", http_string);
+        self.nbWebsockets[http_string]--;
       });
-  */
-  if (!prod) {
-    ["/bower_components",
-      "/scripts",
-      "/styles", ,
-      "/templates",
-    ].forEach(function (dir) {
-      app.use(dir, express.static(__dirname + "/app" + dir));
+
     });
-  } else {
 
-    var handler = getHandlerWithCacheOptions(cacheOptions);
-    // authorized:
-    app.get('/.well-known/acme-challenge/*', handler);
+    let watchTimeout: NodeJS.Timer;
 
-    app.get('/login.html', handler);
-    app.get('/scripts/login.js', handler);
-    app.all('/bower_components/angular/angular.js', handler);
-    app.all('/bower_components/angular-animate/angular-animate.js', handler);
-    app.all('/bower_components/angular-sanitize/angular-sanitize.js', handler);
-    app.all('/bower_components/angular-ui-router/release/angular-ui-router.js', handler);
-    app.all('/bower_components/ionic/release/js/ionic-angular.js', handler);
-    app.all('/bower_components/ionic/release/js/ionic.js', handler);
+    fsmonitor.watch('./config', null, function (change: {
+      addedFiles: string, modifiedFiles: string, removedFiles: string,
+      addedFolders: string, modifiedFolders: string, removedFolders: string,
+    }) {
+      console.log("Change detected:\n" + change);
 
-    app.all('/bower_components/ionic/release/css/ionic.css', handler);
-    app.all('/styles/style.css', handler);
-    app.all('/apple-touch-icon-120x120-precomposed.png', handler);
-    app.all('/apple-touch-icon-120x120.png', handler);
-    app.all('/apple-touch-icon.png', handler);
+      console.log("Added files:    %j", change.addedFiles);
+      console.log("Modified files: %j", change.modifiedFiles);
+      console.log("Removed files:  %j", change.removedFiles);
 
-    app.all('/styles/vendor.css', handler);
-    app.all('/scripts/scripts.js', handler);
-    app.all('/scripts/vendor.js', handler);
+      console.log("Added folders:    %j", change.addedFolders);
+      console.log("Modified folders: %j", change.modifiedFolders);
+      console.log("Removed folders:  %j", change.removedFolders);
 
-    // others are forbidden
-    app.all(/^(.*)$/, auth, handler);
+      if (watchTimeout) {
+        clearTimeout(watchTimeout);
+      }
+      watchTimeout = setTimeout(() => {
+        watchTimeout = null;
+        self.reloadConfig();
+      }, 2000);
+    });
   }
 
-  Server.swagger(app, './dist/swagger.yaml', '/api-docs', null, ['http']);
+  private serveUI(app: express.Application,
+    loginPath: string,
+    staticPath: string,
+    indexHTML: string,
+    authorizedPaths: string[],
+    alwaysAuthorizedPaths: string[],
+    env: 'development' | 'production') {
 
-  app.listen(app.get('port'), function () {
-    app.set('port', this.address().port); // in case app.get('port') is null
-    console.log('Express %s server listening on port %s', app.get('env'), app.get('port'));
-    listeningCallback && listeningCallback.apply(this);
-  });
-
-  return app;
-}
-
-function getHandlerWithCacheOptions(cacheOptions: { maxAge?: Number }) {
-  return function handler(req: express.Request, res: express.Response) {
-    var targetFile = req.path;
-    console.log('Sending static file', targetFile);
-    if (targetFile.indexOf("jsmpeg") >= 0 || targetFile.indexOf("jsmjpg") >= 0) {
-      console.log(targetFile)
-      res.sendFile(path.normalize(__dirname + "/" + targetFile));
-    } else {
-      res.sendFile(path.normalize(__dirname + "/www/" + targetFile),
-        cacheOptions);
+    function serve(req: express.Request, res: express.Response) {
+      res.sendFile(path.normalize(__dirname + staticPath + req.path));
     }
+
+    core.configure(app,
+      core.checkUser,
+      core.findUserById,
+      require('./core/lib/token'),
+      loginPath,
+      serve
+    );
+
+    // � partir de ce point les services doivent etre autoris�s
+    let auth = core.checkAuthenticated;
+    /*
+      app.get('/users', auth, user.list);
+      app.get('/tempo', auth, tempo.index);
+      app.get('/sensors.xml', auth, tempo.getZibaseSensors);
+      app.get('/proxy', auth, proxy.index);
+      app.all('/domo/getInfosPiscine', auth, piscine.index);
+      app.all('/domo/getTempPiscineStats', auth, piscine.piscine_temperature_stats);
+      app.all('/domo/refreshData', auth, refreshData.refreshData);
+      app.get('/domo/calcul_filtration', auth, piscine.calcul_filtration);
+      app.get('/domo/setFiltration', auth, poolMgr.setFiltration);
+      app.get('/domo/setAlarm', auth, alarmMgr.setAlarm);
+      app.all('/domo/getAlerts', auth, alarmMgr.getAlerts);
+      app.all('/domo/getAlertImage', auth, alarmMgr.getAlertImage);
+      app.get('/domo/tab_temp_duration', auth, piscine.tab_temp_duration);
+      app.get('/domo/horaires_astronomie', auth, astronomy.getAllTimes);
+      app.all('/domo/switch', auth, switchLight.switch);
+      app.all('/domo/ouvrePetitPortail', auth, portails.ouvrePetitPortail);
+      app.all('/domo/ouvreGrandPortail', auth, portails.ouvreGrandPortail);
+    */
+
+
+
+    var oneYear = 31557600000;
+    var cacheOptions: { maxAge?: Number } = (env == 'production') ? { maxAge: oneYear } : {}
+
+    // / is not forbidden, as it goes to login page
+    app.get('/', core.ensureAuthenticated, function (req, res) {
+      res.sendFile(path.normalize(__dirname + staticPath + indexHTML), cacheOptions);
+    });
+
+    app.get(indexHTML, core.ensureAuthenticated, function (req, res) {
+      res.sendFile(path.normalize(__dirname + staticPath + indexHTML), cacheOptions);
+    });
+
+    app.use(express.static(path.join(__dirname, staticPath)));
+
+    app.all(/^(.*)$/, auth);
+
+    /*
+        app.all(/^(.*)$/, auth, function(req, res, next) {
+      console.log(req.protocol + '://' + req.get('host') + req.originalUrl);
+      next();
+        });
+    */
+    /*
+     if (env == 'development') {
+       ["/bower_components",
+         "/scripts",
+         "/styles", ,
+         "/templates",
+       ].forEach(function (dir) {
+         app.use(dir, express.static(__dirname + staticPath + dir));
+       });
+     } else {
+       function getHandlerWithCacheOptions(cacheOptions: { maxAge?: Number }) {
+         return function handler(req: express.Request, res: express.Response) {
+           var targetFile = req.path;
+           console.log('Sending static file', targetFile);
+           if (targetFile.indexOf("jsmpeg") >= 0 || targetFile.indexOf("jsmjpg") >= 0) {
+             console.log(targetFile)
+             res.sendFile(path.normalize(__dirname + "/" + targetFile));
+           } else {
+             res.sendFile(path.normalize(__dirname + staticPath + targetFile),
+               cacheOptions);
+           }
+         }
+       }
+   
+       var handler = getHandlerWithCacheOptions(cacheOptions);
+       // authorized:
+       app.get('/.well-known/acme-challenge/*', handler);
+   
+       app.get('/login.html', handler);
+       app.get('/scripts/login.js', handler);
+       app.all('/bower_components/angular/angular.js', handler);
+       app.all('/bower_components/angular-animate/angular-animate.js', handler);
+       app.all('/bower_components/angular-sanitize/angular-sanitize.js', handler);
+       app.all('/bower_components/angular-ui-router/release/angular-ui-router.js', handler);
+       app.all('/bower_components/ionic/release/js/ionic-angular.js', handler);
+       app.all('/bower_components/ionic/release/js/ionic.js', handler);
+   
+       app.all('/bower_components/ionic/release/css/ionic.css', handler);
+       app.all('/styles/style.css', handler);
+       app.all('/apple-touch-icon-120x120-precomposed.png', handler);
+       app.all('/apple-touch-icon-120x120.png', handler);
+       app.all('/apple-touch-icon.png', handler);
+   
+       app.all('/styles/vendor.css', handler);
+       app.all('/scripts/scripts.js', handler);
+       app.all('/scripts/vendor.js', handler);
+   
+   
+       // restricted paths
+       authorizedPaths.forEach(path => {
+         app.all(path, auth, handler);
+       })
+   
+       // others are forbidden
+       app.all(/^(.*)$/, auth, handler);
+     }
+   */
+  }
+
+  reloadConfig() {
+
+    core.reloadConfig(CONFIG_FILE);
+    let devices = core.getDevices();
+    devices.forEach(device => {
+      device.on('change', (message: core.message) => {
+        let msg: core.message = {
+          emitter: undefined,
+          id: message.emitter.path,
+          oldValue: message.oldValue,
+          newValue: message.newValue,
+          date: message.date
+        }
+        this.ws.emit('change', msg);
+      });
+    });
+    this.ws.emit('reload');
   }
 }
-
-
 
 if (!runWithMocha) {
   //var app_prod = createApp(4000, true);
   //var app_prod = createApp(3000, true);
   //var app = createApp(3001, false);
-  let server = createApp(4001, false);
-
-
-
+  let server = new DomojaServer(4001, false);
   logger.error(__dirname);
-  reloadConfig();
+  server.reloadConfig();
+
+  let n = 1;
+  false && setInterval(() => {
+    let dev = core.getDevice("aquarium.lampes_end");
+    dev.setState(n.toString(), () => {
+      n++
+    });
+  }, 10000)
+
+
 
   /*
 
@@ -308,4 +336,6 @@ if (!runWithMocha) {
   });
 */
   //refreshData.createWebsockets([server, server_prod, server_80], [server_sec]);
+
+
 }
