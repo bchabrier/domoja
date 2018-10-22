@@ -853,19 +853,60 @@ function scenariosSection(c: Parser.Parse): { comment: string, scenarios: Map<sc
 
     c.skip(SCENARIOS);
     c.indent()
-    res.scenarios = c.one(scenariosArray);
+    res.scenarios = c.one(scenarioTreeArray);
     c.dedent();
 
     return res;
 }
 
-function scenariosArray(c: Parser.Parse): Map<scenarioItem> {
+function scenarioTreeArray(c: Parser.Parse): Map<scenarioItem> {
     let res: Map<scenarioItem> = {};
     c.context().scenarios = res;
+    
     c.many((c: Parser.Parse) => {
-        let i = c.one(scenarioItem);
-        res[i.name] = i;
+        c.oneOf(
+            (c: Parser.Parse) => {
+                logger.debug('trying subtree')
+                c.skip(DASH);
+                let id = trim(c.one(ID));
+                logger.debug('found id', id)
+                c.skip(/^ *: */);
+                logger.debug('found :')
+                c.indent();
+                c.pushContext({
+                    doc: <ConfigLoader>c.context().doc,
+                    imports: c.context().imports,
+                    devices: c.context().devices,
+                    sources: c.context().sources,
+                    path: (c.context().path ? c.context().path + '.' : '') + id,
+                    allowedTypeValues: c.context().allowedTypeValues
+                });
+                let subtree = c.one(scenarioTreeArray)
+                c.popContext();
+                c.dedent();
+            },
+            (c: Parser.Parse) => {
+                logger.debug('trying scenarioItem')
+                let leaf = c.one(scenarioItem);
+                let fullname: string = ''
+                if (c.context().path) {
+                    fullname = c.context().path + '.';
+                }
+                fullname = fullname + leaf.name;
+                logger.debug('fullname=', fullname)
+                res[fullname] = leaf;
+                logger.debug('found scenarioItem')
+
+            },
+        )
+
+        // eat comments
+        while (c.isNext(/^\n *#.*/)) {
+            c.skip(/^\n *#.*/);
+        }
+
     }, (c: Parser.Parse) => c.newline());
+
     return res;
 }
 
