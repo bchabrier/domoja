@@ -750,6 +750,59 @@ function sourceItem(c: Parser.Parse): sourceItem {
     return { name: obj.name, object: obj.object, source: source }
 }
 
+function buildTreeArray<ThingItem extends { name: string }>(
+    c: Parser.Parse,
+    result: Map<ThingItem>,
+    thingTreeArray: (c: Parser.Parse) => Map<ThingItem>,
+    thingItem: (c: Parser.Parse) => ThingItem): void {
+
+    c.many((c: Parser.Parse) => {
+        c.oneOf(
+            (c: Parser.Parse) => {
+                logger.debug('trying subtree')
+                c.skip(DASH);
+                let id = trim(c.one(ID));
+                logger.debug('found id', id)
+                c.skip(/^ *: */);
+                logger.debug('found :')
+                c.indent();
+                c.pushContext({
+                    doc: <ConfigLoader>c.context().doc,
+                    imports: c.context().imports,
+                    devices: c.context().devices,
+                    sources: c.context().sources,
+                    scenarios: c.context().scenarios,
+                    path: (c.context().path ? c.context().path + '.' : '') + id,
+                    allowedTypeValues: c.context().allowedTypeValues
+                });
+                let subtree = c.one(thingTreeArray);
+                c.popContext();
+                c.dedent();
+            },
+            (c: Parser.Parse) => {
+                logger.debug('trying thingItem')
+                let leaf = c.one(thingItem);
+                let fullname: string = ''
+                if (c.context().path) {
+                    fullname = c.context().path + '.';
+                }
+                fullname = fullname + leaf.name;
+                logger.debug('fullname=', fullname)
+                result[fullname] = leaf;
+                logger.debug('found thingItem')
+
+            },
+        )
+
+        // eat comments
+        while (c.isNext(/^\n *#.*/)) {
+            c.skip(/^\n *#.*/);
+        }
+
+    }, (c: Parser.Parse) => c.newline());
+
+}
+
 function devicesSection(c: Parser.Parse): { comment: string, devices: Map<deviceItem> } {
 
     let res: { comment: string, devices: Map<deviceItem> } = {
@@ -781,49 +834,8 @@ function trim(s: string): string {
 function deviceTreeArray(c: Parser.Parse): Map<deviceItem> {
     let res: Map<deviceItem> = c.context().devices;
 
-    c.many((c: Parser.Parse) => {
-        c.skip(DASH);
-        c.oneOf(
-            (c: Parser.Parse) => {
-                logger.debug('trying subtree')
-                let id = trim(c.one(ID));
-                logger.debug('found id', id)
-                c.skip(/^ *: */);
-                logger.debug('found :')
-                c.indent();
-                c.pushContext({
-                    doc: <ConfigLoader>c.context().doc,
-                    imports: c.context().imports,
-                    devices: c.context().devices,
-                    sources: c.context().sources,
-                    path: (c.context().path ? c.context().path + '.' : '') + id,
-                    allowedTypeValues: c.context().allowedTypeValues
-                });
-                let subtree = c.one(deviceTreeArray)
-                c.popContext();
-                c.dedent();
-            },
-            (c: Parser.Parse) => {
-                logger.debug('trying deviceItem')
-                let leaf = c.one(deviceItem);
-                let fullname: string = ''
-                if (c.context().path) {
-                    fullname = c.context().path + '.';
-                }
-                fullname = fullname + leaf.name;
-                logger.debug('fullname=', fullname)
-                res[fullname] = leaf;
-                logger.debug('found deviceItem')
+    buildTreeArray(c, res, deviceTreeArray, deviceItem);
 
-            },
-        )
-
-        // eat comments
-        while (c.isNext(/^\n *#.*/)) {
-            c.skip(/^\n *#.*/);
-        }
-
-    }, (c: Parser.Parse) => c.newline());
     return res;
 }
 
@@ -838,6 +850,7 @@ function deviceItem(c: Parser.Parse): deviceItem {
         path: c.context().path,
         allowedTypeValues: c.context().allowedTypeValues
     });
+    c.skip(DASH);
     let obj = c.one(namedObject);
     c.popContext();
 
@@ -853,6 +866,7 @@ function scenariosSection(c: Parser.Parse): { comment: string, scenarios: Map<sc
 
     c.skip(SCENARIOS);
     c.indent()
+    c.context().scenarios = {}
     res.scenarios = c.one(scenarioTreeArray);
     c.dedent();
 
@@ -860,52 +874,9 @@ function scenariosSection(c: Parser.Parse): { comment: string, scenarios: Map<sc
 }
 
 function scenarioTreeArray(c: Parser.Parse): Map<scenarioItem> {
-    let res: Map<scenarioItem> = {};
-    c.context().scenarios = res;
-    
-    c.many((c: Parser.Parse) => {
-        c.oneOf(
-            (c: Parser.Parse) => {
-                logger.debug('trying subtree')
-                c.skip(DASH);
-                let id = trim(c.one(ID));
-                logger.debug('found id', id)
-                c.skip(/^ *: */);
-                logger.debug('found :')
-                c.indent();
-                c.pushContext({
-                    doc: <ConfigLoader>c.context().doc,
-                    imports: c.context().imports,
-                    devices: c.context().devices,
-                    sources: c.context().sources,
-                    path: (c.context().path ? c.context().path + '.' : '') + id,
-                    allowedTypeValues: c.context().allowedTypeValues
-                });
-                let subtree = c.one(scenarioTreeArray)
-                c.popContext();
-                c.dedent();
-            },
-            (c: Parser.Parse) => {
-                logger.debug('trying scenarioItem')
-                let leaf = c.one(scenarioItem);
-                let fullname: string = ''
-                if (c.context().path) {
-                    fullname = c.context().path + '.';
-                }
-                fullname = fullname + leaf.name;
-                logger.debug('fullname=', fullname)
-                res[fullname] = leaf;
-                logger.debug('found scenarioItem')
+    let res: Map<scenarioItem> = c.context().scenarios;
 
-            },
-        )
-
-        // eat comments
-        while (c.isNext(/^\n *#.*/)) {
-            c.skip(/^\n *#.*/);
-        }
-
-    }, (c: Parser.Parse) => c.newline());
+    buildTreeArray(c, res, scenarioTreeArray, scenarioItem);
 
     return res;
 }
