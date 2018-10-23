@@ -62,6 +62,7 @@ type scenarioItem = {
 
 type pageItem = {
     name: string,
+    menuItem: string,
     title: string,
     page: string,
     args: Map<string>
@@ -484,6 +485,7 @@ let CONDITIONS = Parser.token(/^conditions: */, '"conditions:"');
 let ACTIONS = Parser.token(/^actions: */, '"actions:"');
 
 let PAGES = Parser.token(/^pages: */, '"pages:"');
+let MENUITEM = Parser.token(/^menu-item: */, '"menu-item:"');
 let TITLE = Parser.token(/^title: */, '"title:"');
 let PAGE = Parser.token(/^page: */, '"page:"');
 let ARGS = Parser.token(/^args: */, '"args:"');
@@ -594,7 +596,7 @@ function secretsSection(c: Parser.Parse): void {
     c.any(
         (c: Parser.Parse) => {
             let key = trim(c.one(ID));
-            c.one(/^ *: */);
+            c.one(Parser.token(/^ *: */, '":"'));
             let val = c.one(stringValue)
             secrets[key] = val;
         },
@@ -763,7 +765,7 @@ function buildTreeArray<ThingItem extends { name: string }>(
                 c.skip(DASH);
                 let id = trim(c.one(ID));
                 logger.debug('found id', id)
-                c.skip(/^ *: */);
+                c.skip(Parser.token(/^ *: */, '":"'));
                 logger.debug('found :')
                 c.indent();
                 c.pushContext({
@@ -885,7 +887,7 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
     let document = <ConfigLoader>c.context().doc;
     c.skip(DASH);
     let i = trim(c.one(ID));
-    c.skip(/^ *: */);
+    c.skip(Parser.token(/^ *: */, '":"'));
     c.indent()
 
     c.context().currentScenario = i;
@@ -1039,7 +1041,7 @@ function namedCondition(c: Parser.Parse): NamedCondition {
     logger.debug("trying namedCondition with", currentSource(c))
     let name = trim(c.one(ID));
     logger.debug("found ID", name);
-    c.skip(/^ *: */);
+    c.skip(Parser.token(/^ *: */, '":"'));
 
     let f = c.one(unnamedCondition).fct;
     logger.debug("found namedCondition")
@@ -1076,28 +1078,34 @@ function pageItem(c: Parser.Parse): pageItem {
     let document = <ConfigLoader>c.context().doc;
     c.skip(DASH);
     let i = trim(c.one(ID));
-    c.skip(/^ *: */);
+    c.skip(Parser.token(/^ *: */, '":"'));
     c.indent();
 
     let p: pageItem = {
         name: i,
+        menuItem: undefined,
         title: undefined,
         page: undefined,
         args: {}
     }
+    c.optional(c => {
+        c.skip(MENUITEM);
+        p.menuItem = c.one(stringValue)
+        c.newline();
+    });
     c.skip(TITLE)
     p.title = c.one(stringValue);
     c.newline();
     c.skip(PAGE);
     p.page = c.one(stringValue);
-    c.newline();
     c.optional(c => {
+        c.newline();
         c.skip(ARGS);
         c.indent();
         c.many((c: Parser.Parse) => {
             c.skip(DASH);
             let key = c.one(ID);
-            c.skip(/^ *: */);
+            c.skip(Parser.token(/^ *: */, '":"'));
             let val = c.one(stringValue)
             p.args[key] = val;
         }, (c: Parser.Parse) => c.newline())
@@ -1286,7 +1294,7 @@ function unnamedAction(c: Parser.Parse): NamedAction {
 function namedAction(c: Parser.Parse): NamedAction {
     logger.debug("trying namedAction")
     let name = trim(c.one(ID));
-    c.skip(/^ *: */);
+    c.skip(Parser.token(/^ *: */, '":"'));
 
     let f = c.one(unnamedAction).fct;
     logger.debug("found namedAction")
@@ -1371,7 +1379,7 @@ function namedObject(c: Parser.Parse): { name: string, object: { [x: string]: va
             c.expected('not "' + name + '" (duplicate source)')
     }
 
-    c.skip(/^ *: */);
+    c.skip(Parser.token(/^ *: */, '":"'));
     logger.debug('found :')
     let obj = c.one(object);
     logger.debug('found object', obj)
