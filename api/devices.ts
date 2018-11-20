@@ -68,7 +68,7 @@ export class DevicesService {
   sendCommand(@PathParam('id') name: string, @FormParam('command') command: string) {
     let device = devices[name].device;
     return new Promise<string>((resolve, reject) => {
-      device.setState(command, err => { err && reject(err) || resolve('OK') })
+      device.setState(command, err => { err ? reject(err) : resolve('OK') })
     });
   }
 }

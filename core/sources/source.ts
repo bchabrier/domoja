@@ -86,7 +86,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         logger.debug('updateAttribute', id, attribute, value);
         if (this.isAttributeSupported(id, attribute)) {
             let device = this.devicesByAttribute[attribute][id];
-            if (device && device.getState() != value) {
+            if (device) {
                 let oldValue = device.getState();
                 device.state = value;
                 device.lastUpdateDate = new Date;
@@ -94,7 +94,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
             }
         }
         // here the space for discovered devices
-        if (!this.discoveredDevices[id + '_' + attribute]) {
+        if (this.discoveredDevices && !this.discoveredDevices[id + '_' + attribute]) {
             this.discoveredDevices[id + '_' + attribute] = true;
             logger.info('Discovered device {type=device, source=%s, id=%s, attribute=%s} with value: %s', this.path, id, attribute, value);
         }
@@ -158,7 +158,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
                 return element.parameters;
             }
         }
-        logger.debug("Nothing found.", );
+        logger.debug("Nothing found.");
         throw new Error("Source does not support device type '" + type + "'.");
     }
 

@@ -6,7 +6,7 @@ import { getCurrentConfig } from '../core/lib/load';
 @Path('/pages')
 export class PagesService {
   /**
-   * Retrieves the list of devices
+   * Retrieves the list of pages
    */
   @GET
   getPages() {

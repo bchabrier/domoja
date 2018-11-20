@@ -43,7 +43,10 @@ type http_type = 'HTTP' | 'HTTPS';
 class DomojaServer {
   app: express.Application;
   nbWebsockets: { [key in http_type]: number } = { HTTP: 0, HTTPS: 0 }
-  ws: socketio.Server
+  ws: socketio.Server;
+  currentFile: string;
+  previousFile: string;
+  startTime: Date = new Date;
 
   constructor(port: Number, prod: boolean, listeningCallback?: () => void) {
     let self = this;
@@ -87,7 +90,7 @@ class DomojaServer {
     Object.keys(apis).forEach(a => apiTab.push((<any>apis)[a]));
     Server.buildServices(this.app, ...apiTab);
 
-    Server.swagger(this.app, './dist/swagger.yaml', '/api-docs', null, ['http']);
+    Server.swagger(this.app, './api/swagger.yaml', '/api-docs', null, ['http']);
 
     this.serveUI(this.app,
       '/login.html', '/../helloWorld/src', '/index.html',
@@ -105,10 +108,11 @@ class DomojaServer {
     });
 
     this.ws = socketio.listen(server);
-    this.ws.sockets.on('connection', function (socket) {
+    this.ws.sockets.on('connection', socket => {
       let http_string: http_type = 'HTTP' // to be changed
       logger.error("websocket connected with", http_string);
       self.nbWebsockets[http_string]++;
+      this.ws.emit('change', this.getApp());
 
       /*
         socket.emit('news', {
@@ -120,9 +124,10 @@ class DomojaServer {
         });
       */
 
-      socket.on('disconnect', function () {
+      socket.on('disconnect', () => {
         logger.error("websocket disconnected with", http_string);
         self.nbWebsockets[http_string]--;
+        this.ws.emit('change', this.getApp());
       });
 
     });
@@ -278,9 +283,16 @@ class DomojaServer {
    */
   }
 
-  reloadConfig() {
+  loadConfig(file: string) {
+    if (file !== this.currentFile) {
+      this.previousFile = this.currentFile;
+      this.currentFile = file;
+    }
+    this.reloadConfig();
+  }
 
-    core.reloadConfig(CONFIG_FILE);
+  reloadConfig() {
+    core.reloadConfig(this.currentFile);
     let devices = core.getDevices();
     devices.forEach(device => {
       device.on('change', (message: core.message) => {
@@ -296,15 +308,32 @@ class DomojaServer {
     });
     this.ws.emit('reload');
   }
+
+  getNbWebsockets(type?: 'HTTP' | 'HTTPS') {
+    if (type) return this.nbWebsockets[type];
+    else return this.nbWebsockets['HTTP'] + this.nbWebsockets['HTTPS'];
+  }
+
+  getApp() {
+    return {
+      demoMode: /.*\/config\/demo.yml/.test(DmjServer.currentFile),
+      nbWebsockets: this.getNbWebsockets(),
+      nbWebsocketsHTTP: this.getNbWebsockets('HTTP'),
+      nbWebsocketsHTTPS: this.getNbWebsockets('HTTPS'),
+      startTime: this.startTime,
+    }
+  }
 }
+
+export let DmjServer: DomojaServer;
 
 if (!runWithMocha) {
   //var app_prod = createApp(4000, true);
   //var app_prod = createApp(3000, true);
   //var app = createApp(3001, false);
-  let server = new DomojaServer(4001, false);
+  DmjServer = new DomojaServer(4001, false);
   logger.error(__dirname);
-  server.reloadConfig();
+  DmjServer.loadConfig(CONFIG_FILE);
 
   let n = 1;
   false && setInterval(() => {

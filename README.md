@@ -75,4 +75,29 @@ The following modules are currently available:
 
 ## API
 
-Domoja provides a REST/JSON api, which is available throug Swagger at [/api-docs(http://localhost/api-docs)].
+Domoja provides a REST/JSON api, which is available through Swagger at [/api-docs(http://localhost/api-docs)].
+
+[//]: # (apiList START)
+- GET /devices: Retrieves the list of devices
+- GET /devices/{id}: Retrieves a device
+- POST /devices/{id}: Sends a command to a device
+- GET /pages: Retrieves the list of pages
+- GET /app: Retrieves the app data
+- POST /app/demo-mode: Sets the app demo mode
+
+[//]: # (apiList END)
+
+## User Interface
+
+Domoja comes with a generic user interface that can be configured through the configuration file. However, custom pages or components can be added easily
+
+### Add a new page
+
+```
+# generate the page with Ionic
+$ ionic generate page dmj-<pagename>
+```
+
+The file `<pagename>.module.ts` can be safely deleted.
+
+Then, add the page in `src/pages/providers/page-components/page-components.ts`. You can then customize and use the page.

@@ -458,8 +458,8 @@ function objectToInitObject(document: ConfigLoader, object: plainObject): InitOb
     return initObject;
 }
 
-let STRING = Parser.token(/^([^ "'#},\n]+)|("[^"\n]*")|('[^'\n]*')/, 'string');
-let QUOTED_STRING = Parser.token(/^(("[^"\n]*")|('[^'\n]*'))/, 'quoted string');
+let STRING = Parser.token(/^([^ "'#},\n]+)|("[^"]*")|('[^']*')/, 'string');
+let QUOTED_STRING = Parser.token(/^(("[^"]*")|('[^']*'))/, 'quoted string');
 let INTERPRETED_STRING = Parser.token(/^[^ "'#},\n]+/, 'string');
 let ID = Parser.token(/^[^\n:{} ]+/, 'string');
 let COMMENT = Parser.token(/^ *(#[^\n]*|)/);
@@ -1106,7 +1106,15 @@ function pageItem(c: Parser.Parse): pageItem {
             c.skip(DASH);
             let key = c.one(ID);
             c.skip(Parser.token(/^ *: */, '":"'));
-            let val = c.one(stringValue)
+            let val = c.oneOf(
+                (c: Parser.Parse) => {
+                    c.indent();
+                    let ar = c.one(argsArray);
+                    c.dedent();
+                    return ar;
+                },
+                stringValue,
+            );
             p.args[key] = val;
         }, (c: Parser.Parse) => c.newline())
         c.dedent();
@@ -1116,7 +1124,35 @@ function pageItem(c: Parser.Parse): pageItem {
     return p;
 }
 
+function argsArray(c: Parser.Parse): Array<Object> {
+    let res: Array<Object> = [];
 
+    c.many((c: Parser.Parse) => {
+        c.skip(Parser.token(/^ *- */, '"-"'));
+        c.skip(ID); // not used
+        c.skip(Parser.token(/^ *: */, '":"'));
+        c.indent();
+        let o = c.one(plainObject);
+        res.push(o);
+        c.dedent();
+    }, (c: Parser.Parse) => c.newline());
+
+    return res;
+}
+
+function plainObject(c: Parser.Parse): Object {
+    let o: { [key: string]: any } = {};
+
+    c.many((c: Parser.Parse) => {
+        let key = c.one(ID);
+        c.skip(Parser.token(/^ *: */, '":"'));
+        let val = c.one(value);
+        o[key] = val;
+        eatComments(c);
+    }, (c: Parser.Parse) => c.newline());
+
+    return o;
+}
 
 
 

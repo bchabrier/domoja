@@ -56,13 +56,15 @@
   },
   "scripts": {
     "start": ": run domoja; ts-node domoja.ts",
+    "start:config": ": run domoja; ts-node domoja.ts ./config/config.yml",
     "test": ": run test coverage; trap 'tput cnorm' INT; nyc --extension .ts npm run test:only",
     "test:only": ": run test suite once; trap 'tput cnorm' INT; ts-mocha test/**/*.ts $WATCHPARAMS; tput cnorm",
     "test:watch": ": watch running test suite; trap 'tput cnorm' INT; WATCHPARAMS='-w --watch-extensions ts,yml' npm run test:only",
-    "watch": ": watch running domoja; handler() { kill $PID; exit; } ; trap handler INT; while true; do npm run start & PID=$!; inotifywait -q -e modify -e move -e create -e delete -r . @node_modules --exclude 'test|\\.git|.*\\.yml'; pkill -P $(pgrep -P $PID); kill $PID; done",
+    "watch": ": watch running domoja in demo mode; handler() { kill $PID; exit; } ; trap handler INT; while true; do npm run start & PID=$!; inotifywait -q -e modify -e move -e create -e delete -r . @node_modules --exclude 'test|\\.git|.*\\.yml'; PPID=$(pgrep -P $PID); [ ! -z $PPID ] && pkill -P $PPID; kill $PID; done",
+    "watch:config": ": watch running domoja; handler() { kill $PID; exit; } ; trap handler INT; while true; do npm run start:config & PID=$!; inotifywait -q -e modify -e move -e create -e delete -r . @node_modules --exclude 'test|\\.git|.*\\.yml'; PPID=$(pgrep -P $PID); [ -z $PPID ] || pkill -P $PPID; kill $PID; done",
     "report": ": generate coverage report; nyc report",
     "coverage": ": publish coverage report to coveralls; nyc report --reporter=text-lcov | coveralls",
     "swagger:force": ": run swagger generation; swaggerGen -c ./swaggerConfig.json",
-    "swagger": ": run swagger generation if needed; for f in api/*; do [ $f -nt dist/swagger.json ] && ( npm run swagger:force; break ); done; exit 0"
-  }
+    "swagger": ": run swagger generation if needed; for f in api/*.ts; do [ ! -f api/swagger.json ] || [ $f -nt api/swagger.json ] && ( npm run swagger:force; break ); done; exit 0"
+  } 
 }

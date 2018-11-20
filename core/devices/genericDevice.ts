@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import { Source, ID, message, Event } from '../..'
 import { camera } from './camera'
 import { InitObject, Parameters, DomoModule } from '../..';
-import { ConfigLoader, getSource } from '../..';
+import { ConfigLoader, getSource, getCurrentConfig } from '../..';
 import * as events from 'events';
 import * as persistence from '../persistence/persistence';
 
@@ -31,7 +31,7 @@ export class CustomDeviceType {
     toString(): string { return this.name }
 }
 
-export type DeviceType = 'device' | 'sensor' | 'variable' | 'camera' | 'relay' | CustomDeviceType;
+export type DeviceType = 'device' | 'sensor' | 'variable' | 'group' | 'camera' | 'relay' | CustomDeviceType;
 
 export type WidgetType = 'text' | 'toggle';
 
@@ -78,7 +78,7 @@ function mappingFunction(mapping: string): TransformFunction {
     }
     while (input);
 
-    return transformFunction((value: string) => { 
+    return transformFunction((value: string) => {
         return mappings.get(value) || mappings.get('*') || value;
     });
 }
@@ -95,6 +95,7 @@ export abstract class GenericDevice implements DomoModule {
     state: string;
     persistence: persistence.persistence;
     lastUpdateDate: Date;
+    tags: string;
 
     constructor(source: Source, type: DeviceType, instancePath: string, id: ID, attribute: string, name: string, initObject: InitObject, options?: DeviceOptions) {
         this.source = source;
@@ -178,9 +179,7 @@ export abstract class GenericDevice implements DomoModule {
         if (newState instanceof Date) return this.setState(newState.toString(), callback);
 
         logger.debug('setState of device "%s" to "%s"', this.path, newState);
-        if (newState != this.state) {
-            this.source.setAttribute(this.id, this.attribute, newState, callback);
-        } else callback(null);
+        this.source.setAttribute(this.id, this.attribute, newState, callback);
     }
 
     getState() {
@@ -286,6 +285,10 @@ export abstract class GenericDevice implements DomoModule {
     removeListener(event: Event, callback: (msg: message) => void): this {
         this.source.removeListener(event, this.path, this.eventListener(callback))
         return this;
+    }
+
+    matchTag(tag: string): boolean {
+        return (' ' + this.tags + ' ').indexOf(' ' + tag + ' ') >= 0;
     }
 }
 
