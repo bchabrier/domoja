@@ -3,15 +3,46 @@
 readme=`dirname $0`/../README.md
 tmpreadme=/tmp/readme.$$
 
-awk '{ print } /\[\/\/\]: # \(modulesList START\)/ { exit }' $readme > $tmpreadme
+cp $readme $tmpreadme.FULL
 
+START ()
+{
+    _balise=$1
+    >$tmpreadme
+    awk '{ print } /\[\/\/\]: # \('$_balise' START\)/ { exit }' $tmpreadme.FULL > $tmpreadme.$_balise.START
+    echo -----------------------------------------------------------
+    echo Replacing balise \'$_balise\' with:
+}
+
+END ()
+{
+    echo >> $tmpreadme
+    awk '/\[\/\/\]: # \('$_balise' END\)/ { p = 1 } p == 1 { print } ' $tmpreadme.FULL > $tmpreadme.$_balise.END
+    cat $tmpreadme.$_balise.START $tmpreadme $tmpreadme.$_balise.END > $tmpreadme.FULL
+    cat $tmpreadme
+}
+
+# replacement sections
+
+START modulesList
 npm search --parseable domoja | sort | awk -F'\t' '
 $1 ~ /^domoja-/ { printf "- [%s](https://www.npmjs.com/package/%s): %s\n", $1, $1, $2 }
-' | tee -a $tmpreadme
+' > $tmpreadme
+END
 
-echo >> $tmpreadme
-awk '/\[\/\/\]: # \(modulesList END\)/ { p = 1 } p == 1 { print } ' $readme >> $tmpreadme
+START apiList
+awk -F\" '
+/	"paths": {/ { inPaths=1 }
+/^	},/ { inPaths=0 }
+
+inPaths==1 && /^		"\// { path=$2 }
+inPaths==1 && /^			"/ { operation=$2 }
+inPaths==1 && /^				"description": / { description=$4;
+    print "- " toupper(operation) " " path ": " description
+ }
+
+' `dirname $readme`/api/swagger.json > $tmpreadme
+END
 
 mv $readme /tmp/README.md.$$
-mv $tmpreadme $readme
-
+mv $tmpreadme.FULL $readme
