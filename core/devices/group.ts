@@ -31,15 +31,18 @@ export class group extends GenericDevice {
           this.function = (newValues: Array<string>, callback: (error: Error, value: string) => void) => callback(null, newValues.length.toString());
           break;
         default:
-          logger.warning(`Function '${func}' not support in group '${this.path}'.`);
+          logger.warning(`Function '${func}' not supported in group '${this.path}'.`);
           this.function = (newValues: Array<string>, callback: (error: Error, value: string) => void) => callback(null, undefined);
           break;
       }
     } else {
-      this.function = func as (newValues: Array<string>, callback: (error: Error, value: string) => void) => void;
+      this.function = (newValues: Array<string>, callback: (error: Error, value: string) => void) => func(newValues, (error: Error, value: string) => callback(error, value.toString()));
     }
 
-    configLoader.on('startup', event => this.initialize());
+    configLoader.on('startup', event => {
+      this.initialize();
+      this.recomputeState();
+    });
   };
 
   createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): GenericDevice {
