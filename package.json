@@ -56,7 +56,7 @@
   },
   "scripts": {
     "start": ": run domoja; ts-node domoja.ts",
-    "start:config": ": run domoja; ts-node domoja.ts ./config/config.yml",
+    "start:config": ": run domoja; ts-node domoja.ts ./config",
     "test": ": run test coverage; trap 'tput cnorm' INT; nyc --extension .ts npm run test:only",
     "test:only": ": run test suite once; trap 'tput cnorm' INT; ts-mocha test/**/*.ts $WATCHPARAMS; tput cnorm",
     "test:watch": ": watch running test suite; trap 'tput cnorm' INT; WATCHPARAMS='-w --watch-extensions ts,yml' npm run test:only",

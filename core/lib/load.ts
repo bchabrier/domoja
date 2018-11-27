@@ -98,6 +98,8 @@ type Sandbox = {
     }
 };
 
+type Section = 'ALL' | 'IMPORTS' | 'SOURCES' | 'DEVICES' | 'SCENARIOS' | 'PAGES' | 'USERS';
+
 export class ConfigLoader extends events.EventEmitter {
     released: boolean = false;
     secrets: Map<string> = {};
@@ -114,6 +116,7 @@ export class ConfigLoader extends events.EventEmitter {
 
     private sandbox: Sandbox = {
         console: console,
+        require: require,
         assert: assert,
         setTimeout: setTimeout,
         clearTimeout: clearTimeout,
@@ -182,21 +185,89 @@ export class ConfigLoader extends events.EventEmitter {
         this.userMgr.clearUsers();
     }
 
-    parse(file: string) {
+    parse(fileOrDir: string) {
         this.rootModule = new Module("sandbox module");
         this.comments = []
+        let dir = fileOrDir;
+        prevContext = {};
 
-        let secretsFile = path.dirname(file) + '/secrets.yml';
+        if (!fs.lstatSync(fileOrDir).isDirectory()) {
+            dir = path.dirname(fileOrDir);
+        }
+
+        let secretsFile = dir + '/secrets.yml';
 
         if (fs.existsSync(secretsFile)) {
             logger.info("Loading secrets file '%s'...", secretsFile)
-            this.parseSingleFile(secretsFile, secretsSection)
+            this.parseSingleFile(secretsFile, secretsSection, 'ALL')
         }
-        logger.info("Loading config file '%s'...", file)
-        this.parseSingleFile(file, configDoc);
+
+        if (dir === fileOrDir) {
+            let files = fs.readdirSync(dir).filter(f => f.match(/^.*\.yml$/) && !f.match(/^(.*\/)*demo\.yml$/));
+
+            let sections: Section[] = [
+                'IMPORTS',
+                'SOURCES',
+                'DEVICES',
+                'SCENARIOS',
+                'PAGES',
+                'USERS',
+            ];
+            sections.forEach(section => {
+                files.forEach(file => {
+                    logger.info("Loading %s from config file '%s'...", section, file)
+                    this.parseSingleFile(dir + '/' + file, configDoc, section);
+                });
+            });
+        } else {
+            logger.info("Loading config file '%s'...", fileOrDir)
+            this.parseSingleFile(fileOrDir, configDoc, 'ALL');
+        }
+
+        if (this.devices) {
+            // instanciate all devices
+            logger.debug("Starting instanciating all devices...")
+            let N = Object.keys(this.devices).length;
+            let n = 0;
+            Object.keys(this.devices).forEach(e => {
+                n++;
+                process.stdout.write(n + "/" + N + "\r");
+                let device = this.devices[e];
+                //console.log(device.object)
+
+
+                // create the initObject
+                let initObject: InitObject = objectToInitObject(this, device.object);
+
+                let instance = this.createInstance(e,
+                    this.imports['devices.' + device.object.type].class,
+                    initObject);
+                if (instance instanceof GenericDevice)
+                    device.device = instance;
+                else {
+                    logger.error('Instanciating %s did not create a GenericDevice:', e, instance);
+                }
+            })
+            logger.debug("Done instanciating all %d devices.", N)
+        }
+
+        if (this.scenarios) {
+            let N = Object.keys(this.scenarios).length;
+            logger.debug("Starting activating all %s scenarios...", N)
+            let n = 0;
+            Object.keys(this.scenarios).forEach(e => {
+                n++;
+                process.stdout.write(n + "/" + N + "\r");
+                let scenario = this.scenarios[e];
+                //console.log(scenario)
+                scenario.activate();
+            })
+            logger.debug("Done activating all %d scenarios.", N)
+        }
+
     }
 
-    private parseSingleFile(file: string, parser: (c: Parser.Parse) => void) {
+    private parseSingleFile(file: string, parser: (c: Parser.Parse, section: Section) => void, section: Section) {
         let str = fs.readFileSync(file, "utf8");
 
         str = str.replace(/\r\n/g, '\n')
@@ -207,7 +278,7 @@ export class ConfigLoader extends events.EventEmitter {
                 c.setContext({
                     doc: document
                 });
-                parser(c)
+                parser(c, section);
             });
         } catch (err) {
             this.release();
@@ -494,26 +565,65 @@ let ARGS = Parser.token(/^args: */, '"args:"');
 let SECRETS_EXT = Parser.token(/^!secrets +/, '"!secrets"');
 let FUNCTION_EXT = Parser.token(/^!!js\/function +'[^']*' */, '"!secrets"');
 
+let prevContext = {};
 
-function configDoc(c: Parser.Parse): void {
+
+function configDoc(c: Parser.Parse, section: Section): void {
+
+    Object.assign(c.context(), prevContext);
 
     eatCommentsBlock(c);
-    let imports = c.optional(importsSection);
+    let imports;
+    if (section == 'ALL' || section == 'IMPORTS')
+        imports = c.optional(importsSection);
+    else {
+        c.optional(c => c.one(/^imports: *\n(([ #].*\n)|\n)*/));
+    }
     logger.debug('imports done')
+
     eatCommentsBlock(c);
-    let sources = c.optional(sourcesSection);
+    let sources;
+    if (section == 'ALL' || section == 'SOURCES')
+        sources = c.optional(sourcesSection);
+    else {
+        c.optional(c => c.one(/^sources: *\n(([ #].*\n)|\n)*/));
+    }
     logger.debug('sources done')
+
     eatCommentsBlock(c);
-    let devices = c.optional(devicesSection);
+    let devices;
+    if (section == 'ALL' || section == 'SOURCES')
+        devices = c.optional(devicesSection);
+    else {
+        c.optional(c => c.one(/^devices: *\n(([ #].*\n)|\n)*/));
+    }
     logger.debug('devices done')
+
     eatCommentsBlock(c);
-    let scenarios = c.optional(scenariosSection);
+    let scenarios: { comment: string, scenarios: Map<scenarioItem> }
+    if (section == 'ALL' || section == 'SCENARIOS')
+        scenarios = c.optional(scenariosSection);
+    else {
+        c.optional(c => c.one(/^scenarios: *\n(([ #].*\n)|\n)*/));
+    }
     logger.debug('scenarios done')
+
     eatCommentsBlock(c);
-    let pages = c.optional(pagesSection);
+    let pages;
+    if (section == 'ALL' || section == 'PAGES')
+        pages = c.optional(pagesSection);
+    else {
+        c.optional(c => c.one(/^pages: *\n(([ #].*\n)|\n)*/));
+    }
     logger.debug('pages done')
+
     eatCommentsBlock(c);
-    let users = c.optional(usersSection);
+    let users;
+    if (section == 'ALL' || section == 'USERS')
+        users = c.optional(usersSection);
+    else {
+        c.optional(c => c.one(/^users: *\n(([ #].*\n)|\n)*/));
+    }
     logger.debug('users done')
 
 
@@ -533,60 +643,30 @@ function configDoc(c: Parser.Parse): void {
     }
     if (imports) {
         //document.importsComment = imports.comment;
-        document.imports = imports.imports;
+        document.imports = { ...document.imports, ...imports.imports };
     }
     if (sources) {
         //document.sourcesComment = sources.comment;
-        document.sources = sources.sources;
+        document.sources = { ...document.sources, ...sources.sources };
     }
     if (devices) {
         //document.devicesComment = devices.comment;
-        document.devices = devices.devices;
-
-        // instanciate all devices
-        logger.debug("Starting instanciating all devices...")
-        let N = Object.keys(document.devices).length;
-        let n = 0;
-        Object.keys(document.devices).forEach(e => {
-            n++;
-            process.stdout.write(n + "/" + N + "\r");
-            let device = document.devices[e];
-            //console.log(device.object)
-
-
-            // create the initObject
-            let initObject: InitObject = objectToInitObject(document, device.object);
-
-            let instance = document.createInstance(e,
-                document.imports['devices.' + device.object.type].class,
-                initObject);
-            if (instance instanceof GenericDevice)
-                device.device = instance;
-            else {
-                logger.error('Instanciating %s did not create a GenericDevice:', e, instance);
-            }
-        })
-        logger.debug("Done instanciating all %d devices.", N)
-
+        document.devices = { ...document.devices, ...devices.devices };
     }
+
     if (scenarios) {
-        let N = Object.keys(scenarios.scenarios).length;
-        logger.debug("Starting activating all %s scenarios...", N)
-        let n = 0;
         Object.keys(scenarios.scenarios).forEach(e => {
-            n++;
-            process.stdout.write(n + "/" + N + "\r");
             let scenario = scenarios.scenarios[e].scenario;
-            document.scenarios[e] = scenario
+            document.scenarios[e] = scenario;
             //console.log(scenario)
-            scenario.activate();
-        })
-        logger.debug("Done activating all %d scenarios.", N)
+        });
     }
 
     if (pages) {
-        document.pages = pages.pages;
+        document.pages = { ...document.pages, ...pages.pages };
     }
+
+    prevContext = c.context();
 }
 
 function secretsSection(c: Parser.Parse): void {
@@ -619,7 +699,7 @@ function importsSection(c: Parser.Parse): {
         imports: {},
     }
     logger.debug('passed comment block')
-    c.context().imports = res.imports;
+    c.context().imports = c.context().imports || res.imports;
     c.skip(IMPORTS);
     logger.debug('passed "imports:"')
     c.indent();
@@ -636,6 +716,7 @@ function importsSection(c: Parser.Parse): {
     c.newline();
 
     logger.debug('=>imports in context', c.context().imports)
+    res.imports = c.context().imports;
 
     logger.debug('<=imports')
     return res;
@@ -710,7 +791,7 @@ function sourcesSection(c: Parser.Parse): { comment: string, sources: Map<source
 
 function sourcesArray(c: Parser.Parse): Map<sourceItem> {
     let res: Map<sourceItem> = {};
-    c.context().sources = res;
+    c.context().sources = { ...c.context().sources, ...res };
     c.many((c: Parser.Parse) => {
         c.skip(DASH);
         let i = c.one(sourceItem);
@@ -807,7 +888,6 @@ function buildTreeArray<ThingItem extends { name: string }>(
 }
 
 function devicesSection(c: Parser.Parse): { comment: string, devices: Map<deviceItem> } {
-
     let res: { comment: string, devices: Map<deviceItem> } = {
         comment: eatCommentsBlock(c),
         devices: {}
@@ -818,7 +898,7 @@ function devicesSection(c: Parser.Parse): { comment: string, devices: Map<device
     Object.keys(imports).forEach(key => imports[key].device && c.context().allowedTypeValues.push(imports[key].device));
 
     let devices: Map<deviceItem> = {};
-    c.context().devices = devices;
+    c.context().devices = c.context().devices || devices;
 
     c.skip(DEVICES);
     c.optional((c: Parser.Parse) => {
@@ -869,7 +949,7 @@ function scenariosSection(c: Parser.Parse): { comment: string, scenarios: Map<sc
 
     c.skip(SCENARIOS);
     c.indent()
-    c.context().scenarios = {}
+    c.context().scenarios = c.context().scenarios || {}
     res.scenarios = c.one(scenarioTreeArray);
     c.dedent();
 
@@ -1067,7 +1147,7 @@ function pagesSection(c: Parser.Parse): { comment: string, pages: Map<pageItem> 
 
 function pagesArray(c: Parser.Parse): Map<pageItem> {
     let res: Map<pageItem> = {};
-    c.context().pages = res;
+    c.context().pages = c.context().pages || res;
     c.many((c: Parser.Parse) => {
         let i = c.one(pageItem);
         res[i.name] = i;
