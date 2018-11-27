@@ -81,6 +81,7 @@ type user = {
 type Sandbox = {
     console: typeof console,
     assert: typeof assert,
+    require: typeof require,
     setTimeout: typeof setTimeout,
     clearTimeout: typeof clearTimeout,
     setInterval: typeof setInterval,
