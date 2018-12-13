@@ -1,14 +1,5 @@
 basePath: /
-definitions:
-    App:
-        description: ""
-        properties:
-            demoMode:
-                type: boolean
-                description: ""
-        type: object
-        required:
-            - demoMode
+definitions: {}
 info:
     description: 'A Typescript framework for home automation'
     title: domoja
@@ -81,13 +72,11 @@ paths:
         get:
             operationId: AppServiceGetApp
             produces:
-                - application/json
+                - text/html
             responses:
-                '200':
-                    description: Ok
-                    schema:
-                        $ref: '#/definitions/App'
-            description: 'Retrieves the app data'
+                '204':
+                    description: 'No content'
+            description: 'Retrieve the app data'
             summary: null
             parameters: []
     /app/demo-mode:
@@ -98,7 +87,7 @@ paths:
             responses:
                 '204':
                     description: 'No content'
-            description: 'Sets the app demo mode'
+            description: 'Set the app demo mode'
             summary: null
             consumes:
                 - application/x-www-form-urlencoded
