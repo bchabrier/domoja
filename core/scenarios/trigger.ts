@@ -97,7 +97,7 @@ export class TimeTrigger extends Trigger {
         if (this.when == 'startup') {
             this.doc.removeListener('startup', this.handler);
         } else if (this.doc.devices[this.when]) {
-            this.doc.devices[this.when].device.removeListener('change', this.atHandler);
+            this.doc.devices[this.when].device && this.doc.devices[this.when].device.removeListener('change', this.atHandler);
             this.cronJob && this.cronJob.stop();
             this.cronJob = null;
         } else if (this.when.match(cronRE)) {
