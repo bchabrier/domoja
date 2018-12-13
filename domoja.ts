@@ -55,7 +55,7 @@ class DomojaServer {
 
     if (!prod) {
       this.app.use(cors({
-        origin: ['http://raspberrypi:8100', 'http://192.168.0.10:8100']
+        origin: ['http://raspberrypi:8100', 'http://192.168.0.10:8100', 'http://raspberrypi:4001', 'http://192.168.0.10:4001']
       }));
     }
 
@@ -70,7 +70,7 @@ class DomojaServer {
     //	app.use(app.router);
     //	app.use(express.bodyParser());
     //	app.use(express.methodOverride());
-    //app.use(express.static(path.join(__dirname, 'public')));
+    this.app.use(express.static(path.join(__dirname, 'www')));
 
     //if (app.get('env') == 'development') {
     //  		app.use(express..errorHandler());
