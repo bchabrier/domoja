@@ -1,4 +1,4 @@
-import { GenericDevice, ConfigLoader, InitObject, Parameters, WidgetType } from 'domoja-core';
+import { GenericDevice, ConfigLoader, InitObject, Parameters } from 'domoja-core';
 import { IPX800 } from '../sources/ipx800'
 import { OptionsWithUrl, RequestResponse, RequestCallback } from 'request';
 
@@ -10,8 +10,8 @@ const logger = require("tracer").colorConsole({
 
 
 export class relay extends GenericDevice {
-  constructor(ipx800: IPX800, id: string, deviceId: number, name: string, widget: WidgetType) {
-    super(ipx800, 'relay', id, deviceId.toString(), "state", name, widget);
+  constructor(ipx800: IPX800, id: string, deviceId: number, name: string, initObject: InitObject) {
+    super(ipx800, 'relay', id, deviceId.toString(), "state", name, initObject);
     this.config(0, 0);
   }
 
@@ -56,6 +56,6 @@ export class relay extends GenericDevice {
   }
 
   createInstance(configLoader: ConfigLoader, id: string, initObject: InitObject): GenericDevice {
-    return new relay(initObject.source, id, parseInt(initObject.id), initObject.name, initObject.widget);
+    return new relay(initObject.source, id, parseInt(initObject.id), initObject.name, initObject);
   }
 }
