@@ -33,7 +33,8 @@ export class Scenario {
     deactivate(callback?: (err: Error, s: Scenario) => void): void  {
         this.triggers.forEach(trigger => {
             trigger.deactivate();
-        })
+        });
+        this.doc["sandbox"].released = true;
     }
 
     addTrigger(trigger: Trigger) {
