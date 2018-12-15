@@ -493,7 +493,11 @@ function objectToInitObject(document: ConfigLoader, object: plainObject): InitOb
         switch (k) {
             case 'source':
                 // the source points to the real source
+                if (document.sources[object.source]) {
                 initObject[k] = document.sources[object.source].source;
+                } else {
+                    logger.error(`Unknown source "${object.source}". Is it defined in the "sources:" section?`);
+                }
                 break;
             default:
                 let value = object[k];
@@ -565,7 +569,7 @@ let PAGE = Parser.token(/^page: */, '"page:"');
 let ARGS = Parser.token(/^args: */, '"args:"');
 
 let SECRETS_EXT = Parser.token(/^!secrets +/, '"!secrets"');
-let FUNCTION_EXT = Parser.token(/^!!js\/function +'[^']*' */, '"!secrets"');
+let FUNCTION_EXT = Parser.token(/^!!js\/function +'([^']|\n)*' */, '"!!js/function \'function (...) ...\'"');
 
 let prevContext = {};
 
@@ -881,9 +885,18 @@ function buildTreeArray<ThingItem extends { name: string }>(
         )
 
         // eat comments
-        while (c.isNext(/^\n *#.*/)) {
-            c.skip(/^\n *#.*/);
+        let comments = '';
+        let iscomment = true;
+        while (iscomment) {
+            if (c.isNext(/^\n *\n/)) {
+                comments += c.one(/^\n */);
+            } else if (c.isNext(/^\n *#.*/)) {
+                comments += c.one(/^\n *#.*/);
+            } else {
+                iscomment = false;
+            }
         }
+        logger.debug(`comment: '${comments}'`)
 
     }, (c: Parser.Parse) => c.newline());
 
@@ -1809,20 +1822,15 @@ function eatComments(c: Parser.Parse): void {
 function eatCommentsBlock(c: Parser.Parse): string {
     let comments = true;
     let block = "";
+
     do {
-        if (c.isNext(/^\n/)) {
+        if (c.isNext(/^ *\n/)) {
             logger.debug('empty line')
-            block += '\n';
-            c.newline();
-        } else if (c.isNext(BLANKLINE)) {
-            logger.debug('blank line')
-            block += c.one(BLANKLINE) + '\n';
-            c.newline();
-        } else if (c.isNext(COMMENT)) {
+            block += c.one(/^ *\n/);
+        } else if (c.isNext(/^ *#.*\n/)) {
             logger.debug('comment')
-            block += c.one(COMMENT) + '\n';
+            block += c.one(/^ *#.*\n/);
             //logger.debug('=>', block)
-            c.newline();
         } else {
             logger.debug('rien')
             comments = false;
