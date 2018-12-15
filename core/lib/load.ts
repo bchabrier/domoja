@@ -79,7 +79,6 @@ type user = {
 */
 
 type Sandbox = {
-    isReleased(): boolean, // indicates if the sandbox is in released state
     console: typeof console,
     assert: typeof assert,
     require: typeof require,
@@ -116,7 +115,6 @@ export class ConfigLoader extends events.EventEmitter {
     rootModule: Module;
 
     private sandbox: Sandbox = {
-        isReleased: () => {return this.released},
         console: console,
         require: require,
         assert: assert,
