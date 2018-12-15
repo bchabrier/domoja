@@ -1,0 +1,172 @@
+#!/bin/sh
+
+SOURCES_CONFIG=`dirname $0`/../config
+DEMO_CONFIG=`dirname $0`/../config/demo.yml
+SECTIONS="imports sources devices scenarios pages users"
+
+SOURCES_CONFIG="$(for f in $SOURCES_CONFIG/*.yml; do echo $f; done | grep -v /demo.yml)"
+
+cp $DEMO_CONFIG /tmp/`basename $DEMO_CONFIG`.`date +%Y%m%d-%H%M%S`
+
+> $DEMO_CONFIG
+
+for section in $SECTIONS
+do
+    echo "$section:" >> $DEMO_CONFIG
+
+    case "$section" in
+    "imports")
+         cat >> $DEMO_CONFIG <<EOF
+  - module: ./core/sources/demo
+    source: demo
+EOF
+        ;;
+    "scenarios")
+         cat >> $DEMO_CONFIG <<EOF
+  - demo:
+    - presence_simulator:
+        triggers:
+          - at: startup
+        actions:
+          - !!js/function 'function f(callback) {
+            //return callback(null);
+            var self = this;
+            function pgm(device) {
+              var onAt = 20000 + 60000 * Math.random(); 
+              var offAt = onAt + 2000 + 30000 * Math.random(); 
+              self.isReleased() || setTimeout(() => { 
+                self.isReleased() || self.setDeviceState(device, "0");}, onAt);
+              self.isReleased() || setTimeout(() => { 
+                self.isReleased() || self.setDeviceState(device, "1"); pgm(device);}, offAt);
+            }
+            pgm("hall");
+            pgm("escalier");
+            pgm("cuisine");
+            pgm("bureau");
+            callback(null);
+           }'
+    - pool-temp_simulator:
+        triggers:
+          - cron: */30 * * * * *
+        actions:
+          - !!js/function 'function pool_temp(callback) {
+              let MIN = -2; // min temperature
+              let MAX = 32; // max temperature
+
+              let prev_temp = parseFloat(this.getDeviceState("piscine.temperature") || (Date.now() % ((MAX - MIN)*10))/10 + MIN, 10);
+
+              let temp = ((prev_temp * 10) % 2 == 0)?0.2:-0.2;
+              temp = temp + prev_temp;
+
+              if (temp > MAX) temp = MAX - 0.1; 
+              if (temp < MIN) temp = MIN; 
+
+              temp = temp.toFixed(1);
+
+              this.setDeviceState("piscine.temperature", temp, callback);
+            }'
+EOF
+        ;;
+    esac
+
+    for file in $SOURCES_CONFIG
+    do
+        awk '
+        BEGIN   { 
+            where="before imports"
+            hasDemoModule=0
+            acceptedSources="astronomy demo tempo"
+            acceptedSources=" "acceptedSources" "
+        }
+
+        where == "in '$section'" { doprint=1 }
+        where != "in '$section'" { doprint=0 }
+
+        /^imports:/ { where="in imports"; next }
+        /^sources:/ { where="in sources"; next }
+        /^devices:/ { where="in devices"; next }
+        /^scenarios:/ { where="in scenarios"; next }
+        /^pages:/ { where="in pages"; next }
+        /^users:/ { where="in users"; next }
+
+        where=="in imports" && /^ *- *module:/ { module=$NF; if (!hasDemoModule && module=="./core/sources/demo") hasDemoModule=1; next }
+        where=="in imports" && /^ *source:/ { 
+            source=$NF
+            accepted=0
+            if (index(acceptedSources, " "source" ")>0) accepted=1
+            if (substr(module, 0, 1)==".") accepted=1
+                    
+            if (accepted==1) {
+                if (doprint) print "  - module:", module
+                if (doprint) print 
+            }
+            next
+        }
+        where=="in imports" && $0 !~ /^ *$/ && $1 !~ /^#/ { 
+            if (doprint) print "  - module:", module
+            if (doprint) print
+            next
+        }
+        where=="in imports" && $0 !~ /^ *$/ && hasDemoModule == 0 { 
+            hasDemoModule=1
+            if (doprint) print "  - module: ./core/sources/demo"
+            if (doprint) print "    source: demo"
+            if (doprint) print
+            next
+        }
+
+        where=="in sources" && /type:/ {
+            nf=split($0, fields, "[ \t:,}]+")
+            for (f = 1; f<=nf; f++) {
+                if (fields[f]=="type" && f < nf) type=fields[f+1]
+            }
+            accepted=0
+            if (index(acceptedSources, " "type" ")>0) accepted=1
+
+            if (!accepted) {
+                gsub(/type *: *[^ \t:,}]+,?/, "type: demo", $0);
+            }
+            if (doprint) print
+            next
+        }
+        where=="in sources" && $0 !~ /^ *$/ && $0 !~ /[{}]/ {
+            if (accepted) if (doprint) print
+            next
+        }
+        where=="in sources" && $0 ~ /[{}]/ {
+            if (doprint) print
+            next
+        }
+
+        where=="in devices" && /type: *httpCamera/ {
+            split($2, t, ":")
+            camera_name=t[1]
+            gsub(/video-url: *[^ \t,]+/, "video-url: /assets/imgs/demo_"camera_name".jpg", $0)
+            gsub(/snapshot-url: *[^ \t,]+/, "snapshot-url: /assets/imgs/demo_"camera_name".jpg", $0)
+
+            if (doprint) print
+            next
+        }
+
+        where=="in devices" && /type:/ {
+            nf=split($0, fields, "[ \t:,}]+")
+            for (f = 1; f<=nf; f++) {
+                if (fields[f]=="type" && f < nf) type=fields[f+1]
+            }
+            accepted=0
+            if (index(" device sensor variable group ", " "type" ")>0) accepted=1
+
+            if (!accepted) {
+                gsub(/type *: *[^ \t:,}]+/, "type: variable", $0);
+            }
+            if (doprint) print
+            next
+        }
+
+        { if (doprint) print }
+
+        ' $file >> $DEMO_CONFIG
+    done
+    echo >> $DEMO_CONFIG
+done
+
