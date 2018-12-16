@@ -321,6 +321,10 @@ class DomojaServer {
       nbWebsocketsHTTP: this.getNbWebsockets('HTTP'),
       nbWebsocketsHTTPS: this.getNbWebsockets('HTTPS'),
       startTime: this.startTime,
+      nbDevices: core.getDevices().length,
+      nbSources: Object.keys(core.getCurrentConfig().sources).length,
+      nbScenarios: Object.keys(core.getCurrentConfig().scenarios).length,
+      nbPages: Object.keys(core.getCurrentConfig().pages).length,
     }
   }
 }
