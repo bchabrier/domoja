@@ -163,6 +163,28 @@ EOF
             next
         }
 
+        where=="in pages" && /- widgets:/ {
+            inwidgets=1
+
+            if (doprint) print
+            next
+        }
+
+        where=="in pages" && inwidgets==1 && /- [^:]+:/ {
+            split($2, t, ":")
+            dbcomp=t[1]
+
+            if (doprint) print
+            next
+        }
+
+        where=="in pages" && inwidgets==1 && /url:/ {
+            gsub(/url: *[^ \t,]+/, "url: /assets/imgs/demo_dashboard_"dbcomp".jpg", $0)
+
+            if (doprint) print
+            next
+        }
+
         { if (doprint) print }
 
         ' $file >> $DEMO_CONFIG

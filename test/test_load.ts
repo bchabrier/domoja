@@ -40,10 +40,10 @@ describe('Module load', function () {
                 });
             } else {
                 */
-                callback();
-                /*
-            }
-            */
+            callback();
+            /*
+        }
+        */
         }, () => {
             //console.log("all zibases got messages")
             if (doc) doc.release();
@@ -156,11 +156,16 @@ describe('Module load', function () {
         });
         */
         it('should load the current configuration', function () {
-        const confFiles = './config/';
+            const confFiles = './config/';
             if (!fs.existsSync(confFiles)) {
                 this.skip();
             }
             doc = grammar.loadFileSync(confFiles);
+            assert.notEqual(doc, null);
+        });
+        it('should load the demo file', function () {
+            const demoFile = './config/demo.yml';
+            doc = grammar.loadFileSync(demoFile);
             assert.notEqual(doc, null);
         });
     });
@@ -340,12 +345,12 @@ describe('Module load', function () {
             //console.log(require('util').inspect(doc, {showHidden: false, depth: null}));
         });
     });
-    describe('#load users section', function() {
-        it('should load users', function(done) {
+    describe('#load users section', function () {
+        it('should load users', function (done) {
             grammar.reloadConfig('./test/load/users/users.yml');
-            grammar.checkUser('login1', 'password1', function(err, user) {
+            grammar.checkUser('login1', 'password1', function (err, user) {
                 assert.equal(user.login, 'login1')
-                grammar.checkUser('login2', 'password2', function(err, user) {
+                grammar.checkUser('login2', 'password2', function (err, user) {
                     assert.equal(user.login, 'login2')
                     done(err);
                 })
