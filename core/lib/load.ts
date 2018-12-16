@@ -596,7 +596,7 @@ function configDoc(c: Parser.Parse, section: Section): void {
 
     eatCommentsBlock(c);
     let devices;
-    if (section == 'ALL' || section == 'SOURCES')
+    if (section == 'ALL' || section == 'DEVICES')
         devices = c.optional(devicesSection);
     else {
         c.optional(c => c.one(/^devices: *\n(([ #].*\n)|\n)*/));
@@ -800,6 +800,7 @@ function sourcesArray(c: Parser.Parse): Map<sourceItem> {
         c.skip(DASH);
         let i = c.one(sourceItem);
         res[i.name] = i;
+        c.context().sources[i.name] = i;;
     }, (c: Parser.Parse) => c.newline());
     return res;
 }

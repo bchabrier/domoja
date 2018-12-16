@@ -155,12 +155,12 @@ describe('Module load', function () {
             assert.notEqual(doc, null);
         });
         */
-        it('should load the current configuration file', function () {
-        const confFile = './config/config.yml';
-            if (!fs.existsSync(confFile)) {
+        it('should load the current configuration', function () {
+        const confFiles = './config/';
+            if (!fs.existsSync(confFiles)) {
                 this.skip();
             }
-            doc = grammar.loadFileSync(confFile);
+            doc = grammar.loadFileSync(confFiles);
             assert.notEqual(doc, null);
         });
     });
@@ -304,22 +304,22 @@ describe('Module load', function () {
 
 
     });
-    describe('#load current configuration file', function () {
+    describe('#load current configuration', function () {
         this.timeout(60000);
 
-        const confFile = './config/config.yml';
+        const confFiles = './config';
         before('check if current configuration file exists', function () {
-            if (!fs.existsSync(confFile)) {
+            if (!fs.existsSync(confFiles)) {
                 this.skip();
             }
         });
         it('should load the current configuration file', function () {
-            doc = grammar.loadFileSync(confFile);
+            doc = grammar.loadFileSync(confFiles);
             assert.notEqual(doc, null);
             //console.log(require('util').inspect(doc, {showHidden: false, depth: null}));
         });
         it('should instantiate the current configuration file', function () {
-            doc = grammar.loadFileSync(confFile);
+            doc = grammar.loadFileSync(confFiles);
             if (!doc) this.skip();
             assert.notEqual(doc.sources, null, 'Instanciation should have created sources');
             for (var s in doc.sources) {
