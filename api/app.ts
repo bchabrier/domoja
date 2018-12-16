@@ -17,7 +17,6 @@ export class AppService {
   @Path('/demo-mode')
   @POST
   setDemoMode(@FormParam('value') value: boolean) {
-    console.log('set demo mode:', value);
     DmjServer.loadConfig(value?'./config/demo.yml':DmjServer.previousFile);
   }
 
