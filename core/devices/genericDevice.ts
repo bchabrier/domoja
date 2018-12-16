@@ -107,8 +107,8 @@ export abstract class GenericDevice implements DomoModule {
         this.attribute = attribute || 'state';
         this.name = name;
         this.type = type;
-        this.widget = initObject.widget;
-        this.tags = initObject.tags;
+        this.widget = initObject && initObject.widget;
+        this.tags = initObject && initObject.tags;
 
         if (options !== undefined) {
             for (var option in options) {
