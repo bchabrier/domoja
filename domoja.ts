@@ -322,9 +322,9 @@ class DomojaServer {
       nbWebsocketsHTTPS: this.getNbWebsockets('HTTPS'),
       startTime: this.startTime,
       nbDevices: core.getDevices().length,
-      nbSources: Object.keys(core.getCurrentConfig().sources).length,
-      nbScenarios: Object.keys(core.getCurrentConfig().scenarios).length,
-      nbPages: Object.keys(core.getCurrentConfig().pages).length,
+      nbSources: core.getCurrentConfig() && Object.keys(core.getCurrentConfig().sources).length,
+      nbScenarios: core.getCurrentConfig() && Object.keys(core.getCurrentConfig().scenarios).length,
+      nbPages: core.getCurrentConfig() && Object.keys(core.getCurrentConfig().pages).length,
     }
   }
 }
@@ -333,14 +333,14 @@ export let DmjServer: DomojaServer;
 
 if (!runWithMocha) {
 
-    logger.info('    ____                        _');
-    logger.info('   / __ \\____  ________  ____  (_)___ _');
-    logger.info('  / / / / __ `/ _    _ `/ __ `/ / __ `/');
-    logger.info(' / /_/ / /_/ / / / / / / /_/ / / /_/ /');
-    logger.info('/_____/\\____/_/ /_/ /_/\\____/ /\\__,_/ ');
-    logger.info('                       /_____/');
+  logger.info('    ____                        _');
+  logger.info('   / __ \\____  ________  ____  (_)___ _');
+  logger.info('  / / / / __ \\/ _    _ \\/ __ \\/ / __ `/');
+  logger.info(' / /_/ / /_/ / / / / / / /_/ / / /_/ /');
+  logger.info('/_____/\\____/_/ /_/ /_/\\____/ /\\__,_/ ');
+  logger.info('                       /_____/');
 
-    
+
   //var app_prod = createApp(4000, true);
   //var app_prod = createApp(3000, true);
   //var app = createApp(3001, false);
