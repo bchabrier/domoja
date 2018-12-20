@@ -1,14 +1,13 @@
 import { DomoModule, InitObject, Parameters } from '../..';
 import { Source, DefaultSource } from '../..';
 import { GenericDevice, DeviceType } from '../..';
-import { Scenario, ConditionFunction, ActionFunction } from '../../core/scenarios/scenario'
+import { Scenario, ActionFunction } from '../../core/scenarios/scenario'
 import * as triggers from '../../core/scenarios/trigger';
 import { Condition } from '../scenarios/condition'
 import { Action } from '../scenarios/action'
 import * as path from "path";
 import * as fs from 'fs';
 import Module = require('module');
-import * as async from 'async';
 import * as userMgr from '../managers/userMgr'
 type User = userMgr.User;
 import * as events from 'events';
@@ -16,6 +15,10 @@ import * as events from 'events';
 const { VM, VMScript } = require('vm2');
 
 import * as Parser from "shitty-peg/dist/Parser";
+
+import { currentSource, removeQuotes, eatCommentsBlock, eatComments, trim, sortedDeviceList } from './load_helpers';
+import { expression } from './load_expressions';
+import { condition, action } from './load_scenarios';
 
 var logger = require('tracer').colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -78,7 +81,7 @@ type user = {
 }
 */
 
-type Sandbox = {
+export type Sandbox = {
     console: typeof console,
     assert: typeof assert,
     require: typeof require,
@@ -492,7 +495,7 @@ function objectToInitObject(document: ConfigLoader, object: plainObject): InitOb
             case 'source':
                 // the source points to the real source
                 if (document.sources[object.source]) {
-                initObject[k] = document.sources[object.source].source;
+                    initObject[k] = document.sources[object.source].source;
                 } else {
                     logger.error(`Unknown source "${object.source}". Is it defined in the "sources:" section?`);
                 }
@@ -535,13 +538,13 @@ function objectToInitObject(document: ConfigLoader, object: plainObject): InitOb
 }
 
 let STRING = Parser.token(/^([^ "'#},\n]+)|("[^"]*")|('[^']*')/, 'string');
-let QUOTED_STRING = Parser.token(/^(("[^"]*")|('[^']*'))/, 'quoted string');
-let INTERPRETED_STRING = Parser.token(/^[^ "'#},\n]+/, 'string');
-let ID = Parser.token(/^[^\n:{} ]+/, 'string');
+//let INTERPRETED_STRING = Parser.token(/^[^ "'#},\n]+/, 'string');
+//let INTERPRETED_STRING = Parser.token(/^[^ ,]+/, 'string');
+export let ID = Parser.token(/^[^\n:{} ]+/, 'string');
 let COMMENT = Parser.token(/^ *(#[^\n]*|)/);
 let BLANKLINE = Parser.token(/^ +/);
 
-let DASH = Parser.token(/^- */, "-");
+export let DASH = Parser.token(/^- */, "-");
 
 let IMPORTS = Parser.token(/^imports: */, '"imports:"');
 let MODULE = Parser.token(/^module: */, '"module:"');
@@ -557,8 +560,6 @@ let SCENARIOS = Parser.token(/^scenarios: */, '"scenarios:"');
 let TRIGGERS = Parser.token(/^triggers: */, '"triggers:"');
 let AT = Parser.token(/^at: */, '"at:"');
 let STATE = Parser.token(/^state: */, '"state:"');
-let CONDITIONS = Parser.token(/^conditions: */, '"conditions:"');
-let ACTIONS = Parser.token(/^actions: */, '"actions:"');
 
 let PAGES = Parser.token(/^pages: */, '"pages:"');
 let MENUITEM = Parser.token(/^menu-item: */, '"menu-item:"');
@@ -567,7 +568,7 @@ let PAGE = Parser.token(/^page: */, '"page:"');
 let ARGS = Parser.token(/^args: */, '"args:"');
 
 let SECRETS_EXT = Parser.token(/^!secrets +/, '"!secrets"');
-let FUNCTION_EXT = Parser.token(/^!!js\/function +'([^']|\n)*' */, '"!!js/function \'function (...) ...\'"');
+export let FUNCTION_EXT = Parser.token(/^!!js\/function +'([^']|\n)*' */, '"!!js/function \'function (...) ...\'"');
 
 let prevContext = {};
 
@@ -924,10 +925,6 @@ function devicesSection(c: Parser.Parse): { comment: string, devices: Map<device
     return res;
 }
 
-function trim(s: string): string {
-    return s.replace(/ *([^ ]*).*/, "$1")
-}
-
 function deviceTreeArray(c: Parser.Parse): Map<deviceItem> {
     let res: Map<deviceItem> = c.context().devices;
 
@@ -985,7 +982,12 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
     c.skip(Parser.token(/^ *: */, '":"'));
     c.indent()
 
-    c.context().currentScenario = i;
+    if (c.context().path) {
+        c.context().currentScenario = c.context().path + '.';
+    } else {
+        c.context().currentScenario = '';
+    }
+    c.context().currentScenario = c.context().currentScenario + i;
 
     let scenario = c.one(trigger);
     let cond = c.optional(condition);
@@ -1062,86 +1064,6 @@ function trigger(c: Parser.Parse): Scenario {
     c.dedent()
     c.newline();
     return scenario;
-}
-
-function condition(c: Parser.Parse): ConditionFunction {
-    c.skip(CONDITIONS);
-    return c.one(conditionArray);
-}
-
-type NamedCondition = { name: string, fct: ConditionFunction };
-
-function conditionArray(c: Parser.Parse): ConditionFunction {
-    c.indent();
-    let conditions: NamedCondition[] = <any>c.many(
-        (c: Parser.Parse) => {
-            eatCommentsBlock(c);
-            c.skip(DASH);
-            return c.one(singleCondition)
-        },
-        (c: Parser.Parse) => { c.newline() });
-
-    let conditionArrayFunction = function (cb: (err: Error, cond: boolean) => void) {
-        let self = this;
-        let n = 1;
-        let N = conditions.length;
-        async.everySeries(conditions, function (condition, callback) {
-            logger.debug("Calling condition '%s' (%s/%s)...", condition.name, n, N);
-            n++;
-            condition.fct.call(self, function (err: Error, cond: boolean) {
-                logger.debug("Result is", cond, ", err:", err);
-                callback(err, cond);
-            });
-        }, function (err: Error, result: boolean) {
-            if (err) {
-                logger.debug('Got error %s while running %s conditions in series', err, N);
-            } else {
-                logger.debug('Done calling %s conditions in series with result', N, result);
-            }
-            cb(err, result)
-        });
-    };
-    c.dedent();
-    c.newline();
-    return conditionArrayFunction;
-}
-
-function unnamedCondition(c: Parser.Parse): NamedCondition {
-    logger.debug("trying unnamedCondition with", currentSource(c))
-    let document = <ConfigLoader>c.context().doc;
-    let fct: ConditionFunction = <ConditionFunction><any>c.oneOf(
-        (c: Parser.Parse) => {
-            logger.debug("trying ext function...")
-            return document.sandboxedExtFunction(c.one(FUNCTION_EXT));
-        },
-        binaryCondition
-    );
-    eatComments(c);
-    return { name: "<noname>", fct: fct };
-}
-
-function singleCondition(c: Parser.Parse): NamedCondition {
-    logger.debug("trying singleCondition with", currentSource(c))
-    let res: { name: string, fct: ConditionFunction } = <any>c.oneOf(
-        namedCondition,
-        unnamedCondition
-    )
-    eatComments(c);
-    logger.debug("found singleCondition")
-    return res;
-}
-
-
-function namedCondition(c: Parser.Parse): NamedCondition {
-    logger.debug("trying namedCondition with", currentSource(c))
-    let name = trim(c.one(ID));
-    logger.debug("found ID", name);
-    c.skip(Parser.token(/^ *: */, '":"'));
-
-    let f = c.one(unnamedCondition).fct;
-    logger.debug("found namedCondition")
-
-    return { name: name, fct: f };
 }
 
 function pagesSection(c: Parser.Parse): { comment: string, pages: Map<pageItem> } {
@@ -1251,254 +1173,6 @@ function plainObject(c: Parser.Parse): Object {
 
 
 
-function currentSource(c: Parser.Parse): string {
-    return '"' + c.source.body.substr(c.offset, 30).replace('\n', '\\n') + '..."';
-}
-
-function binaryCondition(c: Parser.Parse): ConditionFunction {
-    let document = <ConfigLoader>c.context().doc;
-
-    logger.debug("trying binaryCondition with", currentSource(c));
-
-    c.skip(/^{ */)
-    c.skip(/^operator: */)
-    logger.debug("trying operator with", currentSource(c));
-    let operator = removeQuotes(c.oneOf(
-        Parser.token(/^(["']?)=\1/, '"="'),
-        Parser.token(/^(["']?)!=\1/, '"!="'),
-    ));
-    logger.debug("found operator:", operator);
-
-    c.skip(/^, */)
-    c.skip(/^left: */)
-    let left = c.one(expression)
-    logger.debug("found left:", left);
-    c.skip(/^, */)
-    c.skip(/^right: */)
-    let right = c.one(expression)
-    logger.debug("found right:", right);
-    c.skip(/^ *} */)
-
-    let binaryExpression: (left: string, right: string) => boolean;
-
-    switch (operator) {
-        case '=': binaryExpression = (left: string, right: string) => { return left == right };
-            break;
-        case '!=': binaryExpression = (left: string, right: string) => { return left != right };
-            break;
-        default: logger.error('Binary operator "%s" not yet supported!', operator);
-    }
-
-    return (cb: (err: Error, cond: boolean) => void) => {
-        logger.debug("Retrieving args of binaryExpression '%s'", operator)
-        async.parallel({
-            left: left,
-            right: right
-        }, function (err, results) {
-            let res = binaryExpression(results.left, results.right);
-            logger.debug("Computing binaryExpression '%s' '%s' '%s' => %s...", results.left, operator, results.right, res)
-            cb(null, res);
-        });
-    }
-}
-
-type ExpressionFunction = (cb: (err: Error, result: string) => void) => void;
-
-function expression(c: Parser.Parse): ExpressionFunction {
-    logger.debug('Trying expression with', currentSource(c));
-
-    return <any>c.oneOf(
-        quotedStringExpression,
-        interpretedExpression,
-    );
-
-}
-
-function interpretedExpression(c: Parser.Parse): ExpressionFunction {
-    let document = <ConfigLoader>c.context().doc;
-
-    logger.debug('Trying interpreted expression with', currentSource(c));
-
-    let res = c.one(INTERPRETED_STRING);
-
-    logger.debug('Found interpreted expression:', res);
-
-    if (/^this\./.test(res)) {
-        // e.g. this.msg.oldValue
-        return <ExpressionFunction>document.sandboxedFunction("function (cb) {" +
-            //"console.log('this. expression: %s', " + res + ");" +
-            "cb(null, " + res + ");" +
-            "}")
-    } else if (c.context().devices[res]) {
-        // e.g. aquarium.lampes_start
-        return <ExpressionFunction>document.sandboxedFunction("function (cb) {" +
-            //"console.log('this. expression: %s', " + res + ");" +
-            "cb(null, this.getDeviceState('" + res + "'));" +
-            "}")
-    } else {
-        logger.error('Unsupported expression "%s"', res);
-        return function (cb: (err: Error, result: string) => void) {
-            cb(null, res);
-        }
-    }
-}
-
-function quotedStringExpression(c: Parser.Parse): ExpressionFunction {
-    logger.debug('Trying quoted string expression with', currentSource(c));
-
-    let res = c.one(QUOTED_STRING);
-
-    logger.debug('Found quoted string expression:', res);
-
-    return function (cb: (err: Error, result: string) => void) {
-        logger.debug("Quoted string expression '%s'.", res)
-        cb(null, removeQuotes(res));
-    }
-}
-
-
-function action(c: Parser.Parse): ActionFunction {
-    logger.debug('trying action:')
-    c.skip(ACTIONS);
-    logger.debug('found action:')
-    return c.one(actionArray);
-}
-
-type NamedAction = { name: string, fct: ActionFunction };
-
-function actionArray(c: Parser.Parse): ActionFunction {
-    c.indent();
-    let actions: NamedAction[] = <any>c.many(
-        (c: Parser.Parse) => {
-            c.skip(DASH);
-            return c.one(singleAction);
-        },
-        (c: Parser.Parse) => { c.newline() });
-
-    let actionArrayFunction = function (cb: (err: Error) => void) {
-        let self = this;
-        let n = 1;
-        let N = actions.length;
-        async.eachSeries(actions, function (action, callback) {
-            logger.debug("Calling action '%s' (%d/%d)...", action.name, n, N);
-            n++;
-            action.fct.call(self, callback);
-        }, function (err: Error) {
-            if (err) {
-                logger.debug('Got error %s when calling %s actions in series.', err, N)
-            } else {
-                logger.debug('Done calling %d actions in series.', N)
-            }
-            cb(err);
-        });
-    };
-    c.dedent();
-    return actionArrayFunction;
-}
-
-function singleAction(c: Parser.Parse): NamedAction {
-    logger.debug("trying singleAction")
-    let res: { name: string, fct: ActionFunction } = <any>c.oneOf(
-        namedAction,
-        unnamedAction
-    )
-    eatComments(c);
-    logger.debug("found singleAction")
-    return res;
-}
-
-function unnamedAction(c: Parser.Parse): NamedAction {
-    logger.debug("trying unnamedAction")
-    let document = <ConfigLoader>c.context().doc;
-    let fct: ActionFunction = <ActionFunction><any>c.oneOf(
-        (c: Parser.Parse) => {
-            return document.sandboxedExtFunction(c.one(FUNCTION_EXT));
-        },
-        stateAction
-    );
-    eatComments(c);
-    logger.debug("found unnamedAction")
-    return { name: "<noname>", fct: fct };
-
-}
-
-function namedAction(c: Parser.Parse): NamedAction {
-    logger.debug("trying namedAction")
-    let name = trim(c.one(ID));
-    c.skip(Parser.token(/^ *: */, '":"'));
-
-    let f = c.one(unnamedAction).fct;
-    logger.debug("found namedAction")
-
-    return { name: name, fct: f };
-}
-
-function sortedDeviceList(c: Parser.Parse): string[] {
-    let devices: string[] = [];
-    for (let d in c.context().devices) {
-        devices.push(d)
-    }
-    // make sure longer items are first so that they are
-    // catched first by c.oneOf
-    devices.sort((a, b) => { return b.length - a.length });
-
-    return devices;
-}
-
-function stateAction(c: Parser.Parse): ActionFunction {
-    logger.debug("trying stateAction")
-    c.skip(/^ *{ */);
-    c.skip(/^device: */);
-
-    let document = <ConfigLoader>c.context().doc;
-
-    let device = c.oneOf(...sortedDeviceList(c));
-    c.skip(/^, */);
-    c.skip(/^state: */);
-    let value = c.oneOf(
-        QUOTED_STRING,
-        INTERPRETED_STRING);
-    c.skip(/^ *} */);
-
-    logger.debug("found stateAction");
-
-    let isString = false;
-    if (value.length > 1 && value.charAt(0) == value.charAt(value.length - 1) &&
-        (value.charAt(0) == "'" || value.charAt(0) == '"')) {
-        // quoted string
-        isString = true;
-        value = removeQuotes(value);
-    }
-
-    let today = new Date().toDateString();
-    let date: Date = undefined;
-    if (new Date(value).toString() != 'Invalid Date') {
-        date = new Date(value);
-    } else if (new Date(today + ' ' + value).toString() != 'Invalid Date') {
-        date = new Date(today + ' ' + value);
-    }
-
-    if (date) {
-        // date value
-        return function (cb: (err: Error) => void) {
-            let self = this as Sandbox;
-            self.getDevice(device) && self.getDevice(device).setState(date, cb);
-        }
-    } else if (isString) {
-        return function (cb: (err: Error) => void) {
-            let self = this as Sandbox;
-            self.getDevice(device) && self.getDevice(device).setState(value, cb);
-        }
-    } else if (c.context().devices[value]) {
-        // interpreted string
-        return function (cb: (err: Error) => void) {
-            let self = this as Sandbox;
-            self.getDevice(device) && self.getDevice(device).setState(self.getDeviceState(value), cb);
-        }
-    } else {
-        logger.error('Unsupported state expression "%s".', value);
-    }
-}
 
 
 function namedObject(c: Parser.Parse): { name: string, object: { [x: string]: value } } {
@@ -1687,13 +1361,6 @@ function object(c: Parser.Parse): { [x: string]: value } {
     return obj;
 }
 
-function removeQuotes(s: string): string {
-    if (s.length < 2) return s;
-    let c = s.charAt(0);
-    if (c == s.charAt(s.length - 1) && (c == '"' || c == "'")) return s.substr(1, s.length - 2)
-    return s
-}
-
 function stringValue(c: Parser.Parse): string {
     let s = c.oneOf(
         STRING,
@@ -1782,62 +1449,6 @@ function scenesSection(c: Parser.Parse): any {
 function actionsSection(c: Parser.Parse): any {
     return c;
 }
-
-function emptyLine(c: Parser.Parse): any {
-    console.log('empty line content found')
-}
-
-function eatComments(c: Parser.Parse): void {
-    c.optional((c) => {
-        c.skip(/^ *(#.*)?(\n *#.*)*/)
-    });
-}
-/*let document = <doc>c.context().doc;
- 
-    let comments = true;
-    do {
-        if (c.isNext(/^\n/)) {
-            logger.debug('empty line')
-            document.comments[c.location().line()] = '';
-            c.skip('\n')
-            //c.newline();
-        } else if (c.isNext(BLANKLINE)) {
-            logger.debug('blank line')
-            document.comments[c.location().line()] = c.one(BLANKLINE);
-            c.skip('\n')
-            //c.newline();
-        } else if (c.isNext(COMMENT)) {
-            logger.debug('comment')
-            document.comments[c.location().line()] = c.one(COMMENT);
-            c.skip('\n')
-            //c.newline();
-        } else {
-            logger.debug('rien')
-            comments = false;
-        }
-    } while (comments);
-}
-*/
-function eatCommentsBlock(c: Parser.Parse): string {
-    let comments = true;
-    let block = "";
-
-    do {
-        if (c.isNext(/^ *\n/)) {
-            logger.debug('empty line')
-            block += c.one(/^ *\n/);
-        } else if (c.isNext(/^ *#.*\n/)) {
-            logger.debug('comment')
-            block += c.one(/^ *#.*\n/);
-            //logger.debug('=>', block)
-        } else {
-            logger.debug('rien')
-            comments = false;
-        }
-    } while (comments);
-    return block;
-}
-
 
 export function loadFileSync(file: string) {
 
