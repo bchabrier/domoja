@@ -29,14 +29,14 @@ function interpretedDeviceState(c: Parser.Parse): string {
     logger.debug('Trying interpretedDeviceState with', currentSource(c));
     let deviceState = c.one(/^\w+(\.\w+)*/);
     c.and(/^ *(} *#.*|, *\w+: ) /);
-    let ret = 'this.getDeviceState(' + deviceState + ')'; 
+    let ret = 'this.getDeviceState(' + deviceState + ')';
     logger.debug('Got interpretedDeviceState, continuing with', currentSource(c));
     return ret;
 }
 
 function interpretedJavascriptString(c: Parser.Parse): string {
-        logger.debug('Trying interpretedString with', currentSource(c));
-    let str =  c.one((c: Parser.Parse) => {
+    logger.debug('Trying interpretedString with', currentSource(c));
+    let str = c.one((c: Parser.Parse) => {
         let s = '';
         let more = true;
         while (more) {
@@ -110,9 +110,10 @@ export function interpretedExpression(c: Parser.Parse): ExpressionFunction {
             "cb(null, this.getDeviceState('" + res + "'));" +
             "}")
     } else {
-        logger.error('Unsupported expression "%s"', res);
-        return function (cb: (err: Error, result: string) => void) {
-            cb(null, res);
-        }
+        // e.g. new Date(Date.now() + 10)
+        return <ExpressionFunction>document.sandboxedFunction("function (cb) {" +
+            //"console.log('this. expression: %s', " + res + ");" +
+            "cb(null, " + res + ");" +
+            "}")
     }
 }
