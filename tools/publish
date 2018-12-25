@@ -1,0 +1,6 @@
+#!/bin/sh
+
+cd `dirname $0`/..
+repo=`basename $(pwd)`
+git archive --format=tar.gz -o /tmp/$repo.tar.gz --prefix=$repo/ master
+npm publish /tmp/$repo.tar.gz
