@@ -46,55 +46,47 @@ devices:
   - sunset: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunset, name: "Coucher du soleil" }
   - sunset_plus_30mn: { type: variable, widget: text, tags: 'astronomy', name: "Coucher du soleil + 30mn" }
   - sunrise: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunrise, name: "Lever du soleil" }
+  - daynight: { type: variable, widget: text, tags: 'astronomy', name: "Jour/nuit" }
 
   - camera_interieure: { type: httpCamera, widget: camera, tags: 'aquarium-page', video-url: /assets/imgs/demo_camera_interieure.jpg, snapshot-url: /assets/imgs/demo_camera_interieure.jpg, name: "Caméra intérieure" }
   - camera_exterieure: { type: httpCamera, widget: camera, tags: 'portails, entrée', video-url: /assets/imgs/demo_camera_exterieure.jpg, snapshot-url: /assets/imgs/demo_camera_exterieure.jpg, name: "Caméra extérieure" }
   - camera_piscine: { type: httpCamera, widget: camera:snapshot:0, tags: 'piscine', video-url: /assets/imgs/demo_camera_piscine.jpg, snapshot-url: /assets/imgs/demo_camera_piscine.jpg, name: "Caméra piscine" }
   - alarme:
     - en_route: { type: device , widget: toggle, tags: 'alarme', source: myZibase, id: A1, name: "Alarme en route" }
+    - presence : { type: variable, widget: text, tags: 'alarme', name: "Présence dans la maison"} 
     - sirene_interieure: { type: variable, widget: toggle, tags: 'alarme', source: myIPX800, id: 1, name: "Sirène intérieure" }
     - sirene_exterieure: { type: variable, widget: toggle, tags: 'alarme', source: myIPX800, id: 2, name: "Sirène extérieure" }
-
+    - sensors: { type: group, widget: walkingman, tags: 'alarme', taglist: 'sensor-alarm', function:  !!js/function 'function (newValues, callback) {
+            return callback(null, newValues.filter(v => v=="1").length > 0?"ON":"OFF");
+          }', name: 'Détecteurs surveillés'}
+    - presence-timeout : { type: variable, widget: text, tags: '', name: "Timeout présence (mn)"} 
+    - fin-presence : { type: variable, widget: text, tags: 'alarme', name: "Heure de fin de présence"} 
   - garages:
-    - porte: { type: sensor, widget: walkingman, tags: 'détecteurs', source: myIPX800, id: "INPUT5", name: "Porte garage du bas ou jardin", transform: "0=>OFF,1=>ON" }
+    - porte: { type: sensor, widget: walkingman, tags: 'détecteurs, sensor-alarm', source: myIPX800, id: "INPUT5", name: "Porte garage du bas ou jardin", transform: "0=>OFF,1=>ON" }
 
-  - bureau: { type: sensor, widget: walkingman, tags: 'détecteurs', source: myIPX800, id: "INPUT2", name: "Détecteur bureau", transform: "0=>OFF,1=>ON" }
+  - bureau: { type: sensor, widget: walkingman, tags: 'détecteurs, sensor-alarm', source: myIPX800, id: "INPUT2", name: "Détecteur bureau", transform: "0=>OFF,1=>ON" }
   - salle_a_manger: { type: sensor, widget: walkingman, tags: 'détecteurs', source: myIPX800, id: "INPUT6", name: "Détecteur salle à manger", transform: "1=>OFF,0=>ON", camera: camera_interieure }
-  - hall: { type: sensor, widget: walkingman, tags: 'détecteurs', source: myIPX800, id: "INPUT3", name: "Détecteur hall", transform: "0=>OFF,1=>ON" }
-  - escalier: { type: sensor, widget: walkingman, tags: 'détecteurs', source: myIPX800, id: "INPUT4", name: "Détecteur escalier", transform: "0=>OFF,1=>ON" }
-  - cuisine: { type: sensor, widget: walkingman, tags: 'détecteurs', source: myIPX800, id: "INPUT1", name: "Détecteur cuisine", transform: "0=>OFF,1=>ON" }
+  - hall: { type: sensor, widget: walkingman, tags: 'détecteurs, sensor-timer, sensor-alarm', source: myIPX800, id: "INPUT3", name: "Détecteur hall", transform: "0=>OFF,1=>ON" }
+  - escalier: { type: sensor, widget: walkingman, tags: 'détecteurs, sensor-timer, sensor-alarm', source: myIPX800, id: "INPUT4", name: "Détecteur escalier", transform: "0=>OFF,1=>ON" }
+  - cuisine: { type: sensor, widget: walkingman, tags: 'détecteurs, sensor-alarm', source: myIPX800, id: "INPUT1", name: "Détecteur cuisine", transform: "0=>OFF,1=>ON" }
+
+  - hall-escalier:
+    - controle : { type: variable, widget: "multistate:AUTO,MANU:primary,primary", tags: 'lampes', name: "Minuterie hall/escalier"} 
+    - sensors: { type: group, widget: walkingman, tags: 'détecteurs', function: !!js/function 'function (newValues, callback) {
+            return callback(null, newValues.filter(v => v=="1").length > 0?"ON":"OFF");
+          }', name: "Détecteurs hall/escalier", taglist: "sensor-timer"}
+    - timeout : { type: variable, widget: text, tags: '', name: "Timeout hall/escalier (mn)"} 
+    - extinction : { type: variable, widget: text, tags: '', name: "Heure d'extinction hall/escalier"} 
+
+
+  - cuisine:
+    - controle : { type: variable, widget: "multistate:AUTO,MANU:primary,primary", tags: 'lampes', name: "Minuterie cuisine"} 
+    - timeout : { type: variable, widget: text, tags: '', name: "Timeout cuisine (mn)"} 
+    - extinction : { type: variable, widget: text, tags: '', name: "Heure d'extinction cuisine"} 
 
   - prise_camera: { type: device, widget: toggle, source: myZibase, id: "G2", name: "Prise Caméra" }
 
 
-
-
-#  - hallLightTimer: {
-#      type: variable, 
-#      name: "Minuterie hall",
-#      sensors: [ hall ],
-#      #lights: [ lampe_hall ],
-#      duration: 3:00,
-#      off: [ sunrise, sunset ]
-#  }
-#  - stairLightTimer: {
-#      type: variable, 
-#      name: "Minuterie escalier",
-#      sensors: [ hall, escalier ],
-#      #lights: [ lampe_escalier ],
-#      duration: 5:00,
-#      on: [ 23:00, 2:00 ],
-#      off: [ sunrise, sunset ],
-#      priority: off
-#  }
-#  - kitchenLightTimer: {
-#      type: variable, 
-#      name: "Minuterie cuisine",
-#      sensors: [ cuisine ],
-#      #lights: [ lampe_table_cuisine ],
-#      duration: 10:00,
-#      off: [ sunrise, sunset ]
-#  }      
 
 
 #rooms:
@@ -123,42 +115,19 @@ devices:
 #      - { device: lampes_aquarium, attribute: state, value: 'ON' }
 #      - { device: pompes_aquarium, attribute: state, value: 'ON' }
 
-#actions:
-#  - stairLightTimer:
-#      module: ./managers/lightTimerMgr
-#      class: LightTimer
-#      sensors: [ hall, escalier ]
-#      lights: [ lampe_escalier ]
-#      duration: 5:00
-#      on: [ 23:00, 2:00 ]
-#      off: [ sunrise, sunset ]
-#      priority: off
-#      #activated: false
-#  - kitchenLightTimer:
-#      module: ./managers/lightTimerMgr
-#      class: LightTimer
-#      sensors: [ cuisine ]
-#      lights: [ lampe_table_cuisine ]
-#      duration: 10:00
-#      off: [ sunrise, sunset ]      
-#     #activated: false
-#- push_notify:
-#    module: ./lib/pushbullet
-#    class: PushBullet
-#    key: !secrets pushbullet_key
 
   - lampes:
-    - lampe_chambre_parents: { type: device, widget: toggle, tags: 'lampes', source: myZibase, id: "ZA4", name: "Lampe Chambre parents" }
-    - lampe_table_cuisine: { type: device, widget: toggle, tags: 'lampes', source: myZibase , id: "ZP4", name: "Spots Table Cuisine" }
-    - lampe_preau: { type: device, widget: toggle, tags: 'lampes, entrée', source: myZibase, id: "ZA5", name: "Lampe Préau" }
-    - prise_camera: { type: device, widget: toggle, source: myZibase, id: "G2", name: "Prise Caméra" }
-    - lampe_rouge_haut: { type: device, widget: toggle, tags: '', source: myZibase, id: "ZO15", name: "Lampe rouge haut" }
-    - lampe_rouge_bas: { type: device, widget: toggle, tags: '', source: myZibase, id: "ZC4", name: "Lampe rouge bas" }
-    - lampe_escalier: { type: device, widget: toggle, tags: 'lampes', source: myZibase, id: "ZB11", name: "Lampe escalier" }
-    - nb_lampes: { type: group, widget: text, tags: 'lampes', function: count, taglist: 'lampes', name: "Nombre de lampes" }
+    - lampe_chambre_parents: { type: device, widget: toggle, tags: 'lampes-presence', source: myZibase, id: "ZA4", name: "Lampe Chambre parents" }
+    - lampe_table_cuisine: { type: device, widget: toggle, tags: 'lampes-presence', source: myZibase , id: "ZP4", name: "Spots Table Cuisine" }
+    - lampe_preau: { type: device, widget: toggle, tags: 'lampes-presence entrée', source: myZibase, id: "ZA5", name: "Lampe Préau" }
+    - lampe_hall: { type: device, widget: toggle, tags: 'lampes-presence', source: myZibase, id: "ZC9", name: "Spots hall" }
+    - lampe_rouge_haut: { type: device, widget: toggle, tags: 'lampes', source: myZibase, id: "ZO15", name: "Lampe rouge haut" }
+    - lampe_rouge_bas: { type: device, widget: toggle, tags: 'lampes', source: myZibase, id: "ZC4", name: "Lampe rouge bas" }
+    - lampe_escalier: { type: device, widget: toggle, tags: 'lampes-presence', source: myZibase, id: "ZB11", name: "Lampe escalier" }
+    - nb_lampes: { type: group, widget: text, tags: 'lampes', function: count, taglist: 'lampes-presence', name: "Nombre de lampes" }
     - nb_lampes_ON: { type: group, widget: text, tags: 'lampes', function: !!js/function 'function (newValues, callback) {
           return callback(null, newValues.filter(v => v=="ON").length);
-        }', taglist: 'lampes', name: "Nombre de lampes allumées" }
+        }', taglist: 'lampes-presence', name: "Nombre de lampes allumées" }
     - couleur : { type: variable, widget: color, tags: 'lampes-couleur', name: "Couleur du widget de lampes"} 
 
   - piscine:
@@ -318,96 +287,149 @@ scenarios:
             let sunset = new Date(this.getDeviceState("sunset"));
             this.setDeviceState("sunset_plus_30mn", new Date(sunset.getTime() + 30 * 60 * 1000), callback);
           }'   
-  - test:
-    - scenario_with_expr:
-        triggers: 
+    - day-night:
+        triggers:
+          - state: sunset
+          - state: sunrise
+        actions:
+          - !!js/function 'function f(callback) {
+            let sunset = new Date(this.getDeviceState("sunset"));
+            let sunrise = new Date(this.getDeviceState("sunrise"));
+            let now = Date.now();
+            this.setDeviceState("daynight", (sunrise.getTime() < now && now < sunset.getTime())?"jour":"nuit", callback);
+          }'   
+    - presence:
+      - init:
+        triggers:
+          - at: startup
+        actions:
+          - { device: alarme.presence-timeout, state: 10 }
+      - run:
+        - move:
+          triggers:
+            - state: alarme.sensors
+          conditions:
+            - { operator: =, left: alarme.sensors, right: "ON" }
+          actions:
+            - { device: alarme.presence, state: "ON"} 
+        - still:
+          triggers:
+            - state: alarme.sensors
+          conditions:
+            - { operator: =, left: alarme.sensors, right: "OFF" }
+          actions:
+            - { device: alarme.fin-presence, state: new Date(Date.now() + this.getDeviceState("alarme.presence-timeout") * 60 * 1000)}
+        - long-still:
+          triggers:
+            - at: alarme.presence-timeout
+
+          actions:
+            - { device: alarme.presence, state: "OFF"}
+
+
+
+    - controle:
+      - init:
+        triggers:
+          - at: startup
+        actions:
+            - { device: hall-escalier.controle, state: "AUTO" }
+            - { device: cuisine.controle, state: "AUTO" }
+    - setup:
+      triggers:
+        - at: startup
+      actions:
+        - {device: hall-escalier.timeout, state: "1"}
+        - {device: cuisine.timeout, state: "5"}
+    - plan-lights-hall-escalier:
+      triggers:
+        - state: hall
+        - state: escalier
+      conditions:
+        - controle: { operator: =, left: hall-escalier.controle, right: "AUTO" }
+        - night: { operator: =, left: daynight, right: "nuit" }
+      actions:
+        - !!js/function 'function (callback) {
+          if (this.timeoutID) clearTimeout(this.timeoutID);
+          this.timeoutID = undefined;
+
+          if (this.getDeviceState(this.msg.emitter) == "1") {
+            let lampe1;
+            let lampe2;
+            if (this.msg.emitter=="hall") {
+              lampe1 = "lampes.lampe_hall"
+              lampe2 = "lampes.lampe_escalier"
+            } else {
+              lampe1 = "lampes.lampe_escalier"
+              lampe2 = "lampes.lampe_hall"
+            }
+            this.setDeviceState(lampe1, "ON");
+            this.setDeviceState(lampe2, "ON");
+          }
+          if (this.getDeviceState(this.msg.emitter) == "0") {
+            let timeout = parseInt(this.getDeviceState("hall-escalier.timeout"), 10) * 60 * 1000;
+
+            this.timeoutID = setTimeout(() => {
+              this.setDeviceState("lampes.lampe_hall", "OFF");
+              this.setDeviceState("lampes.lampe_escalier", "OFF");
+            }, timeout);
+          }
+          callback(null);
+        }'
+    - plan-lights-cuisine:
+      triggers:
+        - state: cuisine
+      conditions:
+        - controle: { operator: =, left: cuisine.controle, right: "AUTO" }
+        - night: { operator: =, left: daynight, right: "nuit" }
+      actions:
+        - !!js/function 'function (callback) {
+          if (this.timeoutID) clearTimeout(this.timeoutID);
+          this.timeoutID = undefined;
+
+          if (this.getDeviceState(this.msg.emitter) == "1") {
+            this.setDeviceState("lampes.lampe_table_cuisine", "ON");
+          }
+          if (this.getDeviceState(this.msg.emitter) == "0") {
+            let timeout = parseInt(this.getDeviceState("cuisine.timeout"), 10) * 60 * 1000;
+
+            this.timeoutID = setTimeout(() => {
+              this.setDeviceState("lampes.lampe_table_cuisine", "OFF");
+            }, timeout);
+          }
+          callback(null);
+        }'
+    - timer-cuisine:
+      - ON:
+        triggers:
           - state: cuisine
         conditions:
-          - {operator: =, left: this.msg.newValue, right: "ON"}
+          - controle: { operator: =, left: cuisine.controle, right: "AUTO" }
+          - { operator: =, left: cuisine, right: "1" }
+          - night: { operator: =, left: daynight, right: "nuit" }   
         actions:
-          - !!js/function 'function f(callback) {callback(null)}'      
-          #- push_notify:
-          #  text: "quelqu'un dans le hall !"
-        
+          - {device: lampes.lampe_table_cuisine, state: "ON"}
+          - {device: cuisine.extinction, state: "" }      
+      - OFF:
+        triggers:
+          - at: startup
+          - state: cuisine
+          - state: cuisine.controle
+        conditions:
+          - controle: { operator: =, left: cuisine.controle, right: "AUTO" }
+          - { operator: "!=", left: cuisine, right: "1" }
+        actions:
+          - {device: cuisine.extinction, state: new Date(Date.now() + getDeviceState("cuisine.timeout") * 60 * 1000) }      
+      - timeout:
+        triggers:
+          - at: cuisine.extinction
+        conditions:
+          - controle: { operator: =, left: cuisine.controle, right: "AUTO" }
+          - { operator: "!=", left: cuisine.extinction, right: "" }
+        actions:
+          - {device: lampes.lampe_table_cuisine, state: "OFF"}
 
 
-
-
-
-
-#  - hallLightTimerLightsON:
-#      trigg:
-#        state: hallLightTimer
-#      conditions: 
-#        - {operator: =, left: this.msg.newValue, right: ON}
-#        #- !!js/function 'function f(callback) {
-#        #    callback(null, this.msg.newValue == "ON");
-#        #  } '
-#      actions:
-#        - { device: lampe_hall, attribute: state, value: 'ON' }
-#        - !!js/function 'function f(callback) {console.log("Hall lights ON!"); callback(null)}'
-#  - hallLightTimerLightsOFF:
-#      trigg:
-#        state: hallLightTimer
-#      conditions: 
-#        - {operator: =, left: this.msg.newValue, right: OFF}
-#      actions:
-#        - { device: lampe_hall, attribute: state, value: 'OFF' }
-#        - !!js/function 'function f(callback) {console.log("Hall lights OFF!"); callback(null)}'
-#  - stairLightTimerLightsON:
-#      trigg:
-#        state: stairLightTimer
-#      conditions: 
-#        - {operator: =, left: this.msg.newValue, right: ON}
-#      actions:
-#        - { device: lampe_escalier, attribute: state, value: 'ON' }
-#        - !!js/function 'function f(callback) {console.log("Stair lights ON!"); callback(null)}'
-#  - stairLightTimerLightsOFF:
-#      trigg:
-#        state: stairLightTimer
-#      conditions: 
-#        - {operator: =, left: this.msg.newValue, right: OFF}
-#      actions:
-#        - { device: lampe_escalier, attribute: state, value: 'OFF' }
-#        - !!js/function 'function f(callback) {console.log("Stair lights OFF!"); callback(null)}'
-#  - kitchenLightTimerLightsON:
-#      trigg:
-#        state: kitchenLightTimer
-#      conditions: 
-#        - {operator: =, left: this.msg.newValue, right: ON}
-#      actions:
-#        - { device: lampe_table_cuisine, attribute: state, value: 'ON' }
-#        - !!js/function 'function f(callback) {console.log("Kitchen lights ON!"); callback(null)}'
-#  - kitchenLightTimerLightsOFF:
-#      trigg:
-#        state: kitchenLightTimer
-#      conditions: 
-#        - {operator: =, left: this.msg.newValue, right: OFF}
-#      actions:
-#        - { device: lampe_table_cuisine, attribute: state, value: 'OFF' }
-#        - !!js/function 'function f(callback) {console.log("Kitchen lights OFF!"); callback(null)}'
-#  - scenario1:
-#      trigg: 
-#        state: cuisine
-#      conditions: 
-#        - {operator: =, left: this.msg.newValue, right: ON}
-#      actions:
-#        - !!js/function 'function f(callback) {callback(null)}'
-#      #  - push_notify:
-#      #    text: "quelqu'un dans le hall !"
-#  - scenario_with_functions:
-#      trigg: 
-#        state: cuisine
-#      conditions: 
-#        - {operator: =, left: this.msg.newValue, right: ON}
-#      actions:
-#        - notify_zibase: !!js/function 'function(callback) {
-#            console.log("setevent pour cuisine !!!!!");
-#            this.getSource("demo").setEvent(1, "I13");
-#            callback(null);
-#          }'
-#        #- push_notify:
-#        #  text: "quelqu'un dans le hall !"
 
 
   - lampes:
@@ -472,6 +494,8 @@ scenarios:
           - at: startup
         actions:
             - { device: piscine.controle, state: "AUTO" }
+            - {device: piscine.filtration-icon, state: "timer" }
+            - {device: piscine.filtration-couleur, state: "lightgrey" } 
       - ON:
         triggers:
           - state: piscine.controle
@@ -487,33 +511,73 @@ scenarios:
         actions:
             - { device: piscine.filtration, state: "OFF" }
     - filtration-couleur:
-      triggers:
-        - at: startup
-        - state: piscine.filtration
-        - state: piscine.controle
-      actions:
-          - !!js/function 'function f(callback) {
-            let filtration = this.getDeviceState("piscine.filtration");
-            let controle = this.getDeviceState("piscine.controle");
-            let color = "lightgrey"
-            if (controle == "OFF") color = "#ef473a"; // red
-            else if (filtration == "ON") color = "#33cd5f"; // green
-            this.setDeviceState("piscine.filtration-couleur", color);
-
-            let icon = "help"; // ?
-            switch (controle) {
-              case "AUTO":
-                icon = "timer";
-                break;
-              case "ON":
-                icon = "flash";
-                break;
-              case "OFF":
-                icon = "power";
-                break;
-            }
-            this.setDeviceState("piscine.filtration-icon", icon, callback);
-          }'
+      - AUTO-ON:
+        triggers:
+          - at: startup
+          - state: piscine.filtration
+          - state: piscine.controle
+        conditions:
+          - {operator: =, left: this.getDeviceState("piscine.controle"), right: "AUTO"}
+          - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "ON"}
+        actions:
+          - {device: piscine.filtration-couleur, state: "#33cd5f" } # green
+          - {device: piscine.filtration-icon, state: "timer" }
+      - AUTO-OFF:
+        triggers:
+          - at: startup
+          - state: piscine.filtration
+          - state: piscine.controle
+        conditions:
+          - {operator: =, left: this.getDeviceState("piscine.controle"), right: "AUTO"}
+          - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "OFF"}
+        actions:
+          - {device: piscine.filtration-couleur, state: "lightgrey" } 
+          - {device: piscine.filtration-icon, state: "timer" }
+      - ON-ON:
+        triggers:
+          - at: startup
+          - state: piscine.controle
+        conditions:
+          - {operator: =, left: this.getDeviceState("piscine.controle"), right: "ON"}
+          - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "ON"}
+        actions:
+          - {device: piscine.filtration-couleur, state: "#33cd5f" } # green
+          - {device: piscine.filtration-icon, state: "flash" }
+      - ON-OFF:
+        triggers:
+          - at: startup
+          - state: piscine.controle
+          - state: piscine.filtration
+        conditions:
+          - {operator: =, left: this.getDeviceState("piscine.controle"), right: "ON"}
+          - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "OFF"}
+        actions:
+          - {device: piscine.filtration-couleur, state: "#ef473a" } # red
+          - {device: piscine.filtration-icon, state: "flash" }
+          - {device: piscine.controle, state: "OFF" }
+      - OFF-OFF:
+        triggers:
+          - at: startup
+          - state: piscine.controle
+          - state: piscine.filtration
+        conditions:
+          - {operator: =, left: this.getDeviceState("piscine.controle"), right: "OFF"}
+          - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "OFF"}
+        actions:
+          - {device: piscine.filtration-couleur, state: "#ef473a" } # red
+          - {device: piscine.filtration-icon, state: "power" }
+      - OFF-ON:
+        triggers:
+          - at: startup
+          - state: piscine.controle
+          - state: piscine.filtration
+        conditions:
+          - {operator: =, left: this.getDeviceState("piscine.controle"), right: "OFF"}
+          - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "ON"}
+        actions:
+          - {device: piscine.filtration-couleur, state: "#ef473a" } # red
+          - {device: piscine.filtration-icon, state: "power" }
+          - {device: piscine.controle, state: "ON" }
   - petit_portail:
     - controle:
       - init:
@@ -561,20 +625,20 @@ pages:
         - widgets: 
           - pool-temp:
             widget: dashboard-icon
-            icon: "thermometer"
+            icon: "thermometer" # a valid ionic icon name
             linkPage: Piscine
             label: "Piscine"
             color: "${piscine.couleur}"
             text: "${piscine.temperature}°C"
           - pool-filtration:
             widget: dashboard-icon
-            icon: "${piscine.filtration-icon}"
+            icon: "${piscine.filtration-icon}" # a valid ionic icon name
             linkPage: Piscine
             label: "Filtration ${piscine.filtration}"
             color: "${piscine.filtration-couleur}"
           - entrée:
-            widget: dashboard-icon
-            icon: ios-barcode # a valid ionic icon name
+            widget: dashboard-camera
+            url: /assets/imgs/demo_dashboard_entrée.jpg
             linkPage: Entrée
             label: "Entrée"
           - aquarium:
@@ -589,7 +653,7 @@ pages:
             label: Piscine
           - lights:
             widget: dashboard-icon
-            icon: "bulb"
+            icon: "bulb" # a valid ionic icon name
             color: "${lampes.couleur}"
             linkPage: Lampes
             label: "Lampes"
@@ -635,7 +699,7 @@ pages:
       title: 'Lampes'
       page: list.html
       args: 
-        - tag-list: 'lampes'
+        - tag-list: 'lampes*:lampes'
   - Devices:
       title: 'Tous les devices'
       page: list.html
