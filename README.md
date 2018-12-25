@@ -82,8 +82,8 @@ Domoja provides a REST/JSON api, which is available through Swagger at [/api-doc
 - GET /devices/{id}: Retrieves a device
 - POST /devices/{id}: Sends a command to a device
 - GET /pages: Retrieves the list of pages
-- GET /app: Retrieves the app data
-- POST /app/demo-mode: Sets the app demo mode
+- GET /app: Retrieve the app data
+- POST /app/demo-mode: Set the app demo mode
 
 [//]: # (apiList END)
 
