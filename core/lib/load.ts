@@ -1,10 +1,8 @@
 import { DomoModule, InitObject, Parameters } from '../..';
 import { Source, DefaultSource } from '../..';
 import { GenericDevice, DeviceType } from '../..';
-import { Scenario, ActionFunction } from '../../core/scenarios/scenario'
+import { Scenario } from '../../core/scenarios/scenario'
 import * as triggers from '../../core/scenarios/trigger';
-import { Condition } from '../scenarios/condition'
-import { Action } from '../scenarios/action'
 import * as path from "path";
 import * as fs from 'fs';
 import Module = require('module');
@@ -17,8 +15,8 @@ const { VM, VMScript } = require('vm2');
 import * as Parser from "shitty-peg/dist/Parser";
 
 import { currentSource, removeQuotes, eatCommentsBlock, eatComments, trim, sortedDeviceList } from './load_helpers';
-import { expression } from './load_expressions';
-import { condition, action } from './load_scenarios';
+import { condition, actions } from './load_scenarios';
+import * as  colors from 'colors/safe';
 
 var logger = require('tracer').colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -540,7 +538,7 @@ function objectToInitObject(document: ConfigLoader, object: plainObject): InitOb
 let STRING = Parser.token(/^([^ "'#},\n]+)|("[^"]*")|('[^']*')/, 'string');
 //let INTERPRETED_STRING = Parser.token(/^[^ "'#},\n]+/, 'string');
 //let INTERPRETED_STRING = Parser.token(/^[^ ,]+/, 'string');
-export let ID = Parser.token(/^[^\n:{} ]+/, 'string');
+export let IDENTIFIER = Parser.token(/^[^\n:{} ]+/, 'string');
 let COMMENT = Parser.token(/^ *(#[^\n]*|)/);
 let BLANKLINE = Parser.token(/^ +/);
 
@@ -582,7 +580,7 @@ function configDoc(c: Parser.Parse, section: Section): void {
     if (section == 'ALL' || section == 'IMPORTS')
         imports = c.optional(importsSection);
     else {
-        c.optional(c => c.one(/^imports: *\n(([ #].*\n)|\n)*/));
+        c.optional(c => c.one(Parser.token(/^imports: *\n(([ #].*\n)|\n)*/, '"imports:"')));
     }
     logger.debug('imports done')
 
@@ -591,7 +589,7 @@ function configDoc(c: Parser.Parse, section: Section): void {
     if (section == 'ALL' || section == 'SOURCES')
         sources = c.optional(sourcesSection);
     else {
-        c.optional(c => c.one(/^sources: *\n(([ #].*\n)|\n)*/));
+        c.optional(c => c.one(Parser.token(/^sources: *\n(([ #].*\n)|\n)*/, '"sources:"')));
     }
     logger.debug('sources done')
 
@@ -600,7 +598,7 @@ function configDoc(c: Parser.Parse, section: Section): void {
     if (section == 'ALL' || section == 'DEVICES')
         devices = c.optional(devicesSection);
     else {
-        c.optional(c => c.one(/^devices: *\n(([ #].*\n)|\n)*/));
+        c.optional(c => c.one(Parser.token(/^devices: *\n(([ #].*\n)|\n)*/, '"devices:"')));
     }
     logger.debug('devices done')
 
@@ -609,7 +607,7 @@ function configDoc(c: Parser.Parse, section: Section): void {
     if (section == 'ALL' || section == 'SCENARIOS')
         scenarios = c.optional(scenariosSection);
     else {
-        c.optional(c => c.one(/^scenarios: *\n(([ #].*\n)|\n)*/));
+        c.optional(c => c.one(Parser.token(/^scenarios: *\n(([ #].*\n)|\n)*/, '"scenarios:"')));
     }
     logger.debug('scenarios done')
 
@@ -618,7 +616,7 @@ function configDoc(c: Parser.Parse, section: Section): void {
     if (section == 'ALL' || section == 'PAGES')
         pages = c.optional(pagesSection);
     else {
-        c.optional(c => c.one(/^pages: *\n(([ #].*\n)|\n)*/));
+        c.optional(c => c.one(Parser.token(/^pages: *\n(([ #].*\n)|\n)*/, '"pages:"')));
     }
     logger.debug('pages done')
 
@@ -627,7 +625,7 @@ function configDoc(c: Parser.Parse, section: Section): void {
     if (section == 'ALL' || section == 'USERS')
         users = c.optional(usersSection);
     else {
-        c.optional(c => c.one(/^users: *\n(([ #].*\n)|\n)*/));
+        c.optional(c => c.one(Parser.token(/^users: *\n(([ #].*\n)|\n)*/, '"users:"')));
     }
     logger.debug('users done')
 
@@ -681,7 +679,7 @@ function secretsSection(c: Parser.Parse): void {
 
     c.any(
         (c: Parser.Parse) => {
-            let key = trim(c.one(ID));
+            let key = trim(c.one(IDENTIFIER));
             c.one(Parser.token(/^ *: */, '":"'));
             let val = c.one(stringValue)
             secrets[key] = val;
@@ -849,9 +847,10 @@ function buildTreeArray<ThingItem extends { name: string }>(
     c.many((c: Parser.Parse) => {
         c.oneOf(
             (c: Parser.Parse) => {
-                logger.debug('trying subtree')
+                logger.debug('trying subtree with', currentSource(c));
+                eatCommentsBlock(c);
                 c.skip(DASH);
-                let id = trim(c.one(ID));
+                let id = trim(c.one(IDENTIFIER));
                 logger.debug('found id', id)
                 c.skip(Parser.token(/^ *: */, '":"'));
                 logger.debug('found :')
@@ -870,7 +869,7 @@ function buildTreeArray<ThingItem extends { name: string }>(
                 c.dedent();
             },
             (c: Parser.Parse) => {
-                logger.debug('trying thingItem')
+                logger.debug('trying thingItem with', currentSource(c));
                 let leaf = c.one(thingItem);
                 let fullname: string = ''
                 if (c.context().path) {
@@ -944,6 +943,7 @@ function deviceItem(c: Parser.Parse): deviceItem {
         path: c.context().path,
         allowedTypeValues: c.context().allowedTypeValues
     });
+    eatCommentsBlock(c);
     c.skip(DASH);
     let obj = c.one(namedObject);
     c.popContext();
@@ -977,8 +977,9 @@ function scenarioTreeArray(c: Parser.Parse): Map<scenarioItem> {
 
 function scenarioItem(c: Parser.Parse): scenarioItem {
     let document = <ConfigLoader>c.context().doc;
+    eatCommentsBlock(c);
     c.skip(DASH);
-    let i = trim(c.one(ID));
+    let i = trim(c.one(IDENTIFIER));
     c.skip(Parser.token(/^ *: */, '":"'));
     c.indent()
 
@@ -989,11 +990,14 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
     }
     c.context().currentScenario = c.context().currentScenario + i;
 
+    eatCommentsBlock(c);
     let scenario = c.one(trigger);
+    eatCommentsBlock(c);
     let cond = c.optional(condition);
     logger.debug('condition = ', cond)
     if (cond) scenario.setCondition(cond)
-    let act = c.one(action);
+    eatCommentsBlock(c);
+    let act = c.one(actions);
     scenario.setAction(act);
     c.dedent()
 
@@ -1094,7 +1098,7 @@ function pagesArray(c: Parser.Parse): Map<pageItem> {
 function pageItem(c: Parser.Parse): pageItem {
     let document = <ConfigLoader>c.context().doc;
     c.skip(DASH);
-    let i = trim(c.one(ID));
+    let i = trim(c.one(IDENTIFIER));
     c.skip(Parser.token(/^ *: */, '":"'));
     c.indent();
 
@@ -1121,7 +1125,7 @@ function pageItem(c: Parser.Parse): pageItem {
         c.indent();
         c.many((c: Parser.Parse) => {
             c.skip(DASH);
-            let key = c.one(ID);
+            let key = c.one(IDENTIFIER);
             c.skip(Parser.token(/^ *: */, '":"'));
             let val = c.oneOf(
                 (c: Parser.Parse) => {
@@ -1146,7 +1150,7 @@ function argsArray(c: Parser.Parse): Array<Object> {
 
     c.many((c: Parser.Parse) => {
         c.skip(Parser.token(/^ *- */, '"-"'));
-        c.skip(ID); // not used
+        c.skip(IDENTIFIER); // not used
         c.skip(Parser.token(/^ *: */, '":"'));
         c.indent();
         let o = c.one(plainObject);
@@ -1161,7 +1165,7 @@ function plainObject(c: Parser.Parse): Object {
     let o: { [key: string]: any } = {};
 
     c.many((c: Parser.Parse) => {
-        let key = c.one(ID);
+        let key = c.one(IDENTIFIER);
         c.skip(Parser.token(/^ *: */, '":"'));
         let val = c.one(value);
         o[key] = val;
@@ -1177,7 +1181,7 @@ function plainObject(c: Parser.Parse): Object {
 
 function namedObject(c: Parser.Parse): { name: string, object: { [x: string]: value } } {
     logger.debug('=>named object')
-    let name = trim(c.one(ID));
+    let name = trim(c.one(IDENTIFIER));
     logger.debug('found id', name)
     if (c.context().type == 'source') {
         if (c.context().sources[name])
@@ -1561,7 +1565,7 @@ export function reloadConfig(file?: string): void {
         currentConfig && currentConfig.release();
         currentConfig = doc;
 
-        logger.info('ConfigLoader emitted "startup"')
+        logger.info(`ConfigLoader emitted ${colors.yellow('"startup"')}`)
         doc.emit('startup');
     } catch (e) {
         logger.error(e.stack);

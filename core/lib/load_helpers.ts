@@ -6,7 +6,12 @@ var logger = require('tracer').colorConsole({
 });
 
 export function currentSource(c: Parser.Parse): string {
-    return '"' + c.source.body.substr(c.offset, 30).replace('\n', '\\n') + '..."';
+    let s = c.source.body.substr(c.offset, 30);
+    while (s.indexOf('\n') >= 0) {
+        // strangely enough, "replace" does not replace all occurrences...
+        s = s.replace('\n', '\\n');
+    }
+    return '"' + s + (s.length > 30 ? '...' : '') + '"';
 }
 
 export function removeQuotes(s: string): string {
@@ -25,47 +30,34 @@ export function eatComments(c: Parser.Parse): void {
         c.skip(/^ *(#.*)?(\n *#.*)*/)
     });
 }
-/*let document = <doc>c.context().doc;
- 
-    let comments = true;
-    do {
-        if (c.isNext(/^\n/)) {
-            logger.debug('empty line')
-            document.comments[c.location().line()] = '';
-            c.skip('\n')
-            //c.newline();
-        } else if (c.isNext(BLANKLINE)) {
-            logger.debug('blank line')
-            document.comments[c.location().line()] = c.one(BLANKLINE);
-            c.skip('\n')
-            //c.newline();
-        } else if (c.isNext(COMMENT)) {
-            logger.debug('comment')
-            document.comments[c.location().line()] = c.one(COMMENT);
-            c.skip('\n')
-            //c.newline();
-        } else {
-            logger.debug('rien')
-            comments = false;
-        }
-    } while (comments);
-}
-*/
+
+
 export function eatCommentsBlock(c: Parser.Parse): string {
     let comments = true;
     let block = "";
+    let willEatNewLine = false;
+
+    if (c.source.body[c.offset] != '\n') {
+        if (c.isNext(/^ *(#.*)?(?=\n)/)) block += c.one(/^ *(#.*)?(?=\n)/);
+        willEatNewLine = true;
+    }
 
     do {
-        if (c.isNext(/^ *\n/)) {
-            logger.debug('empty line')
-            block += c.one(/^ *\n/);
-        } else if (c.isNext(/^ *#.*\n/)) {
-            logger.debug('comment')
-            block += c.one(/^ *#.*\n/);
-            //logger.debug('=>', block)
+        if (c.isNext(/^\n *(#.*)?(?=\n)/)) {
+            logger.debug('comment:', currentSource(c));
+            block += c.one(/^\n *(#.*)?(?=\n)/);
         } else {
-            logger.debug('rien')
+            logger.debug('no more a comment:', currentSource(c));
             comments = false;
+            logger.debug('read comment block: "' + block + '"');
+            if (block.length > 0) {
+                block = block.substr(1);
+            }
+            if (c.source.body[c.offset] == '\n') {
+                logger.debug("about to read newline");
+                c.newline();
+                logger.debug("read newline");
+            }
         }
     } while (comments);
     return block;

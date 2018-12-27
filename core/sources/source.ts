@@ -3,6 +3,7 @@ import { Parameters, InitObject, DomoModule } from '../..';
 import { GenericDevice, DeviceType, CustomDeviceType } from '../..';
 import { ConfigLoader } from '../..';
 import * as events from 'events';
+import * as colors from 'colors/safe';
 
 const logger = require("tracer").colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -163,10 +164,15 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     }
 
     emitEvent(event: Event, path: string, arg: any) {
-        logger.info('Device "%s" (%s) emitted "%s": %s', path, this.devicesByPath[path].name, event, JSON.stringify(arg, function (arg, value) {
-            if (arg !== "emitter")
-                return value;
-        }));
+        logger.info('Device %s (%s) emitted %s: %s',
+            colors.yellow('"' + path + '"'),
+            this.devicesByPath[path].name,
+            colors.yellow('"' + event + '"'),
+            JSON.stringify(arg, function (arg, value) {
+                if (arg !== "emitter") {
+                    return value;
+                }
+            }).replace(/"newValue":"([^"]*)"/, '"newValue":' + colors.yellow('"$1"')));
         this.eventEmitter.emit(event + ":" + path, arg);
     }
 

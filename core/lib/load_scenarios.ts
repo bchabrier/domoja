@@ -1,6 +1,6 @@
 import * as Parser from "shitty-peg/dist/Parser";
 import { currentSource, removeQuotes, eatCommentsBlock, eatComments, trim, sortedDeviceList } from './load_helpers';
-import { ConfigLoader, Sandbox, DASH, FUNCTION_EXT, ID } from './load';
+import { ConfigLoader, Sandbox, DASH, FUNCTION_EXT, IDENTIFIER } from './load';
 import { expression } from './load_expressions';
 import { Scenario, ConditionFunction, ActionFunction } from '../../core/scenarios/scenario'
 import * as async from 'async';
@@ -87,7 +87,7 @@ function singleCondition(c: Parser.Parse): NamedCondition {
 
 function namedCondition(c: Parser.Parse): NamedCondition {
     logger.debug("trying namedCondition with", currentSource(c))
-    let name = trim(c.one(ID));
+    let name = trim(c.one(IDENTIFIER));
     logger.debug("found ID", name);
     c.skip(Parser.token(/^ *: */, '":"'));
 
@@ -145,11 +145,13 @@ function binaryCondition(c: Parser.Parse): ConditionFunction {
     }
 }
 
-export function action(c: Parser.Parse): ActionFunction {
-    logger.debug('trying action:')
+export function actions(c: Parser.Parse): ActionFunction {
+    logger.debug('trying actions with:', currentSource(c));
     c.skip(ACTIONS);
-    logger.debug('found action:')
-    return c.one(actionArray);
+    logger.debug('trying actionsArray with:', currentSource(c));
+    let a = c.one(actionArray);
+    logger.debug('found actions:')
+    return a;
 }
 
 type NamedAction = { name: string, fct: ActionFunction };
@@ -158,6 +160,7 @@ function actionArray(c: Parser.Parse): ActionFunction {
     c.indent();
     let actions: NamedAction[] = <any>c.many(
         (c: Parser.Parse) => {
+            eatCommentsBlock(c);
             c.skip(DASH);
             return c.one(singleAction);
         },
@@ -185,7 +188,7 @@ function actionArray(c: Parser.Parse): ActionFunction {
 }
 
 function singleAction(c: Parser.Parse): NamedAction {
-    logger.debug("trying singleAction")
+    logger.debug("trying singleAction with", currentSource(c));
     let res: { name: string, fct: ActionFunction } = <any>c.oneOf(
         namedAction,
         unnamedAction
@@ -212,7 +215,7 @@ function unnamedAction(c: Parser.Parse): NamedAction {
 
 function namedAction(c: Parser.Parse): NamedAction {
     logger.debug("trying namedAction")
-    let name = trim(c.one(ID));
+    let name = trim(c.one(IDENTIFIER));
     c.skip(Parser.token(/^ *: */, '":"'));
 
     let f = c.one(unnamedAction).fct;
