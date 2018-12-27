@@ -157,11 +157,11 @@ export class astronomy extends Source {
 
 							switch (f) {
 								case LEVER_DU_SOLEIL:
-									self.updateAttribute("sunrise", "state", t2.toString(), now);
+									self.updateAttribute("sunriseTime", "state", t2.toString(), now);
 									sunriseTime = t2;
 									break;
 								case COUCHER_DU_SOLEIL:
-									self.updateAttribute("sunset", "state", t2.toString(), now);
+									self.updateAttribute("sunsetTime", "state", t2.toString(), now);
 									sunsetTime = t2;
 									break;
 								case DUREE_DU_JOUR:
