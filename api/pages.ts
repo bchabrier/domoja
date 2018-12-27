@@ -1,7 +1,7 @@
 import { Errors, Path, Preprocessor, GET, POST, PathParam, FormParam } from 'typescript-rest';
 import * as express from 'express';
 
-import { getCurrentConfig } from '../core/lib/load';
+import { getCurrentConfig, ConfigLoader } from '../core/lib/load';
 
 @Path('/pages')
 export class PagesService {
@@ -10,7 +10,7 @@ export class PagesService {
    */
   @GET
   getPages() {
-    let pages = getCurrentConfig().pages;
+    let pages: ConfigLoader["pages"] = getCurrentConfig() && getCurrentConfig().pages || {};
 
     return Object.keys(pages).map(name => {
       return pages[name]
