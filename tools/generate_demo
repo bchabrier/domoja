@@ -143,6 +143,7 @@ EOF
             camera_name=t[1]
             gsub(/video-url: *[^ \t,]+/, "video-url: /assets/imgs/demo_"camera_name".jpg", $0)
             gsub(/snapshot-url: *[^ \t,]+/, "snapshot-url: /assets/imgs/demo_"camera_name".jpg", $0)
+            gsub(/camera:snapshot:[0-9]+/, "camera", $0)
 
             if (doprint) print
             next
