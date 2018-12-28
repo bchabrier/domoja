@@ -75,9 +75,14 @@ export class TimeTrigger extends Trigger {
                 let d = new Date(msg.newValue);
 
                 this.cronJob && this.cronJob.stop();
-                this.cronJob = new CronJob(d, this.handler);
-                this.cronJob.start();
-                logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates())
+                if (d.toString() != 'Invalid Date' && d.getTime() > Date.now()) {
+                    this.cronJob = new CronJob(d, this.handler);
+                    this.cronJob.start();
+                    logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates());    
+                } else {
+                    logger.info('Scenario "%s" will not trigger. "%s" is invalid or in the past.', this.scenario.path, msg.newValue)  ;  
+                    this.cronJob = undefined;
+                }
             }
             this.doc.devices[this.when].device.on('change', this.atHandler);
         } else if (this.when.match(cronRE)) {
