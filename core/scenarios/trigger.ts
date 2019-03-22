@@ -3,6 +3,7 @@ import { GenericDevice, ConfigLoader, message } from '../..';
 import { Scenario } from '../../core/scenarios/scenario';
 
 import { CronJob } from 'cron';
+import * as moment from 'moment';
 
 var logger = require("tracer").colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -59,11 +60,25 @@ var cronRE = /([*\d-,]+ *){6}/;
 export class TimeTrigger extends Trigger {
     when: string;
     cronJob: CronJob;
+    timeout: NodeJS.Timeout;
     atHandler: (msg: message) => void;
 
     constructor(doc: ConfigLoader, scenario: Scenario, when: string) {
         super(doc, scenario);
         this.when = when;
+    }
+
+    static dateTime(dateString: string): number {
+        // check the supported date / time formats
+        let m = moment(dateString)
+        if (!m.isValid()) m = moment(dateString, [
+            'HH:mm',
+            'HH:mm:ss',
+            'DD/MM/YYYY HH:mm:ss',
+        ]);
+        console.log(dateString, m.format())
+
+        return m.valueOf();
     }
 
     activate(callback?: (err: Error, trigger: Trigger) => void): void {
@@ -72,15 +87,15 @@ export class TimeTrigger extends Trigger {
         } else if (this.doc.devices[this.when]) {
             // use state as date
             this.atHandler = (msg) => {
-                let d = new Date(msg.newValue);
+                let dt = TimeTrigger.dateTime(msg.newValue);
 
                 this.cronJob && this.cronJob.stop();
-                if (d.toString() != 'Invalid Date' && d.getTime() > Date.now()) {
-                    this.cronJob = new CronJob(d, this.handler);
+                if (!isNaN(dt) && dt > Date.now()) {
+                    this.cronJob = new CronJob(new Date(dt), this.handler);
                     this.cronJob.start();
-                    logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates());    
+                    logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates());
                 } else {
-                    logger.info('Scenario "%s" will not trigger. "%s" is invalid or in the past.', this.scenario.path, msg.newValue)  ;  
+                    logger.info('Scenario "%s" will not trigger. "%s" is invalid or in the past.', this.scenario.path, msg.newValue);
                     this.cronJob = undefined;
                 }
             }
@@ -94,7 +109,19 @@ export class TimeTrigger extends Trigger {
             this.cronJob.start();
             logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates())
         } else {
-            logger.error('Unsupported expression "%s".', this.when);
+            let dt = TimeTrigger.dateTime(this.when);
+            if (!isNaN(dt)) {
+                if (!isNaN(dt) && dt > Date.now()) {
+                    this.timeout && clearTimeout(this.timeout);
+                    setTimeout(this.handler, dt - Date.now());
+                    logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, new Date(dt));
+                } else {
+                    logger.info('Scenario "%s" will not trigger. "%s" is invalid or in the past.', this.scenario.path, this.when);
+                    this.timeout = undefined;
+                }
+            } else {
+                logger.error('Unsupported expression "%s".', this.when);
+            }
         }
         callback && callback(null, this);
     }
