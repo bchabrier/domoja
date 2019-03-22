@@ -93,6 +93,7 @@ export type Sandbox = {
     getSource: typeof getSource,
     setDeviceState: typeof setDeviceState,
     getDeviceState: typeof getDeviceState,
+    getDeviceLastUpdateDate: typeof getDeviceLastUpdateDate,
     msg: {
         emitter: string,
         oldValue: string,
@@ -117,7 +118,7 @@ export class ConfigLoader extends events.EventEmitter {
     rootModule: Module;
 
     private sandbox: Sandbox = {
-        isReleased: () => {return this.released},
+        isReleased: () => { return this.released },
         console: console,
         require: require,
         assert: assert,
@@ -129,6 +130,7 @@ export class ConfigLoader extends events.EventEmitter {
         getSource: getSource,
         setDeviceState: setDeviceState,
         getDeviceState: getDeviceState,
+        getDeviceLastUpdateDate: getDeviceLastUpdateDate,
         msg: <{ emitter: string, oldValue: string, newValue: string }>new Object(), // new Object needed to access outside of the sandbox
         args: <{ args: any[] }>new Object(), // new Object needed to access outside of the sandbox
     }
@@ -993,7 +995,7 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
     c.context().currentScenario = c.context().currentScenario + i;
 
     eatCommentsBlock(c);
-    let scenario = c.one(trigger);
+    let scenario = c.optional(trigger);
     eatCommentsBlock(c);
     let cond = c.optional(condition);
     logger.debug('condition = ', cond)
@@ -1007,68 +1009,74 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
 }
 
 function trigger(c: Parser.Parse): Scenario {
-    c.skip(TRIGGERS); eatComments(c);
-    c.indent()
-
     let document = <ConfigLoader>c.context().doc;
     let scenario = new Scenario(document, c.context().currentScenario);
 
-    c.many((c: Parser.Parse) => {
-        c.skip(DASH);
-        c.oneOf(
-            (c: Parser.Parse) => {
-                c.skip(STATE); eatComments(c);
+    c.optional(c => {
+        c.skip(TRIGGERS); eatComments(c);
+        c.indent()
 
-                let devices: string[] = [];
-                for (let d in c.context().devices) {
-                    devices.push(d)
-                }
-                // make sure longer items are first so that they are
-                // catched first by c.oneOf
-                devices.sort((a, b) => { return b.length - a.length });
-                let device = c.oneOf(...devices)
-                new triggers.StateTrigger(document, scenario, device);
-            },
-            (c: Parser.Parse) => {
-                c.skip(AT); eatComments(c);
-                let when = c.one(STRING);
-                let err = true;
-                if (when == 'startup') {
+        c.many((c: Parser.Parse) => {
+            c.skip(DASH);
+            c.oneOf(
+                (c: Parser.Parse) => {
+                    c.skip(STATE); eatComments(c);
+
+                    let devices: string[] = [];
+                    for (let d in c.context().devices) {
+                        devices.push(d)
+                    }
+                    // make sure longer items are first so that they are
+                    // catched first by c.oneOf
+                    devices.sort((a, b) => { return b.length - a.length });
+                    let device = c.oneOf(...devices)
+                    new triggers.StateTrigger(document, scenario, device);
+                },
+                (c: Parser.Parse) => {
+                    c.skip(AT); eatComments(c);
+                    let when = c.one(STRING);
+                    let err = true;
+                    if (when == 'startup') {
+                        err = false;
+                    }
+                    sortedDeviceList(c).forEach(d => {
+                        if (when == d) err = false;
+                    });
+                    if (err) {
+                        // try to see if a date / time
+                        if (!isNaN(triggers.TimeTrigger.dateTime(when))) err = false;
+                    }
+                    if (err) {
+                        c.expected('"startup" or <device> or <time> or <date>');
+                    } else {
+                        new triggers.TimeTrigger(document, scenario, when);
+                    }
+                },
+                (c: Parser.Parse) => {
+                    c.skip(Parser.token(/^cron: */, '"cron:"')); eatComments(c);
+                    //let pattern = Parser.token(/^((\*(\/\d+)?)|((\d+(-\d+)?)(,\d+(-\d+)?)*) [*] [*])/, 'a cron pattern, i.e. "*" or "1-3,5" or "*/2"');
+                    let pattern = Parser.token(/^(((\*(\/\d+)?)|(\d+(-\d+)?)(,\d+(-\d+)?)*) *){6}/, 'a cron pattern, i.e. 6 times a "*" or "1-3,5" or "*/2" as in https://www.npmjs.com/package/cron');
+                    let when = removeQuotes(c.one(pattern));
+                    let err = true;
+                    if (when == 'startup') {
+                        err = false;
+                    }
+                    sortedDeviceList(c).forEach(d => {
+                        if (when == d) err = false;
+                    });
                     err = false;
+                    if (err) {
+                        c.expected('"startup" or <device> or <time> or <date>');
+                    } else {
+                        new triggers.TimeTrigger(document, scenario, when);
+                    }
                 }
-                sortedDeviceList(c).forEach(d => {
-                    if (when == d) err = false;
-                });
-                if (err) {
-                    c.expected('"startup" or <device> or <time> or <date>');
-                } else {
-                    new triggers.TimeTrigger(document, scenario, when);
-                }
-            },
-            (c: Parser.Parse) => {
-                c.skip(Parser.token(/^cron: */, '"cron:"')); eatComments(c);
-                //let pattern = Parser.token(/^((\*(\/\d+)?)|((\d+(-\d+)?)(,\d+(-\d+)?)*) [*] [*])/, 'a cron pattern, i.e. "*" or "1-3,5" or "*/2"');
-                let pattern = Parser.token(/^(((\*(\/\d+)?)|(\d+(-\d+)?)(,\d+(-\d+)?)*) *){6}/, 'a cron pattern, i.e. 6 times a "*" or "1-3,5" or "*/2" as in https://www.npmjs.com/package/cron');
-                let when = removeQuotes(c.one(pattern));
-                let err = true;
-                if (when == 'startup') {
-                    err = false;
-                }
-                sortedDeviceList(c).forEach(d => {
-                    if (when == d) err = false;
-                });
-                err = false;
-                if (err) {
-                    c.expected('"startup" or <device> or <time> or <date>');
-                } else {
-                    new triggers.TimeTrigger(document, scenario, when);
-                }
-            }
-        );
-        eatComments(c);
-    }, (c: Parser.Parse) => { c.newline() });
-    c.dedent()
-    c.newline();
+            );
+            eatComments(c);
+        }, (c: Parser.Parse) => { c.newline() });
+        c.dedent()
+        c.newline();
+    });
     return scenario;
 }
 
@@ -1513,6 +1521,10 @@ function setDeviceState(path: string, state: string, callback: (err: Error) => v
 
 function getDeviceState(path: string): string {
     return getDevice(path).getState();
+}
+
+function getDeviceLastUpdateDate(path: string): Date {
+    return getDevice(path).lastUpdateDate;
 }
 
 function getPath<T>(list: { [path: string]: T }, shortPath: string): string {
