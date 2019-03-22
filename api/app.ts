@@ -1,4 +1,4 @@
-import { Errors, Path, Preprocessor, GET, POST, PathParam, FormParam } from 'typescript-rest';
+import { Errors, Path, PreProcessor, GET, POST, PathParam, FormParam } from 'typescript-rest';
 import { DmjServer } from '../domoja';
 
 @Path('/app')

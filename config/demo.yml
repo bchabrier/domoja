@@ -43,14 +43,15 @@ devices:
     - pompes_start : { type: variable, widget: text, tags: 'aquarium', name: "Heure démarrage pompes aquarium" }
     - pompes_end : { type: variable, widget: text, tags: 'aquarium', name: "Heure arrêt pompes aquarium" }
 
-  - sunset: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunset, name: "Coucher du soleil" }
+  - sunset: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunsetTime, name: "Coucher du soleil" }
   - sunset_plus_30mn: { type: variable, widget: text, tags: 'astronomy', name: "Coucher du soleil + 30mn" }
-  - sunrise: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunrise, name: "Lever du soleil" }
+  - sunrise: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunriseTime, name: "Lever du soleil" }
+  - zenith: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: zenithTime, name: "Zénith" }
   - daynight: { type: variable, widget: text, tags: 'astronomy', name: "Jour/nuit" }
 
   - camera_interieure: { type: httpCamera, widget: camera, tags: 'aquarium-page', video-url: /assets/imgs/demo_camera_interieure.jpg, snapshot-url: /assets/imgs/demo_camera_interieure.jpg, name: "Caméra intérieure" }
   - camera_exterieure: { type: httpCamera, widget: camera, tags: 'portails, entrée', video-url: /assets/imgs/demo_camera_exterieure.jpg, snapshot-url: /assets/imgs/demo_camera_exterieure.jpg, name: "Caméra extérieure" }
-  - camera_piscine: { type: httpCamera, widget: camera:snapshot:0, tags: 'piscine', video-url: /assets/imgs/demo_camera_piscine.jpg, snapshot-url: /assets/imgs/demo_camera_piscine.jpg, name: "Caméra piscine" }
+  - camera_piscine: { type: httpCamera, widget: camera, tags: 'piscine', video-url: /assets/imgs/demo_camera_piscine.jpg, snapshot-url: /assets/imgs/demo_camera_piscine.jpg, name: "Caméra piscine" }
   - alarme:
     - en_route: { type: device , widget: toggle, tags: 'alarme', source: myZibase, id: A1, name: "Alarme en route" }
     - presence : { type: variable, widget: text, tags: 'alarme', name: "Présence dans la maison"} 
@@ -69,20 +70,6 @@ devices:
   - hall: { type: sensor, widget: walkingman, tags: 'détecteurs, sensor-timer, sensor-alarm', source: myIPX800, id: "INPUT3", name: "Détecteur hall", transform: "0=>OFF,1=>ON" }
   - escalier: { type: sensor, widget: walkingman, tags: 'détecteurs, sensor-timer, sensor-alarm', source: myIPX800, id: "INPUT4", name: "Détecteur escalier", transform: "0=>OFF,1=>ON" }
   - cuisine: { type: sensor, widget: walkingman, tags: 'détecteurs, sensor-alarm', source: myIPX800, id: "INPUT1", name: "Détecteur cuisine", transform: "0=>OFF,1=>ON" }
-
-  - hall-escalier:
-    - controle : { type: variable, widget: "multistate:AUTO,MANU:primary,primary", tags: 'lampes', name: "Minuterie hall/escalier"} 
-    - sensors: { type: group, widget: walkingman, tags: 'détecteurs', function: !!js/function 'function (newValues, callback) {
-            return callback(null, newValues.filter(v => v=="1").length > 0?"ON":"OFF");
-          }', name: "Détecteurs hall/escalier", taglist: "sensor-timer"}
-    - timeout : { type: variable, widget: text, tags: '', name: "Timeout hall/escalier (mn)"} 
-    - extinction : { type: variable, widget: text, tags: '', name: "Heure d'extinction hall/escalier"} 
-
-
-  - cuisine:
-    - controle : { type: variable, widget: "multistate:AUTO,MANU:primary,primary", tags: 'lampes', name: "Minuterie cuisine"} 
-    - timeout : { type: variable, widget: text, tags: '', name: "Timeout cuisine (mn)"} 
-    - extinction : { type: variable, widget: text, tags: '', name: "Heure d'extinction cuisine"} 
 
   - prise_camera: { type: device, widget: toggle, source: myZibase, id: "G2", name: "Prise Caméra" }
 
@@ -140,6 +127,13 @@ devices:
      - couleur : { type: variable, widget: color, tags: 'piscine', name: "Couleur de la température"} 
      - filtration-couleur : { type: variable, widget: color, tags: 'piscine', name: "Couleur de la filtration"} 
      - filtration-icon : { type: variable, widget: text, tags: 'piscine', name: "Icône de la filtration"} 
+     - filtration-message : { type: variable, widget: text, tags: 'piscine', name: "Message de la filtration"} 
+     - filtration-start1 : { type: variable, widget: text, tags: 'piscine', name: "Heure de démarrage 1 de la filtration"} 
+     - filtration-stop1 : { type: variable, widget: text, tags: 'piscine', name: "Heure d'arrêt 1 de la filtration"} 
+     - filtration-start2 : { type: variable, widget: text, tags: 'piscine', name: "Heure de démarrage 2 de la filtration"} 
+     - filtration-stop2 : { type: variable, widget: text, tags: 'piscine', name: "Heure d'arrêt 2 de la filtration"} 
+     - filtration-duration : { type: variable, widget: text, tags: 'piscine', name: "Durée de la filtration (heures)"} 
+     - durees-filtration : { type: variable, widget: text, tags: 'piscine', name: "Tableau des durées de filtration [°C, h]"} 
 
   - petit_portail:
     - controle : { type: variable, widget: "confirm:Actionner:primary:Petit portail:Actionner le petit portail?:Partiel,Grand,Non", tags: 'portails-page, entrée', name: "Actionner le petit portail"} 
@@ -155,6 +149,22 @@ devices:
   - tempo:
     - couleur_du_jour : { type: device, widget: tempo-color, tags: 'tempo', source: tempo, id: couleurDuJour, name: "Couleur du jour" }
     - couleur_de_demain : { type: device, widget: tempo-color, tags: 'tempo', source: tempo, id: couleurDeDemain, name: "Couleur de demain" }
+
+  - hall-escalier:
+    - controle : { type: variable, widget: "multistate:AUTO,MANU:primary,primary", tags: 'lampes', name: "Minuterie hall/escalier"} 
+    - sensors: { type: group, widget: walkingman, tags: 'détecteurs', function: !!js/function 'function (newValues, callback) {
+            return callback(null, newValues.filter(v => v=="1").length > 0?"ON":"OFF");
+          }', name: "Détecteurs hall/escalier", taglist: "sensor-timer"}
+    - timeout : { type: variable, widget: text, tags: '', name: "Timeout hall/escalier (mn)"} 
+    - extinction : { type: variable, widget: text, tags: '', name: "Heure d'extinction hall/escalier"} 
+
+
+  - cuisine:
+    - controle : { type: variable, widget: "multistate:AUTO,MANU:primary,primary", tags: 'lampes', name: "Minuterie cuisine"} 
+    - timeout : { type: variable, widget: text, tags: '', name: "Timeout cuisine (mn)"} 
+    - extinction : { type: variable, widget: text, tags: '', name: "Heure d'extinction cuisine"} 
+
+
 
 scenarios:
   - demo:
@@ -280,154 +290,67 @@ scenarios:
 
   - astronomy:
     - sunset_calculation:
-        triggers:
-          - state: sunset
-        actions:
-          - !!js/function 'function f(callback) {
-            let sunset = new Date(this.getDeviceState("sunset"));
-            this.setDeviceState("sunset_plus_30mn", new Date(sunset.getTime() + 30 * 60 * 1000), callback);
-          }'   
+      triggers:
+        - state: sunset
+      actions:
+        - !!js/function 'function f(callback) {
+          let sunset = new Date(this.getDeviceState("sunset"));
+          this.setDeviceState("sunset_plus_30mn", new Date(sunset.getTime() + 30 * 60 * 1000), callback);
+        }'   
+    - day:
+      triggers:
+        - at: sunrise
+      actions:
+        - { device: daynight, state: "jour"}
+    - night:
+      triggers:
+        - at: sunrise
+      actions:
+        - { device: daynight, state: "nuit"}
     - day-night:
-        triggers:
-          - state: sunset
-          - state: sunrise
-        actions:
-          - !!js/function 'function f(callback) {
-            let sunset = new Date(this.getDeviceState("sunset"));
-            let sunrise = new Date(this.getDeviceState("sunrise"));
-            let now = Date.now();
-            this.setDeviceState("daynight", (sunrise.getTime() < now && now < sunset.getTime())?"jour":"nuit", callback);
-          }'   
-    - presence:
-      - init:
-        triggers:
-          - at: startup
-        actions:
-          - { device: alarme.presence-timeout, state: 10 }
-      - run:
-        - move:
-          triggers:
-            - state: alarme.sensors
-          conditions:
-            - { operator: =, left: alarme.sensors, right: "ON" }
-          actions:
-            - { device: alarme.presence, state: "ON"} 
-        - still:
-          triggers:
-            - state: alarme.sensors
-          conditions:
-            - { operator: =, left: alarme.sensors, right: "OFF" }
-          actions:
-            - { device: alarme.fin-presence, state: new Date(Date.now() + this.getDeviceState("alarme.presence-timeout") * 60 * 1000)}
-        - long-still:
-          triggers:
-            - at: alarme.presence-timeout
+      triggers:
+        - state: sunset
+        - state: sunrise
+      conditions:
+        - { operator: "!=", left: sunset, right: undefined}
+        - { operator: "!=", left: sunrise, right: undefined}
+      actions:
+        - !!js/function 'function f(callback) {
+          let sunset = new Date(this.getDeviceState("sunset"));
+          let sunrise = new Date(this.getDeviceState("sunrise"));
 
-          actions:
-            - { device: alarme.presence, state: "OFF"}
-
-
-
-    - controle:
-      - init:
-        triggers:
-          - at: startup
-        actions:
-            - { device: hall-escalier.controle, state: "AUTO" }
-            - { device: cuisine.controle, state: "AUTO" }
-    - setup:
+          let now = Date.now();
+          this.setDeviceState("daynight", (sunrise.getTime() < now && now < sunset.getTime())?"jour":"nuit", callback);
+        }'   
+  - presence:
+    - init:
       triggers:
         - at: startup
       actions:
-        - {device: hall-escalier.timeout, state: "1"}
-        - {device: cuisine.timeout, state: "5"}
-    - plan-lights-hall-escalier:
-      triggers:
-        - state: hall
-        - state: escalier
-      conditions:
-        - controle: { operator: =, left: hall-escalier.controle, right: "AUTO" }
-        - night: { operator: =, left: daynight, right: "nuit" }
-      actions:
-        - !!js/function 'function (callback) {
-          if (this.timeoutID) clearTimeout(this.timeoutID);
-          this.timeoutID = undefined;
-
-          if (this.getDeviceState(this.msg.emitter) == "1") {
-            let lampe1;
-            let lampe2;
-            if (this.msg.emitter=="hall") {
-              lampe1 = "lampes.lampe_hall"
-              lampe2 = "lampes.lampe_escalier"
-            } else {
-              lampe1 = "lampes.lampe_escalier"
-              lampe2 = "lampes.lampe_hall"
-            }
-            this.setDeviceState(lampe1, "ON");
-            this.setDeviceState(lampe2, "ON");
-          }
-          if (this.getDeviceState(this.msg.emitter) == "0") {
-            let timeout = parseInt(this.getDeviceState("hall-escalier.timeout"), 10) * 60 * 1000;
-
-            this.timeoutID = setTimeout(() => {
-              this.setDeviceState("lampes.lampe_hall", "OFF");
-              this.setDeviceState("lampes.lampe_escalier", "OFF");
-            }, timeout);
-          }
-          callback(null);
-        }'
-    - plan-lights-cuisine:
-      triggers:
-        - state: cuisine
-      conditions:
-        - controle: { operator: =, left: cuisine.controle, right: "AUTO" }
-        - night: { operator: =, left: daynight, right: "nuit" }
-      actions:
-        - !!js/function 'function (callback) {
-          if (this.timeoutID) clearTimeout(this.timeoutID);
-          this.timeoutID = undefined;
-
-          if (this.getDeviceState(this.msg.emitter) == "1") {
-            this.setDeviceState("lampes.lampe_table_cuisine", "ON");
-          }
-          if (this.getDeviceState(this.msg.emitter) == "0") {
-            let timeout = parseInt(this.getDeviceState("cuisine.timeout"), 10) * 60 * 1000;
-
-            this.timeoutID = setTimeout(() => {
-              this.setDeviceState("lampes.lampe_table_cuisine", "OFF");
-            }, timeout);
-          }
-          callback(null);
-        }'
-    - timer-cuisine:
-      - ON:
+        - { device: alarme.presence-timeout, state: 10 }
+    - run:
+      - move:
         triggers:
-          - state: cuisine
+          - state: alarme.sensors
         conditions:
-          - controle: { operator: =, left: cuisine.controle, right: "AUTO" }
-          - { operator: =, left: cuisine, right: "1" }
-          - night: { operator: =, left: daynight, right: "nuit" }   
+          - { operator: =, left: alarme.sensors, right: "ON" }
         actions:
-          - {device: lampes.lampe_table_cuisine, state: "ON"}
-          - {device: cuisine.extinction, state: "" }      
-      - OFF:
+          - { device: alarme.presence, state: "ON"} 
+      - still:
         triggers:
-          - at: startup
-          - state: cuisine
-          - state: cuisine.controle
+          - state: alarme.sensors
         conditions:
-          - controle: { operator: =, left: cuisine.controle, right: "AUTO" }
-          - { operator: "!=", left: cuisine, right: "1" }
+          - { operator: =, left: alarme.sensors, right: "OFF" }
         actions:
-          - {device: cuisine.extinction, state: new Date(Date.now() + getDeviceState("cuisine.timeout") * 60 * 1000) }      
-      - timeout:
+          - { device: alarme.fin-presence, state: new Date(Date.now() + this.getDeviceState("alarme.presence-timeout") * 60 * 1000)}
+      - long-still:
         triggers:
-          - at: cuisine.extinction
-        conditions:
-          - controle: { operator: =, left: cuisine.controle, right: "AUTO" }
-          - { operator: "!=", left: cuisine.extinction, right: "" }
+          - at: alarme.presence-timeout
+
         actions:
-          - {device: lampes.lampe_table_cuisine, state: "OFF"}
+          - { device: alarme.presence, state: "OFF"}
+
+
 
 
 
@@ -493,23 +416,118 @@ scenarios:
         triggers:
           - at: startup
         actions:
-            - { device: piscine.controle, state: "AUTO" }
-            - {device: piscine.filtration-icon, state: "timer" }
-            - {device: piscine.filtration-couleur, state: "lightgrey" } 
+          - {device: piscine.controle, state: "AUTO" }
+          - {device: piscine.filtration-icon, state: "timer" }
+          - {device: piscine.filtration-couleur, state: "lightgrey" } 
+      - AUTO:
+        triggers:
+          - state: piscine.controle
+          - state: piscine.filtration
+          - state: piscine.filtration-duration
+        conditions:
+          - {operator: =, left: piscine.controle, right: "AUTO"}
+        actions:
+          - {device: piscine.filtration-icon, state: "timer" }
       - ON:
         triggers:
           - state: piscine.controle
         conditions:
           - {operator: =, left: this.msg.newValue, right: "ON"}
         actions:
-            - { device: piscine.filtration, state: "ON" }
+          - { device: piscine.filtration, state: "ON" }
       - OFF:
         triggers:
           - state: piscine.controle
         conditions:
           - {operator: =, left: this.msg.newValue, right: "OFF"}
         actions:
-            - { device: piscine.filtration, state: "OFF" }
+          - { device: piscine.filtration, state: "OFF" }
+    - filtration-message:
+      # computes filtration-message
+      - init:
+        triggers:
+          - at: startup
+        actions:
+          - {device: piscine.filtration-message, state: "" } 
+      - AUTO:
+        # computes filtration-message
+        # when the pool is in AUTO mode
+        triggers:
+          - state: piscine.controle
+          - state: piscine.filtration
+          - state: piscine.filtration-start1
+          - state: piscine.filtration-duration
+        conditions:
+          - {operator: =, left: piscine.controle, right: "AUTO"}
+          - {operator: "!=", left: piscine.filtration, right: undefined}
+          - {operator: "!=", left: piscine.filtration-start1, right: undefined}
+          - {operator: "!=", left: piscine.filtration-stop1, right: undefined}
+          - {operator: "!=", left: piscine.filtration-duration, right: undefined}
+        actions:
+          - !!js/function 'function setFiltrationMessage (callback) {
+            let msg = "";
+            let filtration = this.getDeviceState("piscine.filtration");
+            let start = new Date(this.getDeviceState("piscine.filtration-start1"));
+            let duration = parseInt(this.getDeviceState("piscine.filtration-duration"), 10) * 60;
+            let stop = new Date(this.getDeviceState("piscine.filtration-stop1"));
+
+            function displayAsTime(dateVal) {
+              let now = new Date();
+              let hh = dateVal.getHours();
+              let mm = dateVal.getMinutes();
+              let ss = dateVal.getSeconds();
+              let yyyy = dateVal.getFullYear();
+              let MM = dateVal.getMonth() + 1;
+              let dd = dateVal.getDate();
+
+              if (dateVal.getFullYear() === now.getFullYear()) {
+                  if (dateVal.getMonth() === now.getMonth()) {
+                      if (dateVal.getDate() === now.getDate()) return (hh<10?"0":"")+hh+":"+(mm<10?"0":"")+mm;
+                      else if (dateVal.getDate() === now.getDate()-1) str = "hier";
+                      else if (dateVal.getDate() === now.getDate()+1) str = "demain";
+                      else str = (dd<10?"0":"")+dd+"/"+(MM<10?"0":"")+MM+"/"+yyyy;
+                  } else str = (dd<10?"0":"")+dd+"/"+(MM<10?"0":"")+MM+"/"+yyyy;
+              } else str = (dd<10?"0":"")+dd+"/"+(MM<10?"0":"")+MM+"/"+yyyy;
+              str += " " + (hh<10?"0":"")+hh+":"+(mm<10?"0":"")+mm;
+              return str;
+            }            
+            function displayAsDuration(duration) {
+              var h = Math.floor(duration/60);
+              var mn = duration - 60*h;
+
+              var str = "";
+              if (h>0 && mn===0) str = h + "h";
+              if (h>0 && mn>0) str = h + "h " + mn + "mn";
+              if (h===0 && mn>0) str = mn + "mn";
+              if (h===0 && mn===0) str = "0mn";
+              return str;
+            }
+            let startTime = displayAsTime(start);
+            let stopTime = displayAsTime(stop);
+            let durationLength = displayAsDuration(duration);
+
+            if (filtration != "ON") {
+              msg = `Mise en<BR/>marche<br><strong>${startTime}</strong><br>pour ${durationLength}`;
+            } 
+            if (filtration == "ON") {
+              msg = `Arrêt<br><strong>${stopTime}</strong><br>Durée<br>${durationLength}`;
+            }
+            this.setDeviceState("piscine.filtration-message", msg, callback);
+          }'
+      - ON:
+        triggers:
+          - state: piscine.controle
+        conditions:
+          - {operator: =, left: this.msg.newValue, right: "ON"}
+        actions:
+          - {device: piscine.filtration-message, state: "" } 
+      - OFF:
+        triggers:
+          - state: piscine.controle
+        conditions:
+          - {operator: =, left: this.msg.newValue, right: "OFF"}
+        actions:
+          - {device: piscine.filtration-message, state: "" }
     - filtration-couleur:
       - AUTO-ON:
         triggers:
@@ -578,6 +596,85 @@ scenarios:
           - {device: piscine.filtration-couleur, state: "#ef473a" } # red
           - {device: piscine.filtration-icon, state: "power" }
           - {device: piscine.controle, state: "ON" }
+    - filtration-duree-start:
+      - init:
+        triggers:
+          - at: startup
+        actions:
+          # tableau des durées de filtration [ °C, durée en heures ]
+          - {device: piscine.durees-filtration, state: "[
+              [10, 3],    
+              [13, 3],
+              [16, 7],
+              [20, 11],
+              [24, 15],
+              [27, 20],
+              [30, 24]
+            ]
+            "}
+      - calcul-duree:
+        triggers:
+          - state: piscine.temperature
+        actions:
+          - !!js/function 'function f(callback) {
+            let temp = parseFloat(this.getDeviceState("piscine.temperature"), 10);
+            let durees = JSON.parse(this.getDeviceState("piscine.durees-filtration"));
+
+            var duree;
+            if (temp <= durees[0][0]) {
+              duree = durees[0][1]
+            } else if (temp >= durees[durees.length - 1][0]) {
+              duree = durees[durees.length - 1][1]
+            } else {
+              // find closest temp interval
+              for (i = 0; i < durees.length - 1; i++) {
+                if (temp >= durees[i][0] && temp < durees[i + 1][0]) {
+                  // apply a gradient
+                  duree1 = durees[i][1];
+                  duree2 = durees[i + 1][1];
+                  ratio = (temp - durees[i][0])/(durees[i + 1][0] - durees[i][0])
+                  duree = Math.round(duree1 + ratio * (duree2-duree1));
+                }
+              }
+            }
+            this.setDeviceState("piscine.filtration-duration", duree, callback);
+          }'         
+      - calcul-start:
+        triggers:
+          - state: zenith
+          - state: piscine.filtration-duration
+        conditions:
+          - { operator: "!=", left: piscine.filtration-duration, right: undefined}
+          - { operator: "!=", left: zenith, right: undefined}
+          - { operator: "!=", left: piscine.filtration, right: "ON"}
+        actions:
+          - !!js/function 'function f(callback) {
+            let duree = parseFloat(this.getDeviceState("piscine.filtration-duration"), 10);
+
+            let zenith = new Date(this.getDeviceState("zenith"));
+
+            let start1 = zenith.getTime() - duree * 60 * 60 * 1000 / 2;
+            // check if next day
+            if (start1 < Date.now()) start1 = start1 + 24 * 60 * 60 * 1000;
+            let stop1 = start1 + duree * 60 * 60 * 10000;
+
+            let start2 = new Date();
+            start2.setHours(23);
+            start2.setMinutes(00);
+            start2.setSeconds(00);
+            // check if next day
+            if (start2 < Date.now()) start2 = start2 + 24 * 60 * 60 * 1000;
+            let stop2 = start2 + 1 * 60 * 60 * 1000;
+
+            if (stop1 > start2) start2 = undefined;
+            if (stop1 > stop2) stop2 = undefined;
+
+            console.log(new Date(start1).toString(), new Date(start2).toString())
+
+            this.setDeviceState("piscine.filtration-start1", new Date(start1));
+            this.setDeviceState("piscine.filtration-stop1", new Date(stop1));            this.setDeviceState("piscine.filtration-start2", new Date(start2));
+            this.setDeviceState("piscine.filtration-stop2", new Date(stop2), callback);
+          }'    
   - petit_portail:
     - controle:
       - init:
@@ -616,6 +713,96 @@ scenarios:
         actions:
             - { device: grand_portail.grand, state: "ON" }
             - { device: grand_portail.controle, state: "OFF" }  
+  - minuteries:
+    - controle:
+      - init:
+        triggers:
+          - at: startup
+        actions:
+            - { device: hall-escalier.controle, state: "AUTO" }
+            - { device: cuisine.controle, state: "AUTO" }
+    - setup:
+      triggers:
+        - at: startup
+      actions:
+        # durée de la minuterie du hall
+        - {device: hall-escalier.timeout, state: "3"}
+        # durée de la minuterie de la cuisine
+        - {device: cuisine.timeout, state: "5"}
+
+    - timer-cuisine:
+      - ON:
+        triggers:
+          - state: cuisine
+        conditions:
+          - controle: { operator: =, left: cuisine.controle, right: "AUTO" }
+          - { operator: =, left: cuisine, right: "1" }
+          - night: { operator: =, left: daynight, right: "nuit" }   
+        actions:
+          - {device: lampes.lampe_table_cuisine, state: "ON"}
+          - {device: cuisine.extinction, state: "" }      
+      - OFF:
+        triggers:
+          - at: startup
+          - state: cuisine
+          - state: cuisine.controle
+        conditions:
+          - controle: { operator: =, left: cuisine.controle, right: "AUTO" }
+          - { operator: "!=", left: cuisine, right: "1" }
+        actions:
+          - {device: cuisine.extinction, state: new Date(Date.now() + getDeviceState("cuisine.timeout") * 60 * 1000) }      
+      - timeout:
+        triggers:
+          - at: cuisine.extinction
+        conditions:
+          - controle: { operator: =, left: cuisine.controle, right: "AUTO" }
+          - { operator: "!=", left: cuisine.extinction, right: "" }
+        actions:
+          - {device: lampes.lampe_table_cuisine, state: "OFF"}
+    - timer-hall-escalier:
+      - hall-ON:
+        triggers:
+          - state: hall
+        conditions:
+          - controle: { operator: =, left: hall-escalier.controle, right: "AUTO" }
+          - { operator: =, left: hall, right: "1" }
+          - night: { operator: =, left: daynight, right: "nuit" }   
+        actions:
+          - {device: lampes.lampe_hall, state: "ON"}
+          - {device: lampes.lampe_escalier, state: "ON"}
+          - {device: hall-escalier.extinction, state: "" }
+      - escalier-ON:
+        triggers:
+          - state: escalier
+        conditions:
+          - controle: { operator: =, left: hall-escalier.controle, right: "AUTO" }
+          - { operator: =, left: escalier, right: "1" }
+          - night: { operator: =, left: daynight, right: "nuit" }   
+        actions:
+          - {device: lampes.lampe_escalier, state: "ON"}
+          - {device: lampes.lampe_hall, state: "ON"}
+          - {device: hall-escalier.extinction, state: "" }      
+      - OFF:
+        triggers:
+          - at: startup
+          - state: hall
+          - state: escalier
+          - state: hall-escalier.controle
+        conditions:
+          - controle: { operator: =, left: hall-escalier.controle, right: "AUTO" }
+          - { operator: "!=", left: hall, right: "1" }
+          - { operator: "!=", left: escalier, right: "1" }
+        actions:
+          - {device: hall-escalier.extinction, state: new Date(Date.now() + getDeviceState("hall-escalier.timeout") * 60 * 1000) }      
+      - timeout:
+        triggers:
+          - at: hall-escalier.extinction
+        conditions:
+          - controle: { operator: =, left: hall-escalier.controle, right: "AUTO" }
+          - { operator: "!=", left: hall-escalier.extinction, right: "" }
+        actions:
+          - {device: lampes.lampe_escalier, state: "OFF"}
+          - {device: lampes.lampe_hall, state: "OFF"}
 
 pages:
   - Home:
@@ -629,13 +816,14 @@ pages:
             linkPage: Piscine
             label: "Piscine"
             color: "${piscine.couleur}"
-            text: "${piscine.temperature}°C"
+            text: "<h1><BR/><strong>${piscine.temperature}</strong><BR/>°C</h1>"
           - pool-filtration:
             widget: dashboard-icon
             icon: "${piscine.filtration-icon}" # a valid ionic icon name
             linkPage: Piscine
             label: "Filtration ${piscine.filtration}"
             color: "${piscine.filtration-couleur}"
+            text: "${piscine.filtration-message}"
           - entrée:
             widget: dashboard-camera
             url: /assets/imgs/demo_dashboard_entrée.jpg
@@ -657,7 +845,7 @@ pages:
             color: "${lampes.couleur}"
             linkPage: Lampes
             label: "Lampes"
-            text: "${lampes.nb_lampes_ON}/${lampes.nb_lampes}"
+            text: "<h1>${lampes.nb_lampes_ON}/${lampes.nb_lampes}</br></h1>"
           - portails:
             widget: dashboard-icon
             icon: ios-barcode # a valid ionic icon name

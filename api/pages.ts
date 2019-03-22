@@ -1,4 +1,4 @@
-import { Errors, Path, Preprocessor, GET, POST, PathParam, FormParam } from 'typescript-rest';
+import { Errors, Path, Security, PreProcessor, GET, POST, PathParam, FormParam } from 'typescript-rest';
 import * as express from 'express';
 
 import { getCurrentConfig, ConfigLoader } from '../core/lib/load';

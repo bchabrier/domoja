@@ -8,9 +8,12 @@ const flash = require('connect-flash');
 import * as tokenMgr from '../lib/token';
 import * as express from 'express';
 import { IVerifyOptions } from 'passport-local';
+let passportSocketIo = require( 'passport.socketio');
+import * as session from 'express-session';
+
 var logger = require("tracer").colorConsole({
   dateformat: "dd/mm/yyyy HH:MM:ss.l",
-  level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
+  level: 2 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
 class User {
@@ -19,18 +22,21 @@ class User {
 
 var _tokenMgr: typeof tokenMgr;
 var _loginPath: string;
+var _store: any;
 
 export function configure(app: express.Application,
   check: (user: string, pwd: string, done: (error: any, user?: any, options?: IVerifyOptions) => void) => void,
   findById: (user: string, cb: (err: Error, user: User) => void) => void,
   tokenMgr: typeof _tokenMgr, loginPath: string,
-  loginContent: (req: express.Request, resp: express.Response) => void) {
+  loginContent: (req: express.Request, resp: express.Response) => void,
+  store: typeof session.Store) {
   _tokenMgr = tokenMgr;
   _loginPath = loginPath;
+  _store = store;
 
   // Local Authentication strategy
   passport.use(new LocalStrategy(function (user: string, pwd: string, done: (error: any, user?: any, options?: IVerifyOptions) => void) {
-    logger.info('LocalStrategy calling check');
+    logger.debug('LocalStrategy calling check');
     check(user, pwd, done);
   }));
 
@@ -102,10 +108,10 @@ export function configure(app: express.Application,
 
   // Initialize Passport and restore authentication state, if any, from the
   // session.
-  app.use(require('cookie-parser')());
-  app.use(require('body-parser').urlencoded({ extended: true }));
-  app.use(require('express-session')({ secret: 'my own passphrase', resave: false, saveUninitialized: false }));
   app.use(passport.initialize());
+  app.use(cookieParser());
+  app.use(require('body-parser').urlencoded({ extended: true }));
+  app.use(session({ secret: getSecret(), store: _store, resave: false, saveUninitialized: false }));
   app.use(passport.session());
   app.use(passport.authenticate('remember-me'));
 
@@ -124,7 +130,7 @@ export function configure(app: express.Application,
   //   curl -v -d "username=bob&password=secret" http://127.0.0.1:3000/login.html
   app.post(loginPath,
     function (req: express.Request, res: express.Response, next: express.NextFunction) {
-      logger.error(loginPath + ' called');
+      logger.debug(loginPath + ' called');
       return next(null);
     },
     //	   passport.authenticate('session'),
@@ -140,7 +146,7 @@ export function configure(app: express.Application,
 
       logger.debug('passport.authenticate was successful');
       // Issue a remember me cookie if the option was checked
-      if (!req.body.remember_me) {
+      if (!req.body.remember_me || req.body.remember_me == 'false') {
         logger.debug('remember_me option was not checked');
         return successReturnToOrRedirect();
       }
@@ -222,3 +228,13 @@ function issueToken(user: User, done: (err: Error, token?: string) => void) {
   });
 }
 
+export function socketIoAuthorize() {
+return passportSocketIo.authorize({
+  secret: getSecret(),
+  store: _store,
+});
+}
+
+function getSecret() {
+  return 'my own passphrase';
+}

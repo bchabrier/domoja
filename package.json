@@ -16,9 +16,14 @@
   },
   "dependencies": {
     "@types/async": "^2.0.49",
+    "@types/connect-ensure-login": "^0.1.4",
     "@types/cors": "^2.8.4",
+    "@types/cron": "^1.6.1",
     "@types/express": "^4.16.0",
-    "@types/node": "^10.9.3",
+    "@types/mongodb": "^3.1.20",
+    "@types/node": "^11.10.4",
+    "@types/passport": "^1.0.0",
+    "@types/passport-local": "^1.0.33",
     "@types/socket.io": "^2.1.0",
     "async": "^2.6.1",
     "basic-auth": "^2.0.0",
@@ -27,30 +32,32 @@
     "connect-ensure-login": "^0.1.1",
     "connect-flash": "^0.1.1",
     "cors": "^2.8.4",
+    "cron": "^1.6.0",
     "express": "^4.16.3",
     "express-session": "^1.15.6",
     "fsmonitor": "^0.2.4",
-    "mongodb": "^3.1.4",
+    "mongodb": "2",
     "morgan": "^1.9.0",
     "passport": "^0.4.0",
-    "passport-local": "^1.0.0",
+    "passport-local": "1.0.0",
     "passport-remember-me": "^0.0.1",
+    "passport.socketio": "^3.7.0",
+    "session-file-store": "^1.2.0",
     "shitty-peg": "^0.0.5",
     "socket.io": "^2.1.1",
     "tracer": "^0.9.1",
-    "typescript-rest": "^1.7.0",
+    "typescript-rest": "^2.0.0",
     "vm2": "^3.6.3"
   },
   "devDependencies": {
+    "@types/express-session": "^1.15.11",
     "@types/mocha": "^5.2.5",
     "@types/rewire": "^2.5.28",
     "coveralls": "^3.0.2",
-    "cron": "^1.4.1",
-    "mocha": "^5.2.0",
+    "mocha": "^6.0.2",
     "nyc": "^13.0.1",
     "rewire": "^4.0.1",
-    "ts-mocha": "^2.0.0",
-    "typescript": "^3.0.1"
+    "ts-mocha": "^6.0.0"
   },
   "engines": {
     "node": ">=0.10.0"
@@ -61,13 +68,15 @@
     "test": ": run test coverage; trap 'tput cnorm' INT; nyc --extension .ts npm run test:only",
     "test:only": ": run test suite once; trap 'tput cnorm' INT; ts-mocha test/**/*.ts $WATCHPARAMS --exit; tput cnorm",
     "test:watch": ": watch running test suite; trap 'tput cnorm' INT; WATCHPARAMS='-w --watch-extensions ts,yml' npm --scripts-prepend-node-path=auto run test:only",
-    "watch": ": watch running domoja in demo mode; handler() { kill $PID; exit; } ; trap handler INT; while true; do npm run start$TARGET & PID=$!; inotifywait -q -e modify -e move -e create -e delete -r . @node_modules --exclude 'test|\\.git|.*\\.yml|bin|\\.\\#.*|.*~'; killchildren() { for p in $*; do CIDs=$(pgrep -P $p); [ -z $CIDs ] || (killchildren $CIDs; kill $p); done; }; killchildren $PID; done",
+    "watch": ": watch running domoja in demo mode; handler() { kill $PID; exit; } ; trap handler INT; while true; do npm run start$TARGET & PID=$!; inotifywait -q -e modify -e move -e create -e delete -r . @node_modules --exclude 'test|sessions|\\.git|.*\\.yml|bin|www|\\.\\#.*|.*~'; killchildren() { for p in $*; do CIDs=$(pgrep -P $p); [ -z $CIDs ] || (killchildren $CIDs; kill $p); done; }; killchildren $PID; done",
     "watch:config": ": watch running domoja; TARGET=:config npm --scripts-prepend-node-path=auto run watch",
     "report": ": generate coverage report; nyc report",
     "coverage": ": publish coverage report to coveralls; nyc report --reporter=text-lcov | coveralls",
     "swagger:force": ": run swagger generation; swaggerGen -c ./swaggerConfig.json",
     "swagger": ": run swagger generation if needed; for f in api/*.ts; do [ ! -f api/swagger.json ] || [ $f -nt api/swagger.json ] && ( npm --scripts-prepend-node-path=auto run swagger:force; break ); done; exit 0",
     "generate:demo": ": generate demo.yml; ./tools/generate_demo",
-    "publish": ": publish to npm; npm --scripts-prepend-node-path=auto run generate:demo; npm --scripts-prepend-node-path=auto run swagger; ./tools/update_readme; ./tools/publish"
+    "publish": ": publish to npm; npm --scripts-prepend-node-path=auto run generate:demo; npm --scripts-prepend-node-path=auto run swagger; ./tools/update_readme; ./tools/publish",
+    "outdated": ": check outdated packages; cur=$(pwd); for d in . core modules/*; do cd $cur/$d; pwd; yarn outdated $d; done",
+    "upgrade": ": upgrade packages; cur=$(pwd); for d in . core modules/*; do cd $cur/$d; pwd; yarn upgrade $d; done"
   }
 }

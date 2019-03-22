@@ -10,19 +10,24 @@ var logger = require("tracer").colorConsole({
 var fsmonitor = require('fsmonitor');
 
 import * as core from './core';
-import { Server } from 'typescript-rest';
+import { Server, ServiceAuthenticator } from 'typescript-rest';
 
 import * as apis from './api';
 
 import * as socketio from 'socket.io';
+import * as http from 'http';
+
+import * as colors from 'colors/safe';
+
 
 //console.log(HelloService);
 
 
 import * as express from 'express';
-import { ENODEV } from 'constants';
+import * as session from 'express-session';
+
 import * as cors from 'cors';
-var http = require('http')
+//var http = require('http')
 var https = require('https')
 var basicAuth = require('basic-auth');
 var path = require('path');
@@ -33,10 +38,6 @@ var runWithMocha = /.*mocha$/.test(process.argv[1]);
 
 const CONFIG_FILE = process.argv[2] || './config/demo.yml';
 //const CONFIG_FILE = null;
-
-
-
-
 
 type http_type = 'HTTP' | 'HTTPS';
 
@@ -55,7 +56,8 @@ class DomojaServer {
 
     if (!prod) {
       this.app.use(cors({
-        origin: ['http://raspberrypi:8100', 'http://192.168.0.10:8100', 'http://raspberrypi:4001', 'http://192.168.0.10:4001']
+        origin: ['http://raspberrypi:8100', 'http://192.168.0.10:8100', 'http://raspberrypi:4001', 'http://192.168.0.10:4001'],
+        credentials: true
       }));
     }
 
@@ -70,7 +72,6 @@ class DomojaServer {
     //	app.use(app.router);
     //	app.use(express.bodyParser());
     //	app.use(express.methodOverride());
-    this.app.use(express.static(path.join(__dirname, 'www')));
 
     //if (app.get('env') == 'development') {
     //  		app.use(express..errorHandler());
@@ -85,12 +86,16 @@ class DomojaServer {
     app.get('/getTempoInfos', tempo.getTempoInfos);
     app.get('/presence', presence.presence);
   */
+    Server.swagger(this.app, {
+      filePath: './api/swagger.yaml',
+      endpoint: '/api-docs',
+      swaggerUiOptions: ['http']
+    });
 
-    let apiTab: Function[] = [];
-    Object.keys(apis).forEach(a => apiTab.push((<any>apis)[a]));
-    Server.buildServices(this.app, ...apiTab);
-
-    Server.swagger(this.app, './api/swagger.yaml', '/api-docs', null, ['http']);
+    var FileStore = require('session-file-store')(session);
+    let store: typeof session.Store = new FileStore({
+      logFn: logger.error
+    });
 
     this.serveUI(this.app,
       '/login.html', '/../helloWorld/src', '/index.html',
@@ -98,8 +103,15 @@ class DomojaServer {
         '/build'
       ],
       [],
-      this.app.get('env')
+      this.app.get('env'),
+      store
     );
+
+    this.app.use(express.static(path.join(__dirname, 'www')));
+
+    let apiTab: Function[] = [];
+    Object.keys(apis).forEach(a => apiTab.push((<any>apis)[a]));
+    Server.buildServices(this.app, ...apiTab);
 
     let server = this.app.listen(this.app.get('port'), function () {
       self.app.set('port', this.address().port); // in case app.get('port') is null
@@ -108,8 +120,13 @@ class DomojaServer {
     });
 
     this.ws = socketio.listen(server);
+    this.ws.use(core.socketIoAuthorize());
     this.ws.sockets.on('connection', socket => {
-      let http_string: http_type = 'HTTP' // to be changed
+      let request: http.IncomingMessage = socket.request;
+      console.log(request.headers.cookie);
+
+      let url = request.headers.origin as string;
+      let http_string: http_type = url.split(':')[0].toUpperCase() as http_type;
       logger.error("websocket connected with", http_string);
       self.nbWebsockets[http_string]++;
       this.ws.emit('change', this.getApp());
@@ -164,7 +181,8 @@ class DomojaServer {
     indexHTML: string,
     authorizedPaths: string[],
     alwaysAuthorizedPaths: string[],
-    env: 'development' | 'production') {
+    env: 'development' | 'production',
+    store: typeof session.Store) {
 
     function serve(req: express.Request, res: express.Response) {
       res.sendFile(path.normalize(__dirname + staticPath + req.path));
@@ -175,7 +193,8 @@ class DomojaServer {
       core.findUserById,
       require('./core/lib/token'),
       loginPath,
-      serve
+      serve,
+      store
     );
 
     // � partir de ce point les services doivent etre autoris�s
@@ -333,12 +352,13 @@ export let DmjServer: DomojaServer;
 
 if (!runWithMocha) {
 
-  logger.info('    ____                        _');
-  logger.info('   / __ \\____  ________  ____  (_)___ _');
-  logger.info('  / / / / __ \\/ _    _ \\/ __ \\/ / __ `/');
-  logger.info(' / /_/ / /_/ / / / / / / /_/ / / /_/ /');
-  logger.info('/_____/\\____/_/ /_/ /_/\\____/ /\\__,_/ ');
-  logger.info('                       /_____/');
+  logger.info(colors.magenta('    ____                        _'));
+  logger.info(colors.magenta('   / __ \\____  ________  ____  (_)___ _'));
+  logger.info(colors.magenta('  / / / / __ \\/ _    _ \\/ __ \\/ / __ `/'));
+  logger.info(colors.magenta(' / /_/ / /_/ / / / / / / /_/ / / /_/ /'));
+  logger.info(colors.magenta('/_____/\\____/_/ /_/ /_/\\____/ /\\__,_/ '));
+  logger.info(colors.magenta('                       /_____/'));
+  logger.info('')
 
 
   //var app_prod = createApp(4000, true);
