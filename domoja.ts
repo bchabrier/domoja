@@ -126,7 +126,7 @@ class DomojaServer {
       console.log(request.headers.cookie);
 
       let url = request.headers.origin as string;
-      let http_string: http_type = url.split(':')[0].toUpperCase() as http_type;
+      let http_string: http_type = url ? url.split(':')[0].toUpperCase() as http_type : 'HTTP';
       logger.error("websocket connected with", http_string);
       self.nbWebsockets[http_string]++;
       this.ws.emit('change', this.getApp());
