@@ -132,7 +132,7 @@ export class UserMgr extends events.EventEmitter {
     logger.debug('Checking user "%s"...', username);
     for (let k in this.users) {
       let u = this.users[k];
-      console.log(k, "=>", u)
+      //console.log(k, "=>", u)
       logger.debug('Checking user "%s" vs "%s"...', username, u.login);
       if (username === u.login && encode(password) === u.password) {
         logger.debug('User check passed!');
