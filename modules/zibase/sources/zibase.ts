@@ -23,10 +23,10 @@ export class Zibase extends Source {
 				var id = arg1;
 				var arg = arg2;
 				if (event == 'change') {
-					Object.keys(arg).forEach( k => {
+					Object.keys(arg).forEach(k => {
 						if (k != "emitter") {
 							//if (k == 'value') self.setAttribute(id, arg[k]);
-							self.updateAttribute(id, (k=='value')?'state':k, arg[k], new Date);
+							self.updateAttribute(id, (k == 'value') ? 'state' : k, arg[k], new Date);
 						}
 					})
 				}
@@ -35,6 +35,25 @@ export class Zibase extends Source {
 				initialEmitEvent.call(self.zibase, event, arg1);
 			}
 		};
+
+		this.armTimeout();
+	}
+
+	private timeout: NodeJS.Timer = undefined;
+
+	private reconnectToZibase() {
+		var response = {
+			reserved1: "SLAMSIG"
+		};
+		this.zibase.processZiBaseData(response);
+	}
+
+	private to = 120; // in seconds
+	private armTimeout() {
+		this.timeout = setInterval(() => {
+			logger.error("No message received after " + this.to + "s, restarting Zibase connection.");
+			this.reconnectToZibase();
+		}, this.to * 1000);
 	}
 
 	private sendCommand(address: string, action: ZbAction, protocol?: ZbProtocol, dimLevel?: number, nbBurst?: number): void {
