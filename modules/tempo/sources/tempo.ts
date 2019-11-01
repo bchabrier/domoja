@@ -97,7 +97,11 @@ export class tempo extends Source {
 		let today = new Date();
 		let todayString = format(today);
 		let self = this;
-		this.request = request.get(tempoURLCouleurDuJour + todayString, function (err, response, bodyString) {
+		this.request = request.get(tempoURLCouleurDuJour + todayString, {
+			headers: {
+				'User-Agent': 'Wget/1.18 (linux-gnueabihf)' // for some reason, edf is rejecting request default agent
+			}
+		}, function (err, response, bodyString) {
 
 			//returns a JSON object similar to:
 			// {"JourJ":{"Tempo":"BLEU"},"JourJ1":{"Tempo":"ND"}}
@@ -151,7 +155,7 @@ export class tempo extends Source {
 				}
 				callback(null);
 			} else {
-				callback(new Error("No success from '" + tempoURLCouleurDuJour + "': response: '" + bodyString + "'."));
+				callback(new Error("No success from '" + tempoURLCouleurDuJour + todayString + "': response: '" + bodyString + "'."));
 			}
 			return;
 		});
