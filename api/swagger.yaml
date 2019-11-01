@@ -1,4 +1,4 @@
-basePath: /
+basePath: null
 definitions: {}
 info:
     description: 'A Typescript framework for home automation'
@@ -14,7 +14,6 @@ paths:
                 '204':
                     description: 'No content'
             description: 'Retrieves the list of devices'
-            summary: null
             parameters: []
     '/devices/{id}':
         get:
@@ -25,7 +24,6 @@ paths:
                 '204':
                     description: 'No content'
             description: 'Retrieves a device'
-            summary: null
             parameters:
                 -
                     description: 'path of the device'
@@ -41,7 +39,6 @@ paths:
                 '204':
                     description: 'No content'
             description: 'Sends a command to a device'
-            summary: null
             consumes:
                 - application/x-www-form-urlencoded
             parameters:
@@ -66,7 +63,6 @@ paths:
                 '204':
                     description: 'No content'
             description: 'Retrieves the list of pages'
-            summary: null
             parameters: []
     /app:
         get:
@@ -77,7 +73,6 @@ paths:
                 '204':
                     description: 'No content'
             description: 'Retrieve the app data'
-            summary: null
             parameters: []
     /app/demo-mode:
         post:
@@ -88,7 +83,6 @@ paths:
                 '204':
                     description: 'No content'
             description: 'Set the app demo mode'
-            summary: null
             consumes:
                 - application/x-www-form-urlencoded
             parameters:

@@ -2,18 +2,24 @@ import * as passport from 'passport';
 import * as passportLocal from 'passport-local';
 var LocalStrategy = passportLocal.Strategy;
 var RememberMeStrategy = require('passport-remember-me').Strategy;
+import * as passportHeaderApiKey from 'passport-headerapikey';
+const HeaderAPIKeyStrategy = passportHeaderApiKey.HeaderAPIKeyStrategy;
+import * as passportHttp from 'passport-http';
+const BasicStrategy = passportHttp.BasicStrategy;
 import * as cookieParser from 'cookie-parser';
 import * as ensureLogin from 'connect-ensure-login';
 const flash = require('connect-flash');
 import * as tokenMgr from '../lib/token';
 import * as express from 'express';
 import { IVerifyOptions } from 'passport-local';
-let passportSocketIo = require( 'passport.socketio');
+import * as socketio from 'socket.io';
+let passportSocketIo = require('passport.socketio');
 import * as session from 'express-session';
+import * as bodyParser from 'body-parser';
 
 var logger = require("tracer").colorConsole({
   dateformat: "dd/mm/yyyy HH:MM:ss.l",
-  level: 2 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
+  level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
 class User {
@@ -104,15 +110,44 @@ export function configure(app: express.Application,
     issueToken
   ));
 
+  passport.use(new HeaderAPIKeyStrategy(
+    { header: 'Authorization', prefix: 'Api-Key ' },
+    false,
+    function (apikey, done) {
+      /*
+      User.findOne({ apikey: apikey }, function (err, user) {
+        if (err) { return done(err); }
+        if (!user) { return done(null, false); }
+        return done(null, user);
+      });
+      */
+      logger.debug("verifying api key")
+      if (apikey == "qdpofiqdlfkj") { // some api key associating to user 0
+        return findById('0', done);
+      }
+      logger.debug("bad api key")
+      done(new Error("Unknown api key"));
+    }
+  ));
+
+  passport.use(new BasicStrategy(
+    function (userid, password, done) {
+      logger.debug('BasicStrategy calling check');
+      check(userid, password, done);
+    }));
+
   app.use(flash());
+
+  app.use(cookieParser());
+  app.use(bodyParser.urlencoded({ extended: true }));
+  app.use(session({ secret: getSecret(), store: _store, resave: false, saveUninitialized: false }));
 
   // Initialize Passport and restore authentication state, if any, from the
   // session.
   app.use(passport.initialize());
-  app.use(cookieParser());
-  app.use(require('body-parser').urlencoded({ extended: true }));
-  app.use(session({ secret: getSecret(), store: _store, resave: false, saveUninitialized: false }));
   app.use(passport.session());
+  app.use(authenticateBasicAndApiKey);
+
   app.use(passport.authenticate('remember-me'));
 
 
@@ -228,13 +263,51 @@ function issueToken(user: User, done: (err: Error, token?: string) => void) {
   });
 }
 
-export function socketIoAuthorize() {
-return passportSocketIo.authorize({
-  secret: getSecret(),
-  store: _store,
-});
+export function socketIoAuthorize(): (socket: socketio.Socket, next: (err?: any) => void) => void {
+  return (socket, next) => {
+    console.log('socketIoAuthorize')
+    //console.log('data=', socket.request)
+
+    let req = socket.request as express.Request;
+    let response: express.Response;
+
+    passport.initialize()(req, response, (err?) => {
+      authenticateBasicAndApiKey(req, response, (err?) => {
+        if (req.isAuthenticated()) return next();
+        return passportSocketIo.authorize({
+          secret: getSecret(),
+          store: _store,
+        })(socket, next);
+      });
+    });
+  }
 }
 
 function getSecret() {
   return 'my own passphrase';
+}
+
+function authenticateBasicAndApiKey(req: express.Request, res: express.Response, next: (err?: any) => void) {
+  passport.authenticate('basic', { session: false }, function (err, user, info) {
+    // test with:
+    // curl 'http://192.168.0.10:4001/devices/aquarium.pompes' -u hb:hbpassword01 -H 'Accept: application/json, text/plain, */*' -H 'Referer: http://raspberrypi:8100/' -H 'Origin: http://raspberrypi:8100' --compressed 
+    logger.debug('Authentication with basic', err, user, info);
+    if (!err && user) {
+      logger.debug('Authenticated with basic');
+      return req.logIn(user, next);
+    }
+
+    passport.authenticate('headerapikey', function (err, user, info) {
+      // test with:
+      // curl 'http://192.168.0.10:4001/devices/aquarium.pompes' -H "Authorization: Api-Key qdpofiqdlfkj" -H 'Accept: application/json, text/plain, */*' -H 'Referer: http://raspberrypi:8100/' -H 'Origin: http://raspberrypi:8100' --compressed 
+      logger.debug('Authentication with api key', err, user, info);
+      if (!err && user) {
+        logger.debug('Authenticated with api key');
+        return req.logIn(user, next);
+      }
+
+      logger.debug('Not authenticated yet');
+      return next();
+    })(req, res, next);
+  })(req, res, next);
 }
