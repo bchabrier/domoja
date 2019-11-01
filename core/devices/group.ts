@@ -81,7 +81,7 @@ export class group extends GenericDevice {
       if (error) logger.error(error);
       else if (newValue != this.state) {
         // avoid looping indefinitely if the group has a tag in the taglist
-        this.source.setAttribute(this.id, this.attribute, newValue, (err) => {
+        this.source.setAttribute(this.id, this.attribute, newValue, (err: Error) => {
           err && logger.error(err);
         });
       }
