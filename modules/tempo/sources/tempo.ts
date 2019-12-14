@@ -120,13 +120,13 @@ export class tempo extends Source {
 			self.updateAttribute('lastUpdateDate', 'state', now.toString());
 			if (obj.success == 1) {
 				switch (obj.JourJ.Tempo) {
-					case "BLEU":
+					case "TEMPO_BLEU":
 						self.updateAttribute('couleurDuJour', 'state', "Bleu", now);
 						break;
-					case "BLANC":
+					case "TEMPO_BLANC":
 						self.updateAttribute('couleurDuJour', 'state', "Blanc", now);
 						break;
-					case "ROUGE":
+					case "TEMPO_ROUGE":
 						self.updateAttribute('couleurDuJour', 'state', "Rouge", now);
 						break;
 					case "ND":
@@ -137,13 +137,13 @@ export class tempo extends Source {
 						logger.error("Couleur du jour '" + obj.JourJ.Tempo + "' non connue.");
 				}
 				switch (obj.JourJ1.Tempo) {
-					case "BLEU":
+					case "TEMPO_BLEU":
 						self.updateAttribute('couleurDeDemain', 'state', "Bleu", now);
 						break;
-					case "BLANC":
+					case "TEMPO_BLANC":
 						self.updateAttribute('couleurDeDemain', 'state', "Blanc", now);
 						break;
-					case "ROUGE":
+					case "TEMPO_ROUGE":
 						self.updateAttribute('couleurDeDemain', 'state', "Rouge", now);
 						break;
 					case "ND":
