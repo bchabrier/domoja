@@ -30,13 +30,15 @@ function format(d: Date): string {
 
 
 export class tempo extends Source {
-	job: any;
+	jobUpdateAllColors: CronJob;
+	jobUpdateTomorrowColor: CronJob;
+	tomorrowColorUpdated: boolean = false;
 	request: request.Request;
 
 	constructor(path: string) {
 		super(path);
 		let self = this;
-		this.job = new CronJob({
+		this.jobUpdateAllColors = new CronJob({
 			cronTime: '00 01 * * *', // Runs every day at 1:00 AM.
 			onTick: function () {
 				self.RetryUpdate(function () {
@@ -45,7 +47,17 @@ export class tempo extends Source {
 			},
 			runOnInit: true
 		});
-		this.job.start();
+		this.jobUpdateAllColors.start();
+		this.jobUpdateTomorrowColor = new CronJob({
+			cronTime: '05 * * * *', // Runs every hour + 5 mn.
+			onTick: function () {
+				if (!self.tomorrowColorUpdated) self.RetryUpdate(function () {
+					if (self.tomorrowColorUpdated) logger.info("Tomorrow color info updated from CronJob.")
+				})
+			},
+			runOnInit: false
+		});
+		this.jobUpdateTomorrowColor.start();
 	}
 
 	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
@@ -61,8 +73,10 @@ export class tempo extends Source {
 	}
 
 	release(): void {
-		this.job.stop();
-		this.job = null;
+		this.jobUpdateAllColors.stop();
+		this.jobUpdateAllColors = null;
+		this.jobUpdateTomorrowColor.stop();
+		this.jobUpdateTomorrowColor = null;
 		this.request.abort();
 		super.release();
 	}
@@ -136,6 +150,7 @@ export class tempo extends Source {
 						self.updateAttribute('couleurDuJour', 'state', "Indéterminé", now);
 						logger.error("Couleur du jour '" + obj.JourJ.Tempo + "' non connue.");
 				}
+				self.tomorrowColorUpdated = true;
 				switch (obj.JourJ1.Tempo) {
 					case "TEMPO_BLEU":
 						self.updateAttribute('couleurDeDemain', 'state', "Bleu", now);
@@ -147,9 +162,11 @@ export class tempo extends Source {
 						self.updateAttribute('couleurDeDemain', 'state', "Rouge", now);
 						break;
 					case "ND":
-						self.updateAttribute('couleurDeDemain', 'state', "Indéterminé", now);
+							self.tomorrowColorUpdated = false;
+							self.updateAttribute('couleurDeDemain', 'state', "Indéterminé", now);
 						break;
 					default:
+						self.tomorrowColorUpdated = false;
 						self.updateAttribute('couleurDeDemain', 'state', "Indéterminé", now);
 						logger.error("Couleur de demain '" + obj.JourJ1.Tempo + "' non connue.");
 				}
