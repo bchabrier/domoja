@@ -26,11 +26,11 @@
   "homepage": "https://github.com/bchabrier/domoja/modules/sample#readme",
   "dependencies": {
     "domoja-core": "file:../../core",
-    "tracer": "^0.9.1"
+    "tracer": "^1.0.1"
   },
   "devDependencies": {
     "coveralls": "^3.0.2",
     "istanbul": "^0.4.2",
-    "mocha": "^5.2.0"
+    "mocha": "^6.2.2"
   }
 }
