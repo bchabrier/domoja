@@ -11,7 +11,7 @@ Introduction
 ------------
 This framework allows to create home automation applications.
 
-The server part is written in Typescript, while the GUI uses Angular and Iconic.
+The server part is written in Typescript, while the GUI uses Angular and Ionic.
 
 Here are some screenshots of the application:
 
