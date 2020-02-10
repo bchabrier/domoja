@@ -17,6 +17,8 @@ imports:
     source: astronomy
   - module: tempo
     source: tempo
+  - module: ./core/sources/command
+    source: command
 
 sources:
   - myZibase: {
@@ -28,6 +30,9 @@ sources:
   - astronomy: {
       type: astronomy,
       location: "06030"
+  }
+  - myESPs: {
+      type: demo
   }
   
   - tempo: { type: tempo }
@@ -119,7 +124,7 @@ devices:
 
   - piscine:
      - controle : { type: variable, widget: "multistate:AUTO,ON,OFF:primary,secondary,danger", tags: 'piscine', name: "Programmation filtration"} 
-     - filtration: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZA12", name: "Filtration piscine" }
+     - filtration: { type: device, widget: toggle, tags: 'piscine', source: myESPs, id: "04a87b", name: "Filtration piscine" }
      - pieuvre: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZP8", name: "Pieuvre" }
      - chlore_plus: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZA14", name: "Chlore +" }
      - chlore_moins: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZO14", name: "Chlore -" }
@@ -128,10 +133,10 @@ devices:
      - filtration-couleur : { type: variable, widget: color, tags: 'piscine', name: "Couleur de la filtration"} 
      - filtration-icon : { type: variable, widget: text, tags: 'piscine', name: "Icône de la filtration"} 
      - filtration-message : { type: variable, widget: text, tags: 'piscine', name: "Message de la filtration"} 
-     - filtration-start1 : { type: variable, widget: text, tags: 'piscine', name: "Heure de démarrage 1 de la filtration"} 
-     - filtration-stop1 : { type: variable, widget: text, tags: 'piscine', name: "Heure d'arrêt 1 de la filtration"} 
-     - filtration-start2 : { type: variable, widget: text, tags: 'piscine', name: "Heure de démarrage 2 de la filtration"} 
-     - filtration-stop2 : { type: variable, widget: text, tags: 'piscine', name: "Heure d'arrêt 2 de la filtration"} 
+     - filtration-start1 : { type: variable, widget: text, tags: 'piscine', name: "Heure 1 de démarrage de la filtration"} 
+     - filtration-stop1 : { type: variable, widget: text, tags: 'piscine', name: "Heure 1 d'arrêt de la filtration"} 
+     - filtration-start2 : { type: variable, widget: text, tags: 'piscine', name: "Heure 2 de démarrage de la filtration"} 
+     - filtration-stop2 : { type: variable, widget: text, tags: 'piscine', name: "Heure 2 d'arrêt de la filtration"} 
      - filtration-duration : { type: variable, widget: text, tags: 'piscine', name: "Durée de la filtration (heures)"} 
      - durees-filtration : { type: variable, widget: text, tags: 'piscine', name: "Tableau des durées de filtration [°C, h]"} 
 
@@ -304,7 +309,7 @@ scenarios:
         - { device: daynight, state: "jour"}
     - night:
       triggers:
-        - at: sunrise
+        - at: sunset
       actions:
         - { device: daynight, state: "nuit"}
     - day-night:
@@ -448,7 +453,7 @@ scenarios:
         triggers:
           - at: startup
         actions:
-          - {device: piscine.filtration-message, state: "" } 
+          - {device: piscine.filtration-message, state: "En attente..." } 
       - AUTO:
         # computes filtration-message
         # when the pool is in AUTO mode
@@ -467,9 +472,7 @@ scenarios:
           - !!js/function 'function setFiltrationMessage (callback) {
             let msg = "";
             let filtration = this.getDeviceState("piscine.filtration");
-            let start = new Date(this.getDeviceState("piscine.filtration-start1"));
-            let duration = parseInt(this.getDeviceState("piscine.filtration-duration"), 10) * 60;
-            let stop = new Date(this.getDeviceState("piscine.filtration-stop1"));
+            let duration = parseFloat(this.getDeviceState("piscine.filtration-duration"), 10) * 60;
 
             function displayAsTime(dateVal) {
               let now = new Date();
@@ -493,7 +496,7 @@ scenarios:
             }            
             function displayAsDuration(duration) {
               var h = Math.floor(duration/60);
-              var mn = duration - 60*h;
+              var mn = Math.round(duration - 60*h);
 
               var str = "";
               if (h>0 && mn===0) str = h + "h";
@@ -502,14 +505,24 @@ scenarios:
               if (h===0 && mn===0) str = "0mn";
               return str;
             }
-            let startTime = displayAsTime(start);
-            let stopTime = displayAsTime(stop);
             let durationLength = displayAsDuration(duration);
 
             if (filtration != "ON") {
+              let start1 = this.getDeviceState("piscine.filtration-start1");
+              let _start1 = start1 && new Date(start1);
+              let start2 = this.getDeviceState("piscine.filtration-start2");
+              let _start2 = start2 && new Date(start2);
+              let start = _start1 && _start1 > Date.now() ? _start1 : (_start2 && _start2 > Date.now() ? _start2 : undefined );
+              let startTime = displayAsTime(start);
               msg = `Mise en<BR/>marche<br><strong>${startTime}</strong><br>pour ${durationLength}`;
             } 
             if (filtration == "ON") {
+              let stop1 = this.getDeviceState("piscine.filtration-stop1");
+              let _stop1 = stop1 && new Date(stop1);
+              let stop2 = this.getDeviceState("piscine.filtration-stop2");
+              let _stop2 = stop2 && new Date(stop2);
+              let stop = _stop1 && _stop1 > Date.now() ? _stop1 : (_stop2 && _sstop2 > Date.now() ? _stop2 : undefined );
+              let stopTime = displayAsTime(stop);
               msg = `Arrêt<br><strong>${stopTime}</strong><br>Durée<br>${durationLength}`;
             }
             this.setDeviceState("piscine.filtration-message", msg, callback);
@@ -632,11 +645,13 @@ scenarios:
                   // apply a gradient
                   duree1 = durees[i][1];
                   duree2 = durees[i + 1][1];
-                  ratio = (temp - durees[i][0])/(durees[i + 1][0] - durees[i][0])
-                  duree = Math.round(duree1 + ratio * (duree2-duree1));
+                  ratio = (temp - durees[i][0])/(durees[i + 1][0] - durees[i][0]);
+                  duree = duree1 + ratio * (duree2-duree1);
                 }
               }
             }
+            // avoid unwanted stop/start
+            if (duree > 23 + 50/60) duree=24;
             this.setDeviceState("piscine.filtration-duration", duree, callback);
           }'         
       - calcul-start:
@@ -646,35 +661,143 @@ scenarios:
         conditions:
           - { operator: "!=", left: piscine.filtration-duration, right: undefined}
           - { operator: "!=", left: zenith, right: undefined}
-          - { operator: "!=", left: piscine.filtration, right: "ON"}
+          #- { operator: "!=", left: piscine.filtration, right: "ON"}
         actions:
           - !!js/function 'function f(callback) {
-            let duree = parseFloat(this.getDeviceState("piscine.filtration-duration"), 10);
+            let dureeTotale = parseFloat(this.getDeviceState("piscine.filtration-duration"), 10);
 
             let zenith = new Date(this.getDeviceState("zenith"));
 
+            let previous_start1 = (new Date(this.getDeviceState("piscine.filtration-start1"))).getTime();
+
+            let start2Date = new Date();
+            start2Date.setHours(23);
+            start2Date.setMinutes(00);
+            start2Date.setSeconds(00);
+            let start2 = start2Date.getTime();
+            let stop2 = start2 + 59 * 60 * 1000;
+            // check if next day
+            if (stop2 < Date.now()) {
+              console.log("2 is next day")
+              start2 = start2 + 24 * 60 * 60 * 1000;
+              stop2 = stop2 + 24 * 60 * 60 * 1000;
+            }
+
+            let duree = dureeTotale - (stop2 - start2) / 60 / 60 / 1000;
+            console.log("duree", duree, "total", dureeTotale);
+
             let start1 = zenith.getTime() - duree * 60 * 60 * 1000 / 2;
+
+            if (start1 < Date.now() + 5 * 60 * 1000) {
+              // start1 is almost in the past (5 mn), probably because the temperature is increasing.
+              console.log("start1 before 5 mn!!! Let s use previous_start1:", previous_start1)
+              start1 = previous_start1;
+              // if not defined yet, probably because the first time it is called. Let s start asap
+              if (!start1 || new Date(start1).toString() == "Invalid Date") {
+                start1 = Date.now() + 3 * 60 * 1000;
+                console.log("start1 new Date + 3 = ", start1)
+                console.log("previous_start1 was not defined!!! Let s start asap in 3 mn at", start1)
+              }
+            }
+
+            let stop1 = start1 + duree * 60 * 60 * 1000;
             // check if next day
-            if (start1 < Date.now()) start1 = start1 + 24 * 60 * 60 * 1000;
-            let stop1 = start1 + duree * 60 * 60 * 10000;
+            if (stop1 < Date.now()) {
+              console.log("1 is next day")
+              start1 = start1 + 24 * 60 * 60 * 1000;
+              stop1 = stop1 + 24 * 60 * 60 * 1000;
+            }
 
-            let start2 = new Date();
-            start2.setHours(23);
-            start2.setMinutes(00);
-            start2.setSeconds(00);
-            // check if next day
-            if (start2 < Date.now()) start2 = start2 + 24 * 60 * 60 * 1000;
-            let stop2 = start2 + 1 * 60 * 60 * 1000;
+            console.log("start1", new Date(start1).toString())
+            console.log("stop1", new Date(stop1).toString())
+            console.log("start2", new Date(start2).toString())
+            console.log("stop2", new Date(stop2).toString())
 
-            if (stop1 > start2) start2 = undefined;
-            if (stop1 > stop2) stop2 = undefined;
+            // check full time
+            if (dureeTotale > 24 - 10/60) {
+              stop1 = undefined;
+              start2 = undefined;
+              stop2 = undefined;
+            } else {
+              // check overlaps
 
-            console.log(new Date(start1).toString(), new Date(start2).toString())
+              // start1 ---------------- stop1
+              //              start2 --------------- stop2
+              if (start1 && start2 && stop1 && stop2 && start1 < start2 && stop1 > start2 && stop1 < stop2) {
+                console.log("chevauchant")
+                start2 = undefined;
+                stop1 = undefined;
+              }
 
-            this.setDeviceState("piscine.filtration-start1", new Date(start1));
-            this.setDeviceState("piscine.filtration-stop1", new Date(stop1));            this.setDeviceState("piscine.filtration-start2", new Date(start2));
-            this.setDeviceState("piscine.filtration-stop2", new Date(stop2), callback);
+              // start1 ----------------------------- stop1
+              //              start2 ----- stop2
+              if (start1 && start2 && stop1 && stop2 && start1 < start2 && stop1 > stop2) {
+                console.log("inclus")
+                start2 = undefined;
+                stop2 = undefined;
+              }
+
+              // start1 ------ stop1    start2 ----- stop2
+              //              <--------------> 
+              //                    < 5 mn
+              if (stop1 && start2 && Math.abs(stop1 - start2) < 5 * 60 * 1000) {
+                console.log("tres prets")
+                start2 = undefined;
+                stop1 = undefined;
+              }
+
+            }
+
+            console.log("=>start1", new Date(start1).toString())
+            console.log("=>stop1", new Date(stop1).toString())
+            console.log("=>start2", new Date(start2).toString())
+            console.log("=>stop2", new Date(stop2).toString())
+
+
+            //console.log(new Date(start1).toString(), new Date(start2).toString())
+
+            start1 && this.setDeviceState("piscine.filtration-start1", new Date(start1));
+            stop1 && this.setDeviceState("piscine.filtration-stop1", new Date(stop1));
+            start2 && this.setDeviceState("piscine.filtration-start2", new Date(start2));
+            stop2 && this.setDeviceState("piscine.filtration-stop2", new Date(stop2), callback);
+            stop2 || callback();
           }'    
+    - filtration-start:
+      triggers:
+        - at: piscine.filtration-start1
+        - at: piscine.filtration-start2
+      conditions:
+        - {operator: =, left: piscine.controle, right: "AUTO"} 
+      actions:
+        - !!js/function 'function f(callback) {
+            let delay = 15 * 1000; // 15s
+
+            let date = this.getDeviceLastUpdateDate("piscine.filtration");
+
+            if (!date || Date.now() - date.getTime() >= delay ) { 
+              this.setDeviceState("piscine.filtration", "ON", callback);
+            } else {
+              setTimeout(() => { f(callback); }, delay);
+            }
+          }' 
+    - filtration-stop:
+      triggers:
+        - at: piscine.filtration-stop1
+        - at: piscine.filtration-stop2
+      conditions:
+        - {operator: =, left: piscine.controle, right: "AUTO"} 
+      actions:
+        - !!js/function 'function f(callback) {
+            let delay = 15 * 1000; // 15s
+
+            let date = this.getDeviceLastUpdateDate("piscine.filtration");
+
+            if (!date || Date.now() - date.getTime() >= delay ) { 
+              this.setDeviceState("piscine.filtration", "OFF", callback);
+            } else {
+              setTimeout(() => { f(callback); }, delay);
+            }
+          }' 
   - petit_portail:
     - controle:
       - init:
@@ -901,6 +1024,14 @@ pages:
 
 
 users:
+  - id: -1 # must be unique
+    name: 'Homebridge'
+    initials: 'HB'
+    login: hb
+    password: hbpassword01
+    phone: phone_4
+    macaddress: ''
+    avatar: ...
   - id: 0 # must be unique
     name: 'demouser'
     initials: 'du'
