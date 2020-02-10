@@ -3,9 +3,6 @@ language: node_js
 node_js:
   - 10
 
-before_script:
-  - npm install -g typescript mocha@6 ts-mocha
-
 after_success:
 - npm run coverage
 

@@ -54,10 +54,11 @@
     "@types/mocha": "^7.0.1",
     "@types/rewire": "^2.5.28",
     "coveralls": "^3.0.2",
-    "mocha": "^7.0.1",
+    "mocha": "6",
     "nyc": "^15.0.0",
     "rewire": "^4.0.1",
-    "ts-mocha": "^6.0.0"
+    "ts-mocha": "^6.0.0",
+    "typescript": "^3.7.5"
   },
   "engines": {
     "node": ">=0.10.0"
