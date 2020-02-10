@@ -31,3 +31,4 @@ build/
 
 *.js
 .nyc_output/
+/sessions/
