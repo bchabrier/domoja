@@ -42,7 +42,7 @@
     "passport-local": "1.0.0",
     "passport-remember-me": "^0.0.1",
     "passport.socketio": "^3.7.0",
-    "session-file-store": "^1.2.0",
+    "session-file-store": "^1.4.0",
     "shitty-peg": "^0.0.5",
     "socket.io": "^2.1.1",
     "tracer": "^1.0.1",
@@ -51,10 +51,10 @@
   },
   "devDependencies": {
     "@types/express-session": "^1.15.11",
-    "@types/mocha": "^5.2.5",
+    "@types/mocha": "^7.0.1",
     "@types/rewire": "^2.5.28",
     "coveralls": "^3.0.2",
-    "mocha": "^6.0.2",
+    "mocha": "^7.0.1",
     "nyc": "^15.0.0",
     "rewire": "^4.0.1",
     "ts-mocha": "^6.0.0"

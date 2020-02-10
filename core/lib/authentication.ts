@@ -187,7 +187,7 @@ export function configure(app: express.Application,
       }
 
       logger.debug('remember_me option was checked, issuing token');
-      issueToken(req.user, function (err: Error, token: string) {
+      issueToken(req.user as User, function (err: Error, token: string) {
         if (err) { return next(err); }
         res.cookie('remember_me', token, { path: '/', httpOnly: true, maxAge: 604800000 }); // 7 days
         return successReturnToOrRedirect();
