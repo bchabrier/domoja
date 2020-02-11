@@ -10,7 +10,7 @@ var logger = require("tracer").colorConsole({
 var fsmonitor = require('fsmonitor');
 
 import * as core from './core';
-import { Server, ServiceAuthenticator } from 'typescript-rest';
+import { Server } from 'typescript-rest';
 
 import * as apis from './api';
 
@@ -86,11 +86,7 @@ class DomojaServer {
     app.get('/getTempoInfos', tempo.getTempoInfos);
     app.get('/presence', presence.presence);
   */
-    Server.swagger(this.app, {
-      filePath: './api/swagger.yaml',
-      endpoint: '/api-docs',
-      swaggerUiOptions: ['http']
-    });
+    Server.swagger(this.app,'./api/swagger.yaml', '/api-docs', null, ['http']);
 
     var FileStore = require('session-file-store')(session);
     let store: typeof session.Store = new FileStore({

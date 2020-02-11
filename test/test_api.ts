@@ -18,7 +18,7 @@ import { InternalServer } from '../node_modules/typescript-rest/dist/server-cont
 describe('Module api', function () {
     this.timeout(5000);
 
-    function doRequest(method: 'GET' | 'POST', path: string, formData: Object, onSuccess: (body: string) => void, onError: (err: Error) => void) {
+    function doRequest(method: 'GET' | 'POST', path: string, formData: querystring.ParsedUrlQueryInput, onSuccess: (body: string) => void, onError: (err: Error) => void) {
         let server = new DomojaServer(null, false, () => {
             let data = querystring.stringify(formData);
 

@@ -1,4 +1,4 @@
-import { Errors, Path, PreProcessor, GET, POST, PathParam, FormParam } from 'typescript-rest';
+import { Errors, Path, Preprocessor, GET, POST, PathParam, FormParam } from 'typescript-rest';
 import * as express from 'express';
 
 import { devices } from '../core/lib/load';
@@ -51,7 +51,7 @@ export class DevicesService {
    */
   @Path(':id')
   @GET
-  @PreProcessor(deviceIdValidator)
+  @Preprocessor(deviceIdValidator)
   get(@PathParam('id') name: string) {
     let device = devices[name].device;
     return deviceAsJSON(device);
@@ -64,7 +64,7 @@ export class DevicesService {
    */
   @Path(':id')
   @POST
-  @PreProcessor(deviceIdValidator)
+  @Preprocessor(deviceIdValidator)
   sendCommand(@PathParam('id') name: string, @FormParam('command') command: string) {
     let device = devices[name].device;
     return new Promise<string>((resolve, reject) => {
