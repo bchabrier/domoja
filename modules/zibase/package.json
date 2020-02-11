@@ -27,7 +27,6 @@
   },
   "homepage": "https://github.com/bchabrier/domoja/modules/zibase#readme",
   "dependencies": {
-    "domoja-core": "file:../../core",
     "tracer": "^1.0.1",
     "zibase": "file:../../../zibase"
   },

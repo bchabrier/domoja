@@ -26,7 +26,6 @@
   },
   "homepage": "https://github.com/bchabrier/domoja/modules/ipx800#readme",
   "dependencies": {
-    "domoja-core": "file:../../core",
     "request": "^2.87.0",
     "tracer": "^1.0.1"
   },
