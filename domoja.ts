@@ -9,7 +9,7 @@ var logger = require("tracer").colorConsole({
 
 var fsmonitor = require('fsmonitor');
 
-import * as core from './core';
+import * as core from 'domoja-core';
 import { Server } from 'typescript-rest';
 
 import * as apis from './api';
