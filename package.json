@@ -46,6 +46,7 @@
     "shitty-peg": "^0.0.5",
     "socket.io": "^2.1.1",
     "tracer": "^1.0.1",
+    "typescript": "^3.7.5",
     "typescript-rest": "1",
     "vm2": "^3.6.3"
   },
@@ -60,8 +61,7 @@
     "passport-headerapikey": "^1.2.1",
     "passport-http": "^0.3.0",
     "rewire": "^4.0.1",
-    "ts-mocha": "^6.0.0",
-    "typescript": "^3.7.5"
+    "ts-mocha": "^6.0.0"
   },
   "engines": {
     "node": ">=0.10.0"
