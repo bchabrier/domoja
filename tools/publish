@@ -1,6 +1,28 @@
 #!/bin/sh
 
-cd `dirname $0`/..
+echo 'First use "npm version major|minor|patch" and commit package.json'
+echo 'Ok to proceed? ^C to quit'
+read ans
+
+# check that package.json version is committed
+committed_version=$(git show master:package.json | grep '"version":' | awk -F '[:,]' '{ print $2 }')
+version=$(grep '"version":' package.json | awk -F '[:,]' '{ print $2}')
+if [ "$committed_version" != "$version" ]; then
+    echo "Warning: package.json is not committed:"
+    echo Committed version: $committed_version
+    echo Current version: $version
+    exit 1
+fi
+
+#cd `dirname $0`/..
 repo=`basename $(pwd)`
 git archive --format=tar.gz -o /tmp/$repo.tar.gz --prefix=$repo/ master
+
+# removing separate modules from the package
+rm -f /tmp/$repo.tar
+gunzip /tmp/$repo.tar.gz
+tar --delete -f /tmp/$repo.tar domoja/core domoja/modules
+gzip /tmp/$repo.tar
+tar tf /tmp/$repo.tar.gz
+
 npm publish /tmp/$repo.tar.gz
