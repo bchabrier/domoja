@@ -1,7 +1,7 @@
 import * as assert from 'assert';
-import { Parameters, InitObject, DomoModule } from '../..';
-import { GenericDevice, DeviceType, CustomDeviceType } from '../..';
-import { ConfigLoader } from '../..';
+import { Parameters, InitObject, DomoModule } from '../lib/module';
+import { GenericDevice, DeviceType, CustomDeviceType } from '../devices/genericDevice';
+import { ConfigLoader } from '../lib/load';
 import * as events from 'events';
 import * as colors from 'colors/safe';
 

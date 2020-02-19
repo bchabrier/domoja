@@ -1,14 +1,15 @@
-import { DomoModule, InitObject, Parameters } from '../..';
-import { Source, DefaultSource } from '../..';
-import { GenericDevice, DeviceType } from '../..';
-import { Scenario } from '../../core/scenarios/scenario'
-import * as triggers from '../../core/scenarios/trigger';
+import { DomoModule, InitObject, Parameters } from '../lib/module';
+import { Source, DefaultSource } from '../sources/source';
+import { GenericDevice, DeviceType } from '../devices/genericDevice';
+import { Scenario } from '../scenarios/scenario'
+import * as triggers from '../scenarios/trigger';
 import * as path from "path";
 import * as fs from 'fs';
 import Module = require('module');
 import * as userMgr from '../managers/userMgr'
 type User = userMgr.User;
 import * as events from 'events';
+import { ConfigLoader as importedConfigLoader } from '..'
 
 const { VM, VMScript } = require('vm2');
 
@@ -1009,8 +1010,9 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
 }
 
 function trigger(c: Parser.Parse): Scenario {
-    let document = <ConfigLoader>c.context().doc;
-    let scenario = new Scenario(document, c.context().currentScenario);
+    let document = <importedConfigLoader>c.context().doc;
+    let document_ = <ConfigLoader>c.context().doc;
+    let scenario = new Scenario(document_, c.context().currentScenario);
 
     c.optional(c => {
         c.skip(TRIGGERS); eatComments(c);

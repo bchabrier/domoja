@@ -187,7 +187,7 @@ class DomojaServer {
     core.configure(app,
       core.checkUser,
       core.findUserById,
-      require('./core/lib/token'),
+      require('domoja-core/lib/token'),
       loginPath,
       serve,
       store

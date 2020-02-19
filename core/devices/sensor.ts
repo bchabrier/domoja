@@ -1,8 +1,8 @@
-import { GenericDevice, DeviceOptions, WidgetType } from '..'
-import { Source, message, ID, DefaultSource } from '..'
+import { GenericDevice, DeviceOptions, WidgetType } from '../devices/genericDevice'
+import { Source, message, ID, DefaultSource } from '../sources/source'
 import * as assert from 'assert';
-import { InitObject, Parameters } from '..';
-import { ConfigLoader } from '..';
+import { InitObject, Parameters } from '../lib/module';
+import { ConfigLoader } from '../lib/load';
 import * as persistence from '../persistence/persistence';
 
 const logger = require("tracer").colorConsole({

@@ -1,6 +1,6 @@
 
-import { GenericDevice, ConfigLoader, message } from '../..';
-import { Scenario } from '../../core/scenarios/scenario';
+import { GenericDevice, ConfigLoader, message } from '..';
+import { Scenario } from './scenario';
 
 import { CronJob } from 'cron';
 import * as moment from 'moment';

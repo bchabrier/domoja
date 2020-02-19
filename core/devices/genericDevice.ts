@@ -1,10 +1,11 @@
 import * as assert from 'assert';
-import { Source, ID, message, Event } from '../..'
+import { Source, ID, message, Event } from '../sources/source'
 import { camera } from './camera'
-import { InitObject, Parameters, DomoModule } from '../..';
-import { ConfigLoader, getSource, getCurrentConfig } from '../..';
+import { InitObject, Parameters, DomoModule } from '../lib/module';
+import { ConfigLoader, getSource, getCurrentConfig } from '../lib/load';
 import * as events from 'events';
 import * as persistence from '../persistence/persistence';
+import { GenericDevice as ImportedGenericDevice } from '../devices/genericDevice'
 
 //import secrets = require("../secrets");
 //const PushBullet = require('pushbullet');
@@ -139,6 +140,7 @@ export abstract class GenericDevice implements DomoModule {
             }
         }
 
+        
         this.source.addDevice(this);
 
 
