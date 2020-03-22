@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "private": false,
   "description": "A sample Domoja module skeleton",
-  "main": "sample.js",
+  "main": "index.ts",
   "scripts": {
+    "build": "tsc",
     "test": "mocha",
     "coveralls": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage",
     "cover": "istanbul cover ./node_modules/mocha/bin/_mocha",
@@ -25,12 +26,16 @@
   },
   "homepage": "https://github.com/bchabrier/domoja/modules/sample#readme",
   "dependencies": {
-    "domoja-core": "file:../../core",
-    "tracer": "^1.0.1"
+    "@types/node": "^13.9.3",
+    "tracer": "^1.0.1",
+    "typescript": "^3.8.3"
   },
   "devDependencies": {
     "coveralls": "^3.0.2",
     "istanbul": "^0.4.2",
     "mocha": "^6.2.2"
-  }
+  },
+  "files": [
+    "dist/**/*"
+  ]
 }

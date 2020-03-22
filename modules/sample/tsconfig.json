@@ -1,23 +1,20 @@
 // tsconfig.json
-
 {
   "compilerOptions": {
     "noImplicitAny": true,
-    "target": "es5",
+    "target": "es2017",
     "module": "commonjs",
     //"allowJs": true,
     "rootDir": ".",
-    "outDir": "./build",
+    "outDir": "./dist",
     "types": [
       // add node as an option
       "node"
-   ],
-},
-  "exclude" : [
-    "./build",
-    "./node_modules",
-    "./www",
-    "./bower_components",
-    "./app/bower_components"
+    ],
+  },
+  "exclude": [
+    "./test",
+    "./dist",
+    "./node_modules"
   ]
 }
