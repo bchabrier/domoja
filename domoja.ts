@@ -86,7 +86,10 @@ class DomojaServer {
     app.get('/getTempoInfos', tempo.getTempoInfos);
     app.get('/presence', presence.presence);
   */
-    Server.swagger(this.app,'./api/swagger.yaml', '/api-docs', null, ['http']);
+    var module_dir: string = path.dirname(require.main.filename);
+    // remove trailing /dist if any
+    module_dir = module_dir.replace(/\/dist$/, '');
+    console.log(module_dir);
 
     Server.swagger(this.app, {
       filePath: module_dir + '/api/swagger.yaml', 
