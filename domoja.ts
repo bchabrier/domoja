@@ -30,7 +30,7 @@ import * as cors from 'cors';
 //var http = require('http')
 var https = require('https')
 var basicAuth = require('basic-auth');
-var path = require('path');
+import * as path from 'path';
 var fs = require('fs');
 
 var runWithMocha = /.*mocha$/.test(process.argv[1]);
