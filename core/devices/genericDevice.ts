@@ -5,7 +5,6 @@ import { InitObject, Parameters, DomoModule } from '../lib/module';
 import { ConfigLoader, getSource, getCurrentConfig } from '../lib/load';
 import * as events from 'events';
 import * as persistence from '../persistence/persistence';
-import { GenericDevice as ImportedGenericDevice } from '../devices/genericDevice'
 
 //import secrets = require("../secrets");
 //const PushBullet = require('pushbullet');
