@@ -24,7 +24,7 @@ var logger = require('tracer').colorConsole({
     level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
-interface Map<T> {
+export interface Map<T> {
     [index: string]: T
 }
 
@@ -1011,8 +1011,7 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
 
 function trigger(c: Parser.Parse): Scenario {
     let document = <importedConfigLoader>c.context().doc;
-    let document_ = <ConfigLoader>c.context().doc;
-    let scenario = new Scenario(document_, c.context().currentScenario);
+    let scenario = new Scenario(document, c.context().currentScenario);
 
     c.optional(c => {
         c.skip(TRIGGERS); eatComments(c);
