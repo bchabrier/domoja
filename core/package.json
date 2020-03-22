@@ -60,12 +60,17 @@
   "engines": {
     "node": ">=0.10.0"
   },
+  "main": "index.ts",
   "scripts": {
     "start": "nodejs app",
+    "build": "tsc",
     "testonly": "ts-mocha test/**/*.ts",
     "test-watch": "ts-mocha test/**/*.ts -w --watch-extensions ts,yml",
     "test": "nyc --extension .ts npm run testonly",
     "report": "nyc report",
     "coverage": "nyc report --reporter=text-lcov | coveralls"
-  }
+  },
+  "files": [
+    "dist/**/*"
+  ]
 }

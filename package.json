@@ -66,7 +66,9 @@
   "engines": {
     "node": ">=0.10.0"
   },
+  "main": "domoja.ts",
   "scripts": {
+    "build": "tsc",
     "start": ": run domoja; ts-node domoja.ts",
     "start:config": ": run domoja; ts-node domoja.ts ./config",
     "test": ": run test coverage; trap 'tput cnorm' INT; nyc --extension .ts npm --scripts-prepend-node-path=auto run test:only",
@@ -82,5 +84,10 @@
     "publish": ": publish to npm; npm --scripts-prepend-node-path=auto run generate:demo; npm --scripts-prepend-node-path=auto run swagger; ./tools/update_readme; ./tools/publish",
     "outdated": ": check outdated packages; cur=$(pwd); for d in . core modules/*; do cd $cur/$d; pwd; yarn outdated $d; done",
     "upgrade": ": upgrade packages; cur=$(pwd); for d in . core modules/*; do cd $cur/$d; pwd; yarn upgrade $d; done"
-  }
+  },
+  "files": [
+    "dist/**/*",
+    "api/swagger.json",
+    "api/swagger.yaml"
+  ]
 }
