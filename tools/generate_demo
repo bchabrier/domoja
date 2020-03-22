@@ -17,7 +17,7 @@ do
     case "$section" in
     "imports")
          cat >> $DEMO_CONFIG <<EOF
-  - module: ./core/sources/demo
+  - module: core/sources/demo
     source: demo
 EOF
         ;;
@@ -89,9 +89,10 @@ EOF
         /^pages:/ { where="in pages"; next }
         /^users:/ { where="in users"; next }
 
-        where=="in imports" && /^ *- *module:/ { module=$NF; if (!hasDemoModule && module=="./core/sources/demo") hasDemoModule=1; next }
+        where=="in imports" && /^ *- *module:/ { module=$NF; if (!hasDemoModule && module=="core/sources/demo") hasDemoModule=1; next }
         where=="in imports" && /^ *source:/ { 
             source=$NF
+            gsub("\r", "", source)
             accepted=0
             if (index(acceptedSources, " "source" ")>0) accepted=1
             if (substr(module, 0, 1)==".") accepted=1
@@ -102,6 +103,10 @@ EOF
             }
             next
         }
+        where=="in imports" && $1 == "device:" && module !~ /^core.*/ { 
+            # a device that is not in core, skip it
+            next
+        }
         where=="in imports" && $0 !~ /^ *$/ && $1 !~ /^#/ { 
             if (doprint) print "  - module:", module
             if (doprint) print
@@ -109,7 +114,7 @@ EOF
         }
         where=="in imports" && $0 !~ /^ *$/ && hasDemoModule == 0 { 
             hasDemoModule=1
-            if (doprint) print "  - module: ./core/sources/demo"
+            if (doprint) print "  - module: core/sources/demo"
             if (doprint) print "    source: demo"
             if (doprint) print
             next

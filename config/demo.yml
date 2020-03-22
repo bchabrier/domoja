@@ -1,24 +1,20 @@
 imports:
-  - module: ./core/sources/demo
+  - module: core/sources/demo
     source: demo
-  - module: ./core/devices/httpcamera
+  - module: core/devices/httpcamera
     device: httpCamera
-  - module: ./core/devices/device
+  - module: core/devices/device
     device: device
-  - module: ./core/devices/sensor
+  - module: core/devices/sensor
     device: sensor
-  - module: ./core/devices/variable
+  - module: core/devices/variable
     device: variable
-  - module: ./core/devices/group
+  - module: core/devices/group
     device: group
-  - module: ipx800
-    device: relay
   - module: proxiti
     source: astronomy
   - module: tempo
     source: tempo
-  - module: ./core/sources/command
-    source: command
 
 sources:
   - myZibase: {
@@ -34,7 +30,6 @@ sources:
   - myESPs: {
       type: demo
   }
-  
   - tempo: { type: tempo }
 
 
