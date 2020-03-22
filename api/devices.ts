@@ -1,18 +1,20 @@
 import { Errors, Path, Preprocessor, GET, POST, PathParam, FormParam } from 'typescript-rest';
 import * as express from 'express';
 
-import { devices } from '../core/lib/load';
-import { GenericDevice } from '../core/devices/genericDevice';
+import { GenericDevice } from 'domoja-core';
+import * as core from 'domoja-core';
 
 function deviceIdValidator(req: express.Request): express.Request {
 
   let deviceID = req.params['id'];
 
+  var devices = core.getDevices();
+
   if (!devices) {
     throw new Errors.InternalServerError('no devices')
   }
 
-  if (!devices[deviceID]) {
+  if (!devices.find(device => device.path == deviceID)) {
     throw new Errors.BadRequestError('device not found')
   }
 
@@ -40,8 +42,9 @@ export class DevicesService {
    */
   @GET
   getDevices() {
-    return Object.keys(devices).map(name => {
-      return deviceAsJSON(devices[name].device)
+    var devices = core.getDevices();
+    return Object.keys(core.getDevices()).map((index : any) => {
+      return deviceAsJSON(devices[index])
     });
   }
 
@@ -53,7 +56,7 @@ export class DevicesService {
   @GET
   @Preprocessor(deviceIdValidator)
   get(@PathParam('id') name: string) {
-    let device = devices[name].device;
+    let device = core.getDevices().find(device => device.name == name);
     return deviceAsJSON(device);
   }
 
@@ -66,7 +69,7 @@ export class DevicesService {
   @POST
   @Preprocessor(deviceIdValidator)
   sendCommand(@PathParam('id') name: string, @FormParam('command') command: string) {
-    let device = devices[name].device;
+    let device = core.getDevices().find(device => device.path == name);
     return new Promise<string>((resolve, reject) => {
       device.setState(command, err => { err ? reject(err) : resolve('OK') })
     });
