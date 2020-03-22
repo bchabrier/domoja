@@ -2,7 +2,7 @@ import * as Parser from "shitty-peg/dist/Parser";
 import { currentSource, removeQuotes, eatCommentsBlock, eatComments, trim, sortedDeviceList } from './load_helpers';
 import { ConfigLoader, Sandbox, DASH, FUNCTION_EXT, IDENTIFIER } from './load';
 import { expression } from './load_expressions';
-import { Scenario, ConditionFunction, ActionFunction } from '../../core/scenarios/scenario'
+import { Scenario, ConditionFunction, ActionFunction } from '../scenarios/scenario'
 import * as async from 'async';
 
 
