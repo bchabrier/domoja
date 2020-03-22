@@ -31,12 +31,16 @@ import * as cors from 'cors';
 var https = require('https')
 var basicAuth = require('basic-auth');
 import * as path from 'path';
-var fs = require('fs');
+import * as fs from 'fs';
 
 var runWithMocha = /.*mocha$/.test(process.argv[1]);
 //var refreshData = require('./routes/refreshData')
 
-const CONFIG_FILE = process.argv[2] || './config/demo.yml';
+var module_dir: string = path.dirname(require.main.filename);
+// remove trailing /dist if any
+module_dir = module_dir.replace(/\/dist$/, '');
+
+const CONFIG_FILE = process.argv[2] || module_dir + '/config/demo.yml';
 //const CONFIG_FILE = null;
 
 type http_type = 'HTTP' | 'HTTPS';
@@ -86,14 +90,10 @@ class DomojaServer {
     app.get('/getTempoInfos', tempo.getTempoInfos);
     app.get('/presence', presence.presence);
   */
-    var module_dir: string = path.dirname(require.main.filename);
-    // remove trailing /dist if any
-    module_dir = module_dir.replace(/\/dist$/, '');
-    console.log(module_dir);
 
     Server.swagger(this.app, {
-      filePath: module_dir + '/api/swagger.yaml', 
-      endpoint: '/api-docs', 
+      filePath: module_dir + '/api/swagger.yaml',
+      endpoint: '/api-docs',
       schemes: ['http']
     });
 
@@ -156,10 +156,11 @@ class DomojaServer {
 
     let watchTimeout: NodeJS.Timer;
 
-    fsmonitor.watch('./config', null, function (change: {
-      addedFiles: string, modifiedFiles: string, removedFiles: string,
-      addedFolders: string, modifiedFolders: string, removedFolders: string,
-    }) {
+    fsmonitor.watch(fs.lstatSync(CONFIG_FILE).isDirectory() ? CONFIG_FILE : path.dirname(CONFIG_FILE),
+      null, function (change: {
+        addedFiles: string, modifiedFiles: string, removedFiles: string,
+        addedFolders: string, modifiedFolders: string, removedFolders: string,
+      }) {
       console.log("Change detected:\n" + change);
 
       console.log("Added files:    %j", change.addedFiles);
