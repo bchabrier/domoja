@@ -27,7 +27,7 @@ platforms/
 *.DS_Store
 
 app/scripts/configuration.js
-build/
+dist/
 
 *.js
 .nyc_output/
