@@ -1,4 +1,4 @@
-import { Errors, Path, Preprocessor, GET, POST, PathParam, FormParam } from 'typescript-rest';
+import { Errors, Path, PreProcessor, GET, POST, PathParam, FormParam } from 'typescript-rest';
 import * as express from 'express';
 
 import { GenericDevice } from 'domoja-core';
@@ -54,7 +54,7 @@ export class DevicesService {
    */
   @Path(':id')
   @GET
-  @Preprocessor(deviceIdValidator)
+  @PreProcessor(deviceIdValidator)
   get(@PathParam('id') name: string) {
     let device = core.getDevices().find(device => device.name == name);
     return deviceAsJSON(device);
@@ -67,7 +67,7 @@ export class DevicesService {
    */
   @Path(':id')
   @POST
-  @Preprocessor(deviceIdValidator)
+  @PreProcessor(deviceIdValidator)
   sendCommand(@PathParam('id') name: string, @FormParam('command') command: string) {
     let device = core.getDevices().find(device => device.path == name);
     return new Promise<string>((resolve, reject) => {

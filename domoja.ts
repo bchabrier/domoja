@@ -88,6 +88,12 @@ class DomojaServer {
   */
     Server.swagger(this.app,'./api/swagger.yaml', '/api-docs', null, ['http']);
 
+    Server.swagger(this.app, {
+      filePath: module_dir + '/api/swagger.yaml', 
+      endpoint: '/api-docs', 
+      schemes: ['http']
+    });
+
     var FileStore = require('session-file-store')(session);
     let store: typeof session.Store = new FileStore({
       logFn: logger.error
