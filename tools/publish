@@ -5,8 +5,8 @@ echo 'Ok to proceed? ^C to quit'
 read ans
 
 # check that package.json version is committed
-committed_version=$(git show master:package.json | grep '"version":' | awk -F '[:,]' '{ print $2 }')
-version=$(grep '"version":' package.json | awk -F '[:,]' '{ print $2}')
+committed_version=$(git show master:./package.json | grep '"version":' | awk -F '[:,]' '{ print $2 }')
+version=$(grep '"version":' ./package.json | awk -F '[:,]' '{ print $2}')
 if [ "$committed_version" != "$version" ]; then
     echo "Warning: package.json is not committed:"
     echo Committed version: $committed_version
