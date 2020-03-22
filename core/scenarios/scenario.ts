@@ -1,6 +1,6 @@
 //import { Condition } from '../scenarios/condition'
 import { Trigger } from './trigger'
-import { ConfigLoader, getDevice, getSource } from '../..'
+import { ConfigLoader, getDevice, getSource } from '..'
 
 var logger = require("tracer").colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
