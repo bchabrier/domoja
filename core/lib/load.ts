@@ -371,6 +371,9 @@ export class ConfigLoader extends events.EventEmitter {
         try {
             let p = moduleName.match(/^[/.]/) ? path.resolve(mainDir, moduleName) : "domoja-" + moduleName
 
+            // remove ts-mocha part (in case it is run through a ts-mocha test)
+            p = p.replace('/node_modules/mocha/bin', '');
+
             if (/^domoja-[^/]+\//.test(p)) {
                 let subpath = p.replace(/^domoja-[^/]+/, '');
                 p = p.replace(/^(domoja-[^/]+).*/, '$1');
