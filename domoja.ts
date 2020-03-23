@@ -36,12 +36,17 @@ import * as fs from 'fs';
 var runWithMocha = /.*mocha$/.test(process.argv[1]);
 //var refreshData = require('./routes/refreshData')
 
-var module_dir: string = path.dirname(require.main.filename);
+var module_dir = __dirname;
 // remove trailing /dist if any
 module_dir = module_dir.replace(/\/dist$/, '');
 
-const CONFIG_FILE = process.argv[2] || module_dir + '/config/demo.yml';
-//const CONFIG_FILE = null;
+const CONFIG_FILE = (process.argv[2] && !runWithMocha) ? process.argv[2] : module_dir + '/config/demo.yml';
+
+if (!fs.existsSync(CONFIG_FILE)) {
+  console.log(process.argv);
+  logger.error("Cannot open '%s'. Exiting...", CONFIG_FILE);
+  process.exit(1);
+}
 
 type http_type = 'HTTP' | 'HTTPS';
 
