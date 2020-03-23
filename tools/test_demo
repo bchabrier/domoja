@@ -1,0 +1,121 @@
+#!/bin/sh
+
+DEMO_DIR=/tmp/demodir.link
+DEMO_DIR=/home/pi/demodir.link
+DEMO_DIR=/tmp/demodir.$$
+
+msg ()
+{
+    for i in 1 2 3 4 5 6 7 8 9 10
+    do
+        echo -n =
+        sleep 0.05
+    done
+    echo '>' $*
+}
+
+rm -fr $DEMO_DIR
+mkdir -p $DEMO_DIR
+cd $DEMO_DIR
+
+test_from_npm_registry () 
+{
+    echo 'Installs domoja from the NPM registry using yarn.'
+    echo
+
+    msg 'Installing domoja...'
+    yarn add domoja
+
+    cd node_modules/domoja
+    yarn add domoja-core
+    cd ../..
+
+    msg 'Starting domoja...'
+    # ts-node node_modules/domoja/domoja.ts 
+    cd node_modules/domoja
+    ts-node domoja.ts
+
+
+    echo $DEMO_DIR
+    cat package.json
+}
+
+test_from_linked_modules ()
+{
+    echo 'Installs domoja as a linked module from /home/pi/domoja using yarn.'
+    echo
+    
+    msg 'Linking domoja...'
+    yarn add link:/home/pi/domoja
+
+    msg 'Starting domoja...'
+    cd node_modules/domoja
+    ts-node domoja.ts
+}
+
+test_from_git_tarballs ()
+{
+    echo 'Installs domoja from modules created from the git tarballs generated from /home/pi/domoja using yarn.'
+    echo
+
+    # processing each module
+    for ldir in domoja domoja/core
+    do
+        msg "Creating $ldir tarball with git archive..."
+        (
+            cd /home/pi/$ldir
+            repo=`basename $(pwd)`
+            git archive --format=tar.gz -o /tmp/$repo.tar.gz --prefix=$repo/ master
+        
+            # removing separate modules from the package
+            rm -f /tmp/$repo.tar
+            gunzip /tmp/$repo.tar.gz
+            tar --delete -f /tmp/$repo.tar domoja/core domoja/modules
+            gzip /tmp/$repo.tar
+            tar tf /tmp/$repo.tar.gz
+        
+            msg "Installing $ldir from tarball..."
+            cd $DEMO_DIR
+            yarn add /tmp/$repo.tar.gz
+        )
+    done   
+
+
+    
+    msg 'Starting domoja...'
+    cd $DEMO_DIR/node_modules/domoja
+    ts-node domoja.ts
+
+}
+
+test_from_pack_tarballs ()
+{
+    echo 'Installs domoja from modules created from yarn pack generated in /home/pi/domoja using yarn.'
+    echo
+
+    # processing each module
+    for ldir in 'domoja' 'domoja/core' 'domoja/modules/proxiti' 'domoja/modules/tempo'
+    do
+        msg "Creating $ldir package with yarn pack..."
+        (
+            cd /home/pi/$ldir
+            repo=`basename $(pwd)`.$$
+            sed -i 's!\("main": *\)"\([^.]*\)\.ts"!\1"dist/\2.js"!' package.json
+            yarn pack --filename $DEMO_DIR/$repo.tar.gz
+            sed -i 's!\("main": *\)"dist/\([^.]*\)\.js"!\1"\2.ts"!' package.json
+        )
+    done
+   
+    msg "Installing $DEMO_DIR/*.gz from tarball..."
+    cd $DEMO_DIR #/node_modules/domoja
+    #rm -f yarn.lock # to be removed later
+    #yarn cache clean
+    yarn add $DEMO_DIR/*.tar.gz
+    
+    msg 'Starting domoja...'
+    cd $DEMO_DIR
+    node node_modules/domoja/dist/domoja.js  
+}
+
+test_from_pack_tarballs
+#test_from_linked_modules # works
