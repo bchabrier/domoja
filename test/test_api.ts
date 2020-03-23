@@ -13,7 +13,8 @@ const domoja: typeof ToMock & typeof RewireToMock = <any>RewireToMock
 const DomojaServer: new (port: Number, prod: boolean, listeningCallback?: () => void) => any = domoja.__get__('DomojaServer');
 
 import * as apis from '../api';
-import { InternalServer } from '../node_modules/typescript-rest/dist/server-container';
+import { ServerContainer } from '../node_modules/typescript-rest/dist/server/server-container';
+let InternalServer = ServerContainer.get();
 
 describe('Module api', function () {
     this.timeout(5000);
@@ -46,7 +47,7 @@ describe('Module api', function () {
 
 
     beforeEach('Hack to make typescript-rest reload correctly', function () {
-        InternalServer.serverClasses.forEach(classData => {
+        (<any>InternalServer).serverClasses.forEach(classData => {
             if (!classData.isAbstract) {
                 // make use of new clases
                 Object.keys(apis).forEach(a => {
