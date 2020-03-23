@@ -32,3 +32,4 @@ dist/
 *.js
 .nyc_output/
 /sessions/
+/.vscode/
