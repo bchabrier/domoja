@@ -148,7 +148,7 @@ describe('Module load', function () {
         });
     });
     describe('#configFile', function () {
-        this.timeout(20000)
+        this.timeout(40000)
         /*
         it('should load the zibase config file', function () {
             doc = grammar.loadFileSync('./test/load/sources/zibase.yml');

@@ -1,6 +1,6 @@
 
 import * as assert from 'assert';
-import { Source, Parameters, ConfigLoader, InitObject, GenericDevice, reloadConfig, getCurrentConfig } from '..';
+import { Source, Parameters, ConfigLoader, InitObject, GenericDevice, reloadConfig, getCurrentConfig } from '../core';
 import * as http from 'http';
 import * as express from 'express';
 import { AddressInfo } from 'net';

@@ -7,7 +7,7 @@ type Source = ToMock.Source;
 */
 
 import * as assert from 'assert';
-import { Source, Parameters, ConfigLoader, InitObject, GenericDevice } from '..';
+import { Source, Parameters, ConfigLoader, InitObject, GenericDevice } from '../core';
 import { device } from '../core/devices/device';
 
 describe('Module sources', function () {
