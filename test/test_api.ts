@@ -16,14 +16,25 @@ import * as apis from '../api';
 import { ServerContainer } from '../node_modules/typescript-rest/dist/server/server-container';
 let InternalServer = ServerContainer.get();
 
+import * as core from 'domoja-core'
+
 describe('Module api', function () {
     this.timeout(5000);
 
     function doRequest(method: 'GET' | 'POST', path: string, formData: querystring.ParsedUrlQueryInput, onSuccess: (body: string) => void, onError: (err: Error) => void) {
         let server = new DomojaServer(null, false, () => {
+            core.configure(server.app,
+                (user, pwd, done) => { done(null, {id: "test"}) },
+                (user, cb) => cb(null, { id: "test" }),
+                null,
+                '',
+                (req, resp) => {},
+                null
+            );
+
             let data = querystring.stringify(formData);
 
-            let req = http.request('http://localhost:' + server.app.get('port') + path, {
+            let req = http.request('http://test:test@localhost:' + server.app.get('port') + path, {
                 method: method,
                 headers: method == 'POST' ? {
                     'Content-Type': 'application/x-www-form-urlencoded',
