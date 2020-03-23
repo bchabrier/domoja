@@ -56,7 +56,7 @@ export class DevicesService {
   @GET
   @PreProcessor(deviceIdValidator)
   get(@PathParam('id') name: string) {
-    let device = core.getDevices().find(device => device.name == name);
+    let device = core.getDevices().find(device => device.path == name);
     return deviceAsJSON(device);
   }
 
