@@ -1,28 +1,43 @@
 #!/bin/sh
 
-echo 'First use "npm version major|minor|patch" and commit package.json'
-echo 'Ok to proceed? ^C to quit'
-read ans
+package=$(awk -F\" '/"name": / { print $4}' ./package.json)
 
-# check that package.json version is committed
-committed_version=$(git show master:./package.json | grep '"version":' | awk -F '[:,]' '{ print $2 }')
-version=$(grep '"version":' ./package.json | awk -F '[:,]' '{ print $2}')
-if [ "$committed_version" != "$version" ]; then
-    echo "Warning: package.json is not committed:"
-    echo Committed version: $committed_version
-    echo Current version: $version
-    exit 1
+echo "About to publish package '$package'..."
+
+# check everything is committed
+echo "Checking git status..."
+modified="$(git status . | grep "modified:" | grep -v "package.json")"
+if [ ! -z "$modified" ]
+then
+    echo "WARNING! Git working directory is not clean:"
+    echo "$modified"
+    echo "Type return to continue, or ^C to cancel"
+    read ans
 fi
 
-#cd `dirname $0`/..
-repo=`basename $(pwd)`
-git archive --format=tar.gz -o /tmp/$repo.tar.gz --prefix=$repo/ master
+# check version
+echo "Checking version..."
+npm_version=$(npm view -json $package | awk -F\" '/"_id":/ { print $4 }' | awk -F@ '{ print $2}')
+version=$(awk -F\" '/"version": / { print $4}' ./package.json)
+if [ "$npm_version" = "$version" ]; then
+    echo "Warning: version '$version' in package.json is the same as in npm registry."
+    echo "=> Enter new version (major, minor, or patch) to the next question below <="
+    yarn config set version-tag-prefix "$package.v"
+    yarn version
+    yarn config set version-tag-prefix "v"
+fi
 
-# removing separate modules from the package
-rm -f /tmp/$repo.tar
-gunzip /tmp/$repo.tar.gz
-tar --delete -f /tmp/$repo.tar domoja/core domoja/modules
-gzip /tmp/$repo.tar
-tar tf /tmp/$repo.tar.gz
+echo "Compiling..."
+rm -fr dist
+yarn run build
 
-npm publish /tmp/$repo.tar.gz
+echo "Creating package..."
+repo=`basename $(pwd)`.$$
+sed -i 's!\("main": *\)"\([^.]*\)\.ts"!\1"dist/\2.js"!' package.json
+yarn pack --filename /tmp/$repo.tar.gz
+sed -i 's!\("main": *\)"dist/\([^.]*\)\.js"!\1"\2.ts"!' package.json
+
+
+echo "Publishing..."
+npm publish /tmp/$repo.tar.gz #--dry-run 
+
