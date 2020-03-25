@@ -4,7 +4,7 @@ node_js:
   - 10
 
 install:
-  - cd core; yarn link; cd ..; yarn link core
+  - cd core; yarn link; cd ..; yarn link domoja-core
   - cd modules/proxiti; yarn link; cd ../..; yarn link proxity
   - yarn install
 
