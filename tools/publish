@@ -4,6 +4,10 @@ package=$(awk -F\" '/"name": / { print $4}' ./package.json)
 
 echo "About to publish package '$package'..."
 
+echo "Compiling..."
+rm -fr dist
+yarn run build
+
 # check everything is committed
 echo "Checking git status..."
 modified="$(git status . | grep "modified:" | grep -v "package.json")"
@@ -26,10 +30,6 @@ if [ "$npm_version" = "$version" ]; then
     yarn version
     yarn config set version-tag-prefix "v"
 fi
-
-echo "Compiling..."
-rm -fr dist
-yarn run build
 
 echo "Creating package..."
 repo=`basename $(pwd)`.$$
