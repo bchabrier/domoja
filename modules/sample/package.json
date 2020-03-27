@@ -1,7 +1,7 @@
 {
   "name": "domoja-sample",
   "author": "Bruno Chabrier",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": false,
   "description": "A sample Domoja module skeleton",
   "main": "index.ts",
@@ -34,6 +34,9 @@
     "coveralls": "^3.0.2",
     "istanbul": "^0.4.2",
     "mocha": "^6.2.2"
+  },
+  "peerDependencies": {
+    "domoja-core": "*"
   },
   "files": [
     "dist/**/*"
