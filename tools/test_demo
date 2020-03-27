@@ -1,7 +1,7 @@
 #!/bin/sh
 
 DEMO_DIR=/tmp/demodir.link
-DEMO_DIR=/home/pi/demodir.link
+DEMO_DIR=/home/pi/demodir
 DEMO_DIR=/tmp/demodir.$$
 
 msg ()
@@ -24,20 +24,13 @@ test_from_npm_registry ()
     echo
 
     msg 'Installing domoja...'
-    yarn add domoja
+    yarn add domoja domoja-core domoja-proxiti domoja-tempo
 
-    cd node_modules/domoja
-    yarn add domoja-core
-    cd ../..
 
     msg 'Starting domoja...'
-    # ts-node node_modules/domoja/domoja.ts 
-    cd node_modules/domoja
-    ts-node domoja.ts
-
+    node node_modules/domoja/dist/domoja.js  
 
     echo $DEMO_DIR
-    cat package.json
 }
 
 test_from_linked_modules ()
@@ -117,5 +110,17 @@ test_from_pack_tarballs ()
     node node_modules/domoja/dist/domoja.js  
 }
 
-test_from_pack_tarballs
-#test_from_linked_modules # works
+case "$1" in 
+"before_publish")
+    test_from_pack_tarballs
+    ;;
+"after_publish")
+    test_from_npm_registry
+    ;;
+"test")
+    test_from_linked_modules # works
+    ;;
+*)
+    echo "Usage: `basename $0` before_publish|after_publish"
+    ;;
+esac
