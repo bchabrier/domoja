@@ -4,10 +4,6 @@ package=$(awk -F\" '/"name": / { print $4}' ./package.json)
 
 echo "About to publish package '$package'..."
 
-echo "Compiling..."
-rm -fr dist
-yarn run build
-
 # check everything is committed
 echo "Checking git status..."
 modified="$(git status . | grep "modified:" | grep -v "package.json")"
@@ -19,6 +15,50 @@ then
     read ans
 fi
 
+echo "Compiling..."
+rm -fr dist
+yarn run build
+
+ans='no value'
+while [ "$ans" != 'y' -a "$ans" != 'n' -a "$ans" != '' ]
+do
+    read -p 'Do you want to test the packages installation with test_demo? (y|n) [y] ' ans
+    case "$ans" in 
+    'y'|'')
+        log=/tmp/log.$$
+        > $log
+        $(dirname $0)/test_demo before_publish 2>&1 | tee -a $log
+        sed 's/\x1b\[[0-9;]*m//g' < $log > $log.text
+
+        cat >/tmp/msgs.$$ <<EOF
+(ConfigLoader.parse) Loading config file
+Successfully imported class 'group'
+Successfully imported class 'astronomy'
+Successfully imported class 'tempo'
+ConfigLoader emitted "startup"
+will trigger at
+emitted "change": {"newValue":
+triggers...
+Error: listen EADDRINUSE: address already in use :::4001
+EOF
+
+        while read msg 
+        do
+            if ! grep -q "$msg" $log.text
+            then
+                echo "ERROR: test_demo did not run successfully! Could not find '$msg' in output..."
+                echo 'Aborting...'
+                exit 1
+            fi
+        done < /tmp/msgs.$$
+        echo 'SUCCESS! test_demo executed successfully!'
+        rm -f $log $log.text
+        ;;
+    'n')
+        ;;
+    esac
+done
+
 # check version
 echo "Checking version..."
 npm_version=$(npm view -json $package | awk -F\" '/"_id":/ { print $4 }' | awk -F@ '{ print $2}')
@@ -28,7 +68,7 @@ if [ "$npm_version" = "$version" ]; then
     echo "=> Enter new version (major, minor, or patch) to the next question below <="
     yarn config set version-tag-prefix "$package.v"
     yarn version
-    yarn config set version-tag-prefix "v"
+    #yarn config set version-tag-prefix "v"
 fi
 
 echo "Creating package..."
@@ -40,4 +80,7 @@ sed -i 's!\("main": *\)"dist/\([^.]*\)\.js"!\1"\2.ts"!' package.json
 
 echo "Publishing..."
 npm publish /tmp/$repo.tar.gz #--dry-run 
+
+echo 'You should now test the published package with:'
+echo "\$ $(dirname)/test_demo after_publish"
 
