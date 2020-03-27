@@ -82,5 +82,5 @@ echo "Publishing..."
 npm publish /tmp/$repo.tar.gz #--dry-run 
 
 echo 'You should now test the published package with:'
-echo "\$ $(dirname)/test_demo after_publish"
+echo "\$ $(dirname $0)/test_demo after_publish"
 
