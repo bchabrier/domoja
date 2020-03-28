@@ -123,7 +123,8 @@ describe('Module api', function () {
                 done();
             }, done);
         });
-    }); describe('POST /devices/:id', function () {
+    }); 
+    describe('POST /devices/:id', function () {
         it('should set the state of a device', function (done) {
             reloadConfig('./test/load/devices/device.yml');
             doRequest('POST', '/devices/simple_device', {
@@ -132,6 +133,17 @@ describe('Module api', function () {
                 assert.equal(body, 'OK');
                 console.log(getCurrentConfig().getDevice('simple_device'));
                 assert.equal(getCurrentConfig().getDevice('simple_device').getState(), 'ON');
+                done();
+            }, done);
+        });
+        it('should raise an exception if cannot set the state of a device', function (done) {
+            reloadConfig('./test/load/devices/device.yml');
+            doRequest('POST', '/devices/simple_device', {
+                command: 'ERROR'
+            }, (body) => {
+                assert.ok(body.match(/Error: ERROR value received/));
+                console.log(getCurrentConfig().getDevice('simple_device'));
+                assert.equal(getCurrentConfig().getDevice('simple_device').getState(), undefined);
                 done();
             }, done);
         });
