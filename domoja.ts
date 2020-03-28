@@ -361,6 +361,15 @@ class DomojaServer {
 
 export let DmjServer: DomojaServer;
 
+export function ___setDmjServer___(d: DomojaServer) 
+{
+  if (runWithMocha) {
+    DmjServer = d;
+  } else {
+    logger.warning('Enabled only when running with mocha!')
+  }
+}
+
 if (!runWithMocha) {
 
   logger.info(colors.magenta('    ____                        _'));
