@@ -18,6 +18,7 @@ export class AppService {
   @POST
   setDemoMode(@FormParam('value') value: boolean) {
     DmjServer.loadConfig(value?'./config/demo.yml':DmjServer.previousFile);
+    return "OK";
   }
 
 }
