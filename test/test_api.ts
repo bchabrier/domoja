@@ -9,8 +9,8 @@ import * as querystring from 'querystring';
 import rewire = require('rewire')
 import * as ToMock from '../domoja'
 let RewireToMock = rewire('../domoja')
-const domoja: typeof ToMock & typeof RewireToMock = <any>RewireToMock
-const DomojaServer: new (port: Number, prod: boolean, listeningCallback?: () => void) => any = domoja.__get__('DomojaServer');
+const mockedDomoja: typeof ToMock & typeof RewireToMock = <any>RewireToMock
+const DomojaServer: new (port: Number, prod: boolean, listeningCallback?: () => void) => any = mockedDomoja.__get__('DomojaServer');
 
 import * as apis from '../api';
 import { ServerContainer } from '../node_modules/typescript-rest/dist/server/server-container';
@@ -21,39 +21,55 @@ import * as core from 'domoja-core'
 describe('Module api', function () {
     this.timeout(5000);
 
-    function doRequest(method: 'GET' | 'POST', path: string, formData: querystring.ParsedUrlQueryInput, onSuccess: (body: string) => void, onError: (err: Error) => void) {
-        let server = new DomojaServer(null, false, () => {
+    let server: typeof ToMock.DmjServer;
+
+    function _reloadConfig(file: string) {
+        reloadConfig(file);
+        ToMock.DmjServer.previousFile = ToMock.DmjServer.currentFile;
+        mockedDomoja.DmjServer.previousFile = mockedDomoja.DmjServer.currentFile;
+        ToMock.DmjServer.currentFile = file;
+        mockedDomoja.DmjServer.currentFile = file;
+    }
+
+    this.beforeAll(function (done) {
+        server = new DomojaServer(null, false, () => {
             core.configure(server.app,
-                (user, pwd, done) => { done(null, {id: "test"}) },
+                (user, pwd, done) => { done(null, { id: "test" }) },
                 (user, cb) => cb(null, { id: "test" }),
                 null,
                 '',
-                (req, resp) => {},
+                (req, resp) => { },
                 null
             );
-
-            let data = querystring.stringify(formData);
-
-            let req = http.request('http://test:test@localhost:' + server.app.get('port') + path, {
-                method: method,
-                headers: method == 'POST' ? {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Content-Length': Buffer.byteLength(data)
-                } : undefined
-            }, (res) => {
-                let body = '';
-                res.on('data', chunk => body += chunk);
-                res.on('end', () => {
-                    onSuccess(body);
-                    getCurrentConfig().release();
-                }).on('error', (err) => {
-                    getCurrentConfig().release();
-                    onError(err);
-                });
-            });
-            req.write(data);
-            req.end();
+            ToMock.___setDmjServer___(server);
+            mockedDomoja.___setDmjServer___(server);
+            done();
         });
+    });
+
+    function doRequest(method: 'GET' | 'POST', path: string, formData: querystring.ParsedUrlQueryInput, onSuccess: (body: string) => void, onError: (err: Error) => void) {
+
+        let data = querystring.stringify(formData);
+
+        let req = http.request('http://test:test@localhost:' + server.app.get('port') + path, {
+            method: method,
+            headers: method == 'POST' ? {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Length': Buffer.byteLength(data)
+            } : undefined
+        }, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => {
+                onSuccess(body);
+                getCurrentConfig().release();
+            }).on('error', (err) => {
+                getCurrentConfig().release();
+                onError(err);
+            });
+        });
+        req.write(data);
+        req.end();
     }
 
 
@@ -90,7 +106,7 @@ describe('Module api', function () {
 
     describe('GET /devices', function () {
         it('should return the devices', function (done) {
-            reloadConfig('./test/load/devices/device.yml');
+            _reloadConfig('./test/load/devices/device.yml');
             doRequest('GET', '/devices', null, (body) => {
                 //console.log(body);
                 let result = JSON.parse(body);
@@ -105,7 +121,7 @@ describe('Module api', function () {
     });
     describe('GET /devices/:id', function () {
         it('should return a device', function (done) {
-            reloadConfig('./test/load/devices/device.yml');
+            _reloadConfig('./test/load/devices/device.yml');
             doRequest('GET', '/devices/simple_device', null, (body) => {
                 //console.log(body);
                 let result = JSON.parse(body);
@@ -116,17 +132,17 @@ describe('Module api', function () {
             }, done);
         });
         it('should raise an exception if device not found', function (done) {
-            reloadConfig('./test/load/devices/device.yml');
+            _reloadConfig('./test/load/devices/device.yml');
             doRequest('GET', '/devices/unknown_device', null, (body) => {
                 //console.log(body);
                 assert.ok(body.match(/device not found/));
                 done();
             }, done);
         });
-    }); 
+    });
     describe('POST /devices/:id', function () {
         it('should set the state of a device', function (done) {
-            reloadConfig('./test/load/devices/device.yml');
+            _reloadConfig('./test/load/devices/device.yml');
             doRequest('POST', '/devices/simple_device', {
                 command: 'ON'
             }, (body) => {
@@ -137,7 +153,7 @@ describe('Module api', function () {
             }, done);
         });
         it('should raise an exception if cannot set the state of a device', function (done) {
-            reloadConfig('./test/load/devices/device.yml');
+            _reloadConfig('./test/load/devices/device.yml');
             doRequest('POST', '/devices/simple_device', {
                 command: 'ERROR'
             }, (body) => {
@@ -148,13 +164,47 @@ describe('Module api', function () {
             }, done);
         });
         it('should raise an exception if device not found', function (done) {
-            reloadConfig('./test/load/devices/device.yml');
+            _reloadConfig('./test/load/devices/device.yml');
             doRequest('POST', '/devices/unknown_device', {
                 command: 'ON'
             }, (body) => {
                 //console.log(body);
                 assert.ok(body.match(/device not found/));
                 done();
+            }, done);
+        });
+    });
+    describe('GET /app', function () {
+        it('should return the application', function (done) {
+            _reloadConfig('./test/load/devices/device.yml');
+            doRequest('GET', '/app/', null, (body) => {
+                let result = JSON.parse(body);
+                assert.notEqual(result, null);
+                assert.equal(result.demoMode, 0);
+                assert.equal(result.nbWebsockets, 0);
+                assert.equal(result.nbWebsocketsHTTP, 0);
+                assert.equal(result.nbDevices, 1);
+                assert.equal(result.nbSources, 0);
+                assert.equal(result.nbScenarios, 0);
+                assert.equal(result.nbPages, 0);
+                done();
+            }, done);
+        });
+    });
+    describe('POST /app/demo-mode', function () {
+        it('should switch to demo-mode and vice-versa', function (done) {
+            this.timeout(120000);
+            _reloadConfig('./test/load/devices/device.yml');
+            doRequest('POST', '/app/demo-mode', { value: true }, (body) => {
+                console.error(body);
+                assert.equal(body, "OK");
+                assert.equal(ToMock.DmjServer.getApp().demoMode, 1);
+                doRequest('POST', '/app/demo-mode', { value: false }, (body) => {
+                    console.error(body);
+                    assert.equal(body, "OK");
+                    assert.equal(ToMock.DmjServer.getApp().demoMode, 0);
+                    done();
+                }, done);
             }, done);
         });
     });
