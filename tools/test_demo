@@ -4,6 +4,8 @@ DEMO_DIR=/tmp/demodir.link
 DEMO_DIR=/home/pi/demodir
 DEMO_DIR=/tmp/demodir.$$
 
+echo "Using dir $DEMO_DIR"
+
 msg ()
 {
     for i in 1 2 3 4 5 6 7 8 9 10

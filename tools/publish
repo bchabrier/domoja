@@ -86,6 +86,7 @@ npm publish /tmp/$repo.tar.gz #--dry-run
 version=$(awk -F\" '/"version": / { print $4}' ./package.json)
 echo "Pushing tag $package.v$version"
 git push origin $package.v$version
+echo
 
 echo 'You should now test the published package with:'
 echo "\$ $(dirname $0)/test_demo after_publish"
