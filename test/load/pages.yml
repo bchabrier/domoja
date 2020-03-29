@@ -1,0 +1,5 @@
+pages:
+  - About:
+      menu-item: 'A propos'
+      title: 'A propos'
+      page: about.html

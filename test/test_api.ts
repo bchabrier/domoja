@@ -208,6 +208,31 @@ describe('Module api', function () {
             }, done);
         });
     });
+    describe('GET /pages', function () {
+        it('should return [] when no page exists', function (done) {
+            _reloadConfig('./test/load/devices/device.yml');
+            doRequest('GET', '/pages/', null, (body) => {
+                let result = JSON.parse(body);
+                assert.notEqual(result, null);
+                assert.ok(Array.isArray(result));
+                assert.equal(result.length, 0);
+                done();
+            }, done);
+        });
+        it('should return an array of pages', function (done) {
+            _reloadConfig('./test/load/pages.yml');
+            doRequest('GET', '/pages/', null, (body) => {
+                //console.log(body);
+                let result = JSON.parse(body);
+                assert.notEqual(result, null);
+                assert.ok(Array.isArray(result));
+                assert.equal(result.length, 1);
+                assert.equal(result[0].name, 'About');
+                assert.equal(result[0].menuItem, 'A propos');
+                done();
+            }, done);
+        });
+    });
     describe('/api-docs', function () {
         it('should deliver Swagger pages', function (done) {
             doRequest('GET', '/api-docs/', null, (body) => {
