@@ -87,6 +87,7 @@
   "files": [
     "dist/**/*",
     "api/swagger.json",
-    "api/swagger.yaml"
+    "api/swagger.yaml",
+    "www/**/*"
   ]
 }

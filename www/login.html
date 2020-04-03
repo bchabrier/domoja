@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+
+  <meta charset="UTF-8">
+  <title>Domoja (DEV)</title>
+  <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="msapplication-tap-highlight" content="no">
+
+  <!-- 
+        <link rel="icon" type="image/x-icon" href="assets/icon/favicon.ico"> 
+        <link rel="manifest" href="manifest.json">
+        <meta name="theme-color" content="#4e8ef7">
+        -->
+
+  <!-- favicon, from realfavicongenerator.net -->
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon/apple-touch-icon.png">
+
+
+  <link rel="manifest" href="assets/favicon/site.webmanifest">
+  <link rel="mask-icon" href="assets/favicon/safari-pinned-tab.svg" color="#5bbad5">
+  <link rel="shortcut icon" href="assets/favicon/favicon.ico">
+  <meta name="msapplication-TileColor" content="#da532c">
+  <meta name="msapplication-config" content="assets/favicon/browserconfig.xml">
+  <meta name="theme-color" content="#ffffff">
+
+  <!-- add to homescreen for ios -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+  <!-- un-comment this code to enable service worker
+        <script>
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+              .then(() => console.log('service worker installed'))
+              .catch(err => console.error('Error', err));
+          }
+        </script>-->
+
+  <link href="build/main.css" rel="stylesheet">
+
+</head>
+
+<body>
+
+  <!-- Ionic's root component and where the app will load -->
+  <ion-app class="
+    app-root app-root-md md platform-core enable-hover" ng-version="5.2.11">
+    <div app-viewport=""></div>
+    <ng-component class="app-root">
+
+
+      <ion-nav swipebackenabled="false" class="menu-content menu-content-overlay" ng-reflect-swipe-back-enabled="false">
+        <div nav-viewport=""></div>
+        <page-login class="ion-page ng-star-inserted show-page" style="z-index: 99;">
+          <ion-header class="header header-md">
+
+            <ion-navbar class="toolbar toolbar-md">
+              <div class="toolbar-background toolbar-background-md" ng-reflect-klass="toolbar-background"
+                ng-reflect-ng-class="toolbar-background-md"></div><button class="back-button bar-button bar-button-md back-button-md bar-button-default bar-button-default-md"
+                ion-button="bar-button" ng-reflect-klass="back-button" ng-reflect-ng-class="back-button-md"><span class="button-inner">
+                  <ion-icon class="back-button-icon icon icon-md back-button-icon-md ion-md-arrow-back" role="img"
+                    ng-reflect-klass="back-button-icon" ng-reflect-ng-class="back-button-icon-md" aria-label="arrow back"
+                    ng-reflect-name="md-arrow-back"></ion-icon><span class="back-button-text back-button-text-md"
+                    ng-reflect-klass="back-button-text" ng-reflect-ng-class="back-button-text-md"></span>
+                </span>
+                <div class="button-effect"></div>
+              </button>
+              <div class="toolbar-content toolbar-content-md" ng-reflect-klass="toolbar-content" ng-reflect-ng-class="toolbar-content-md">
+                <ion-title class="title title-md">
+                  <div class="toolbar-title toolbar-title-md" ng-reflect-klass="toolbar-title" ng-reflect-ng-class="toolbar-title-md">Login</div>
+                </ion-title>
+              </div>
+            </ion-navbar>
+
+          </ion-header>
+
+
+          <ion-content padding="" class="content content-md">
+            <div class="fixed-content" style="margin-top: 56px;"></div>
+            <div class="scroll-content" style="margin-top: 56px;">
+              <ion-list class="list list-md">
+                <ion-item class="item item-block item-md item-input ng-untouched ng-valid ng-dirty">
+                  <div class="item-inner">
+                    <div class="input-wrapper">
+                      <ion-label class="label label-md" id="lbl-92">Utilisateur</ion-label>
+                      <!--bindings={
+        "ng-reflect-ng-if": "false"
+      }-->
+                      <ion-input name="username" type="text" class="input input-md ng-valid ng-dirty ng-touched"
+                        ng-reflect-name="username" ng-reflect-model="demo" ng-reflect-type="text">
+                        <!--bindings={
+        "ng-reflect-ng-if": "true"
+      }--><input onfocus="getFocus('username')"
+                          onblur="releaseFocus('username')" oninput="getInput('username')" class="text-input text-input-md ng-star-inserted"
+                          dir="auto" ng-reflect-klass="text-input" ng-reflect-ng-class="text-input-md" type="text"
+                          aria-labelledby="lbl-92" autocomplete="off" autocorrect="off" placeholder="" name="username"
+                          ng-reflect-name="username" ng-reflect-model="" ng-reflect-type="text">
+                        <!--bindings={
+        "ng-reflect-ng-if": "false"
+      }-->
+                        <!--bindings={
+        "ng-reflect-ng-if": "false"
+      }-->
+                        <!--bindings={
+        "ng-reflect-ng-if": "false"
+      }-->
+                      </ion-input>
+                    </div>
+                    <!--bindings={
+        "ng-reflect-ng-if": "false"
+      }-->
+                  </div>
+                  <div class="button-effect"></div>
+                </ion-item>
+                <ion-item class="item item-block item-md item-input ng-untouched ng-valid ng-dirty">
+                  <div class="item-inner">
+                    <div class="input-wrapper">
+                      <ion-label class="label label-md" id="lbl-93">Mot de passe</ion-label>
+                      <!--bindings={
+        "ng-reflect-ng-if": "false"
+      }-->
+                      <ion-input name="password" type="password" class="input input-md ng-valid ng-dirty ng-touched"
+                        ng-reflect-name="password" ng-reflect-model="demo" ng-reflect-type="password">
+                        <!--bindings={
+        "ng-reflect-ng-if": "true"
+      }--><input onfocus="getFocus('password')"
+                          onblur="releaseFocus('password')" oninput="getInput('password')" class="text-input text-input-md ng-star-inserted"
+                          dir="auto" ng-reflect-klass="text-input" ng-reflect-ng-class="text-input-md" type="password"
+                          aria-labelledby="lbl-93" autocomplete="off" autocorrect="off" placeholder="" name="password"
+                          ng-reflect-name="password" ng-reflect-model="" ng-reflect-type="password">
+                        <!--bindings={
+        "ng-reflect-ng-if": "false"
+      }-->
+                        <!--bindings={
+        "ng-reflect-ng-if": "false"
+      }-->
+                        <!--bindings={
+        "ng-reflect-ng-if": "false"
+      }-->
+                      </ion-input>
+                    </div>
+                    <!--bindings={
+        "ng-reflect-ng-if": "false"
+      }-->
+                  </div>
+                  <div class="button-effect"></div>
+                </ion-item>
+                <ion-item class="item item-block item-md item-checkbox" no-lines="">
+                  <ion-checkbox name="remember_me" class="checkbox checkbox-md ng-untouched ng-pristine ng-valid"
+                    ng-reflect-name="remember_me" ng-reflect-model="false">
+                    <div class="checkbox-icon">
+                      <div class="checkbox-inner"></div>
+                    </div><button onclick="switchRememberMe()" class="item-cover item-cover-md item-cover-default item-cover-default-md"
+                      ion-button="item-cover" role="checkbox" type="button" id="checkbox-94-0" aria-checked="false"
+                      aria-labelledby="lbl-94" aria-disabled="false"><span class="button-inner"> </span>
+                      <div class="button-effect"></div>
+                    </button>
+                  </ion-checkbox>
+                  <div class="item-inner">
+                    <div class="input-wrapper">
+                      <ion-label class="label label-md" id="lbl-94">Se souvenir de moi</ion-label>
+                      <!--bindings={
+        "ng-reflect-ng-if": "false"
+      }-->
+                    </div>
+                    <!--bindings={
+        "ng-reflect-ng-if": "false"
+      }-->
+                  </div>
+                  <div class="button-effect"></div>
+                </ion-item>
+                <ion-item class="item item-block item-md" no-lines="">
+                  <div class="item-inner">
+                    <div class="input-wrapper">
+                      <!--bindings={
+        "ng-reflect-ng-if": "true"
+      }-->
+                      <ion-label class="label label-md ng-star-inserted">
+                        <span class="error">&nbsp;</span>
+                      </ion-label>
+                    </div>
+                    <!--bindings={
+        "ng-reflect-ng-if": "false"
+      }-->
+                  </div>
+                  <div class="button-effect"></div>
+                </ion-item>
+                <button onclick="doLogin()" block="" ion-button="" ng-reflect-block="" class="button button-md button-default button-default-md button-block button-block-md"><span
+                    class="button-inner">Login</span>
+                  <div class="button-effect"></div>
+                </button>
+              </ion-list>
+            </div>
+          </ion-content>
+        </page-login>
+        <div class="nav-decor"></div>
+      </ion-nav>
+    </ng-component>
+  </ion-app>
+
+  <script language="javascript">
+    function doLogin() {
+      var XHR = new XMLHttpRequest();
+      var data = "username=" + getInputField("username").value
+        + "&password=" + getInputField("password").value
+        + "&remember_me=" + isRememberMeChecked();
+      XHR.withCredentials = true;
+      XHR.onerror = (ev) => console.log(ev);
+      XHR.onload = function (ev) {
+        console.log(this);
+        if (this.responseText.match(/\/login\.html/)) {
+          var error = document.getElementsByClassName("error")[0];
+          error.innerHTML = "Identification erronée";
+          setTimeout(() => { error.innerHTML = "&nbsp;" }, 2000);
+        } else if (this.responseText.match(/"build\/vendor\.js"/)) {
+          window.location.href = '/';
+        }
+      }
+      XHR.open('POST', 'http://raspberrypi:4001/login.html');
+      XHR.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+      XHR.send(data);
+    }
+
+    function isRememberMeChecked() {
+      let checkbox = document.getElementsByClassName("checkbox-icon")[0];
+      return checkbox.className.match(/checkbox-checked/) != null;
+    }
+
+    function switchRememberMe() {
+      let checkbox = document.getElementsByClassName("checkbox-icon")[0];
+      if (isRememberMeChecked()) {
+        checkbox.classList.remove("checkbox-checked");
+      } else {
+        checkbox.classList.add("checkbox-checked");
+      }
+    }
+
+    function getInputField(field) {
+      var elements = document.getElementsByName(field);
+      return Array.prototype.filter.call(elements, element => element.tagName == "INPUT")[0];
+    }
+
+    function getIonItem(field) {
+      var input = getInputField(field);
+      var element = input;
+      while (element.parentElement && element.tagName != "ION-ITEM") element = element.parentElement;
+      return element;
+    }
+
+    function getFocus(field) {
+      var item = getIonItem(field);
+      item.classList.add("input-has-focus")
+      item.classList.add("item-input-has-focus")
+    }
+
+    function releaseFocus(field) {
+      var item = getIonItem(field);
+      item.classList.remove("input-has-focus")
+      item.classList.remove("item-input-has-focus")
+    }
+
+    function getInput(field) {
+      var input = getInputField(field);
+      var item = getIonItem(field);
+      if (input.value == "") {
+        item.classList.remove("input-has-value")
+        item.classList.remove("item-input-has-value")
+      } else {
+        item.classList.add("input-has-value")
+        item.classList.add("item-input-has-value")
+      }
+    }
+  </script>
+
+</body>
+
+</html>

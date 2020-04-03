@@ -12,7 +12,6 @@ plugins/
 /secrets.ts
 ssl/
 tips.txt
-www/
 www_from_ionic/
 node_modules/
 .idea
@@ -29,7 +28,6 @@ platforms/
 app/scripts/configuration.js
 dist/
 
-*.js
 .nyc_output/
 /sessions/
 /.vscode/

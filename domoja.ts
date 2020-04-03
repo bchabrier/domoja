@@ -108,7 +108,7 @@ class DomojaServer {
     });
 
     this.serveUI(this.app,
-      '/login.html', '/../helloWorld/src', '/index.html',
+      '/login.html', '/www', '/index.html',
       [
         '/build'
       ],
