@@ -212,14 +212,17 @@
       XHR.onload = function (ev) {
         console.log(this);
         if (this.responseText.match(/\/login\.html/)) {
+          console.log('XHR response to /login.html contains ref to /login.html, wrong authentication?');
           var error = document.getElementsByClassName("error")[0];
           error.innerHTML = "Identification erronée";
           setTimeout(() => { error.innerHTML = "&nbsp;" }, 2000);
         } else if (this.responseText.match(/"build\/vendor\.js"/)) {
+          console.log('XHR response to /login.html contains ref to vendor.js, let\'s go to /');
           window.location.href = '/';
         }
       }
-      XHR.open('POST', 'http://raspberrypi:4001/login.html');
+      DomojaURL = document.cookie.replace(/.*DomojaURL=([^;]*);.*/, '$1');
+      XHR.open('POST', DomojaURL + '/login.html');
       XHR.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
       XHR.send(data);
     }
