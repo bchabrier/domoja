@@ -81,8 +81,8 @@
     "swagger": ": run swagger generation if needed; for f in api/*.ts; do [ ! -f api/swagger.json ] || [ $f -nt api/swagger.json ] && ( npm --scripts-prepend-node-path=auto run swagger:force; break ); done; exit 0",
     "generate:demo": ": generate demo.yml; ./tools/generate_demo",
     "publish": ": publish to npm; npm --scripts-prepend-node-path=auto run generate:demo; npm --scripts-prepend-node-path=auto run swagger; ./tools/update_readme; ./tools/publish",
-    "outdated": ": check outdated packages; cur=$(pwd); for d in . core modules/*; do cd $cur/$d; pwd; yarn outdated $d; done",
-    "upgrade": ": upgrade packages; cur=$(pwd); for d in . core modules/*; do cd $cur/$d; pwd; yarn upgrade $d; done"
+    "outdated": ": check outdated packages; ./tools/cascade yarn outdated",
+    "upgrade": ": upgrade packages; ./tools/cascade yarn upgrade"
   },
   "files": [
     "dist/**/*",

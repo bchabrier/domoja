@@ -1,0 +1,20 @@
+#!/bin/sh
+
+usage () 
+{
+    echo "Usage: `basename $0` <command> <args>" >&2
+    echo "Execute the command recursively in core and modules." >&2
+    exit 2
+}
+
+# check we are running in the top directory
+package=$([ -f package.json ] && awk -F\" '$2 == "name" { print $4 }' package.json)
+[ "$package" = "domoja" ] || usage
+
+cur=$(pwd)
+for d in . core modules/*
+do 
+    cd $cur/$d
+    echo '===============>' $(pwd)
+    "$@" 
+done
