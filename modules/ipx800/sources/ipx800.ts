@@ -163,7 +163,7 @@ export class IPX800 extends Source {
 }
 export function processIPX800Data(req: express.Request, res: express.Response) {
 	logger.trace("req.query =", req.query)
-	var bodyString = req.query.input;
+	var bodyString = <string>req.query.input;
 
 	// in the form: '00:04:A3:2D:68:E6&In=00000000000000000000000000000000&An1=0&An2=0&An3=0&An4=0&C1=4260&C2=1477&C3=2054'
 

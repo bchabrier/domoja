@@ -53,9 +53,9 @@
     "@types/passport-local": "^1.0.33",
     "@types/rewire": "^2.5.28",
     "coveralls": "^3.0.2",
-    "mocha": "^7.0.1",
+    "mocha": "^7.1.1",
     "nyc": "^15.0.0",
-    "ts-mocha": "^6.0.0",
+    "ts-mocha": "^7.0.0",
     "typescript": "^3.8.3"
   },
   "engines": {
