@@ -67,6 +67,7 @@
   },
   "main": "domoja.ts",
   "scripts": {
+    "postinstall": "IP=$(hostname -I | awk '{print $1}') ; find www -type f -exec sed -i {} -e s!http://192.168.0.10:4001!http://$IP:4001!g \\; ",
     "build": "tsc",
     "start": ": run domoja; ts-node domoja.ts",
     "start:config": ": run domoja; ts-node domoja.ts ./config",
