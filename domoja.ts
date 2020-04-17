@@ -109,15 +109,9 @@ class DomojaServer {
 
     this.serveUI(this.app,
       '/login.html', '/www', '/index.html',
-      [
-        '/build'
-      ],
-      [],
       this.app.get('env'),
       store
     );
-
-    this.app.use(express.static(path.join(__dirname, 'www')));
 
     let apiTab: Function[] = [];
     Object.keys(apis).forEach(a => apiTab.push((<any>apis)[a]));
@@ -190,13 +184,33 @@ class DomojaServer {
     loginPath: string,
     staticPath: string,
     indexHTML: string,
-    authorizedPaths: string[],
-    alwaysAuthorizedPaths: string[],
     env: 'development' | 'production',
     store: typeof session.Store) {
 
+    // find the manifest
+    type manifestType = {
+      alwaysAuthorizedRoutes: string[]
+    }
+    let minimalManifest: manifestType = {
+      alwaysAuthorizedRoutes: []
+    }
+    let manifest = minimalManifest;
+    let manifestFile = path.join(__dirname, staticPath, 'manifest-auth.json');
+    try {
+      let manifestString = fs.readFileSync(manifestFile, { encoding: "utf8" });
+      manifest = JSON.parse(manifestString);
+    } catch (ex) {
+      logger.error('Cannot open UI manifest file "%s".', manifestFile);
+      logger.error('This file should contain %j.', minimalManifest);
+    }
+
+    let alwaysAuthorizedRoutes = manifest.alwaysAuthorizedRoutes;
+
+    var oneYear = 31557600000;
+    var cacheOptions: { maxAge: number } = (env == 'production') ? { maxAge: oneYear } : null;
+
     function serve(req: express.Request, res: express.Response) {
-      res.sendFile(path.normalize(__dirname + staticPath + req.path));
+      res.sendFile(path.join(__dirname, staticPath, req.path), cacheOptions);
     }
 
     core.configure(app,
@@ -232,21 +246,25 @@ class DomojaServer {
 
 
 
-    var oneYear = 31557600000;
-    var cacheOptions: { maxAge?: Number } = (env == 'production') ? { maxAge: oneYear } : {}
-
     // / is not forbidden, as it goes to login page
     app.get('/', core.ensureAuthenticated, function (req, res) {
-      res.sendFile(path.normalize(__dirname + staticPath + indexHTML), cacheOptions);
+      res.sendFile(path.join(__dirname, staticPath, indexHTML), cacheOptions);
     });
 
-    app.get(indexHTML, core.ensureAuthenticated, function (req, res) {
-      res.sendFile(path.normalize(__dirname + staticPath + indexHTML), cacheOptions);
+    app.get(indexHTML, core.ensureAuthenticated, serve);
+
+    //app.get("/:path*/:file.js/", );
+
+    app.all(/^(.*)$/, function (req, res, next) {
+      if (alwaysAuthorizedRoutes.some((p) => { let r = new RegExp(p); return r.test(req.path);})) {
+        next();
+      } else {
+        auth(req, res, next);
+      }
     });
 
-    app.use(express.static(path.join(__dirname, staticPath)));
+    app.use(express.static(path.join(__dirname, staticPath), cacheOptions));
 
-    app.all(/^(.*)$/, auth);
 
     /*
         app.all(/^(.*)$/, auth, function(req, res, next) {
@@ -361,8 +379,7 @@ class DomojaServer {
 
 export let DmjServer: DomojaServer;
 
-export function ___setDmjServer___(d: DomojaServer) 
-{
+export function ___setDmjServer___(d: DomojaServer) {
   if (runWithMocha) {
     DmjServer = d;
   } else {

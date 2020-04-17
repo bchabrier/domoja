@@ -1,0 +1,7 @@
+{
+    "alwaysAuthorizedRoutes": [
+        "/build/main.css",
+        "/assets/fonts/.*",
+        "/assets/favicon/.*"
+    ]
+}
