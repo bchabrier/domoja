@@ -16,6 +16,7 @@ import * as apis from './api';
 
 import * as socketio from 'socket.io';
 import * as http from 'http';
+import * as https from 'https';
 
 import * as colors from 'colors/safe';
 
@@ -27,8 +28,6 @@ import * as express from 'express';
 import * as session from 'express-session';
 
 import * as cors from 'cors';
-//var http = require('http')
-var https = require('https')
 var basicAuth = require('basic-auth');
 import * as path from 'path';
 import * as fs from 'fs';
@@ -57,8 +56,9 @@ class DomojaServer {
   currentFile: string;
   previousFile: string;
   startTime: Date = new Date;
+  server: http.Server | https.Server;
 
-  constructor(port: Number, prod: boolean, listeningCallback?: () => void) {
+  constructor(port: Number, prod: boolean, ssl: boolean, listeningCallback?: () => void) {
     let self = this;
 
     this.app = express();
@@ -117,13 +117,24 @@ class DomojaServer {
     Object.keys(apis).forEach(a => apiTab.push((<any>apis)[a]));
     Server.buildServices(this.app, ...apiTab);
 
-    let server = this.app.listen(this.app.get('port'), function () {
+    let options: { key: Buffer, cert: Buffer } = null;
+    let http_https: typeof http | typeof https = http;
+
+    if (ssl) {
+      options = {
+        key: fs.readFileSync(__dirname + '/ssl/key.pem'),
+        cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
+      };
+      http_https = https;
+    }
+    this.server = http_https.createServer(options, this.app).listen(this.app.get('port'), function () {
       self.app.set('port', this.address().port); // in case app.get('port') is null
       console.log('Express %s server listening on port %s', self.app.get('env'), self.app.get('port'));
       listeningCallback && listeningCallback.apply(self);
     });
 
-    this.ws = socketio.listen(server);
+
+    this.ws = socketio.listen(this.server);
     this.ws.use(core.socketIoAuthorize());
     this.ws.sockets.on('connection', socket => {
       let request: http.IncomingMessage = socket.request;
@@ -253,8 +264,6 @@ class DomojaServer {
 
     app.get(indexHTML, core.ensureAuthenticated, serve);
 
-    //app.get("/:path*/:file.js/", );
-
     app.all(/^(.*)$/, function (req, res, next) {
       if (alwaysAuthorizedRoutes.some((p) => { let r = new RegExp(p); return r.test(req.path);})) {
         next();
@@ -357,6 +366,14 @@ class DomojaServer {
     this.ws.emit('reload');
   }
 
+  close(callback?: (err: Error) => void) {
+    this.server.close((err) => {
+      this.ws.close(() => {
+        callback(err);
+      });
+    });
+  }
+
   getNbWebsockets(type?: 'HTTP' | 'HTTPS') {
     if (type) return this.nbWebsockets[type];
     else return this.nbWebsockets['HTTP'] + this.nbWebsockets['HTTPS'];
@@ -401,7 +418,8 @@ if (!runWithMocha) {
   //var app_prod = createApp(4000, true);
   //var app_prod = createApp(3000, true);
   //var app = createApp(3001, false);
-  DmjServer = new DomojaServer(4001, false);
+  DmjServer = new DomojaServer(4001, false, false);
+  //DmjServer = new DomojaServer(443, true, true);
   logger.error(__dirname);
   DmjServer.loadConfig(CONFIG_FILE);
 

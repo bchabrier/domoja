@@ -10,7 +10,7 @@ import rewire = require('rewire')
 import * as ToMock from '../domoja'
 let RewireToMock = rewire('../domoja')
 const mockedDomoja: typeof ToMock & typeof RewireToMock = <any>RewireToMock
-const DomojaServer: new (port: Number, prod: boolean, listeningCallback?: () => void) => any = mockedDomoja.__get__('DomojaServer');
+const DomojaServer: new (port: Number, prod: boolean, ssl: boolean, listeningCallback?: () => void) => any = mockedDomoja.__get__('DomojaServer');
 
 import * as apis from '../api';
 import { ServerContainer } from '../node_modules/typescript-rest/dist/server/server-container';
@@ -32,7 +32,7 @@ describe('Module api', function () {
     }
 
     this.beforeAll(function (done) {
-        server = new DomojaServer(null, false, () => {
+        server = new DomojaServer(null, false, false, () => {
             core.configure(server.app,
                 (user, pwd, done) => { done(null, { id: "test" }) },
                 (user, cb) => cb(null, { id: "test" }),
@@ -241,6 +241,10 @@ describe('Module api', function () {
                 done();
             }, done);
         })
+    });
+
+    this.afterAll('Close DmjServer', (done) => {
+        server.close(done);
     });
 });
 
