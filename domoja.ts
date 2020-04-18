@@ -32,6 +32,8 @@ var basicAuth = require('basic-auth');
 import * as path from 'path';
 import * as fs from 'fs';
 
+import * as async from 'async';
+
 var runWithMocha = /.*mocha$/.test(process.argv[1]);
 //var refreshData = require('./routes/refreshData')
 
@@ -265,7 +267,7 @@ class DomojaServer {
     app.get(indexHTML, core.ensureAuthenticated, serve);
 
     app.all(/^(.*)$/, function (req, res, next) {
-      if (alwaysAuthorizedRoutes.some((p) => { let r = new RegExp(p); return r.test(req.path);})) {
+      if (alwaysAuthorizedRoutes.some((p) => { let r = new RegExp(p); return r.test(req.path); })) {
         next();
       } else {
         auth(req, res, next);
@@ -367,11 +369,24 @@ class DomojaServer {
   }
 
   close(callback?: (err: Error) => void) {
-    this.server.close((err) => {
-      this.ws.close(() => {
+    async.parallel([
+      (cb) => {
+        if (this.server.listening) {
+          this.server.close(cb);
+        } else {
+          cb(null);
+        }
+      },
+      (cb) => {
+        this.ws.close(() => { cb(null) });
+      },
+
+    ],
+      // results contains the various potential errors
+      (err) => {
         callback(err);
-      });
-    });
+      }
+    )
   }
 
   getNbWebsockets(type?: 'HTTP' | 'HTTPS') {
@@ -398,6 +413,7 @@ export let DmjServer: DomojaServer;
 
 export function ___setDmjServer___(d: DomojaServer) {
   if (runWithMocha) {
+    DmjServer && DmjServer.close(() => console.log('===============================closed'))
     DmjServer = d;
   } else {
     logger.warning('Enabled only when running with mocha!')
