@@ -74,7 +74,7 @@ class DomojaServer {
 
     this.app.set('env', prod ? 'production' : 'development');
 
-    this.app.set('port', process.env.PORT || port);
+    this.app.set('port', port);
     //	app.set('views', __dirname + '/views');
     //	app.set('view engine', 'jade');
     //	app.use(express.favicon()); // use serve-favicon
@@ -436,8 +436,9 @@ if (!runWithMocha) {
   //var app_prod = createApp(4000, true);
   //var app_prod = createApp(3000, true);
   //var app = createApp(3001, false);
-  DmjServer = new DomojaServer(4001, false, false);
-  //DmjServer = new DomojaServer(443, true, true);
+  //DmjServer = new DomojaServer(4001, false, false);
+  let port = process.env.PORT && parseInt(process.env.PORT) || 4001;
+  DmjServer = new DomojaServer(port, port == 443, port == 443);
   logger.error(__dirname);
   DmjServer.loadConfig(CONFIG_FILE);
 
