@@ -1,0 +1,91 @@
+#!/bin/sh
+
+cd `dirname $0`/..
+
+if [ "$(which authbind)" = "" ]
+then
+	echo 'ERROR: Please install authbind.' >&2
+	exit 1
+fi
+
+if [ "$(which pm2)" = "" ]
+then
+	echo 'ERROR: Please install pm2.' >&2
+	exit 1
+fi
+
+if [ "$1" = "--install" ]
+then
+	echo pm2 start --interpreter sh $0
+	pm2 -s delete `basename $0`
+	pm2 -s start --interpreter sh $0
+	pm2 -s save
+	pm2 list
+	exit 0
+fi
+
+# check that mongodb is running
+if [ "`sudo systemctl status mongodb | grep 'active (running)'`" != "" ]
+then
+    echo MongoDB is running OK.
+else
+    echo Repairing MongoDB...
+    if sudo -u mongodb /usr/bin/mongod --repair --dbpath=/var/lib/mongodb
+    then
+	echo Restarting MongoDB...
+	sudo systemctl force-reload mongodb
+	sudo systemctl restart mongodb
+    else
+	echo 'ERROR: Repair failed. Trying to restart mongodb anyway...'
+	sudo systemctl restart mongodb
+    fi
+fi 2>&1 | sudo tee -a /var/log/domo_app/domo_app.log
+
+set_mixer ()
+{
+    cardname=$1
+    control=$2
+    value=$3
+    
+    # find the card
+    c=-1
+    ret=0
+    res=''
+    while [ "$res" = '' -a $ret = 0 ] 
+    do
+	c=$(expr $c + 1)
+	amixer -c $c > /dev/null 2>&1
+	ret=$?
+	res=`amixer -c $c | grep "'$cardname'"`
+    done
+    if [ "$res" != '' ]
+    then
+	# find control
+	numid=`amixer -c $c controls | awk -F, "/name='$control'/"' { print $1}'`
+	amixer -c $c cset $numid $value
+    else
+	echo "Card '$cardname' not found." >&2
+    fi
+}
+
+# set the sound card to 3.5 mm jack
+set_mixer 'PCM' 'PCM Playback Route' 1
+set_mixer 'PCM' 'PCM Playback Volume' 100%
+set_mixer 'PCM' 'PCM Playback Switch' 1
+
+#amixer -c $c cset numid=3 1
+#amixer -c $c cset numid=1 400
+
+sudo touch /etc/authbind/byport/443
+sudo chmod 777 /etc/authbind/byport/443
+
+main=$(awk -F\" '$2 == "main" { print $4}' package.json)
+
+case "$main" in 
+domoja.ts)
+	PORT=443 authbind --deep ts-node domoja.ts ./config
+	;;
+*domoja.js)
+	PORT=443 authbind --deep node dist/domoja.js ./config
+	;;
+esac
