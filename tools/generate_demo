@@ -2,7 +2,7 @@
 
 SOURCES_CONFIG=`dirname $0`/../config
 DEMO_CONFIG=`dirname $0`/../config/demo.yml
-SECTIONS="imports sources devices scenarios pages users"
+SECTIONS="imports sources devices scenarios pages"
 
 SOURCES_CONFIG="$(for f in $SOURCES_CONFIG/*.yml; do echo $f; done | grep -v /demo.yml)"
 
@@ -197,4 +197,48 @@ EOF
     done
     echo >> $DEMO_CONFIG
 done
+
+cat >> $DEMO_CONFIG <<EOF
+users:
+  - id: 0 # must be unique
+    name: 'demouser'
+    initials: 'du'
+    login: demo
+    password: demo
+    phone: phone_1
+    macaddress: 'e4:b5:26:3a:73:ac'
+    avatar: ...  
+  - id: 1 # must be unique
+    name: 'Luc'
+    initials: 'LC'
+    login: Luc
+    password: demo
+    phone: phone_1
+    macaddress: 'e0:b5:2d:3a:76:ab'
+    avatar: ...
+  - id: 2 # must be unique
+    name: 'Karen'
+    initials: 'KC'
+    login: Karen
+    password: demo
+    phone: phone_2
+    macaddress: 'd8:c2:6a:bc:b3:2c'
+    avatar: ...
+  - id: 3 # must be unique
+    name: 'Stéphane'
+    initials: 'SC'
+    login: Stéphane
+    password: demo
+    phone: phone_3
+    macaddress: '40:6A:AE:6F:D7:45'
+    avatar: ...
+  - id: 4 # must be unique
+    name: 'Nathalie'
+    initials: 'NC'
+    login: Nathalie
+    password: demo
+    phone: phone_4
+    macaddress: 'B1:A2:E7:83:96:CB'
+    avatar: ...
+EOF
 

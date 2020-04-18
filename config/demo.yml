@@ -354,7 +354,6 @@ scenarios:
 
 
 
-
   - lampes:
     - lampes-couleur:
       triggers:
@@ -1019,14 +1018,6 @@ pages:
 
 
 users:
-  - id: -1 # must be unique
-    name: 'Homebridge'
-    initials: 'HB'
-    login: hb
-    password: hbpassword01
-    phone: phone_4
-    macaddress: ''
-    avatar: ...
   - id: 0 # must be unique
     name: 'demouser'
     initials: 'du'
@@ -1067,7 +1058,3 @@ users:
     phone: phone_4
     macaddress: 'B1:A2:E7:83:96:CB'
     avatar: ...
-
-
-
-
