@@ -221,8 +221,10 @@ export class ConfigLoader extends events.EventEmitter {
             ];
             sections.forEach(section => {
                 files.forEach(file => {
-                    logger.info("Loading %s from config file '%s'...", section, file)
-                    this.parseSingleFile(dir + '/' + file, configDoc, section);
+                    if (file != 'secrets.yml') {
+                        logger.info("Loading %s from config file '%s'...", section, file)
+                        this.parseSingleFile(dir + '/' + file, configDoc, section);
+                    }
                 });
             });
         } else {
@@ -367,7 +369,7 @@ export class ConfigLoader extends events.EventEmitter {
     private getModuleClass(moduleName: string, className: string): new () => DomoModule {
         const mainDir = path.dirname(require.main.filename);
         let id: string = '';
-        
+
         try {
             let p = moduleName.match(/^[/.]/) ? path.resolve(mainDir, moduleName) : "domoja-" + moduleName
 
