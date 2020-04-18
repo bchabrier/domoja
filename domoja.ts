@@ -266,6 +266,8 @@ class DomojaServer {
 
     app.get(indexHTML, core.ensureAuthenticated, serve);
 
+    app.all('/manifest-auth.json', function (req, res) {res.sendStatus(403)});
+
     app.all(/^(.*)$/, function (req, res, next) {
       if (alwaysAuthorizedRoutes.some((p) => { let r = new RegExp(p); return r.test(req.path); })) {
         next();
