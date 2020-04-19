@@ -124,8 +124,8 @@ class DomojaServer {
 
     if (ssl) {
       options = {
-        key: fs.readFileSync(__dirname + '/ssl/key.pem'),
-        cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
+        key: fs.readFileSync(module_dir + '/ssl/key.pem'),
+        cert: fs.readFileSync(module_dir + '/ssl/cert.pem')
       };
       http_https = https;
     }
@@ -208,7 +208,7 @@ class DomojaServer {
       alwaysAuthorizedRoutes: []
     }
     let manifest = minimalManifest;
-    let manifestFile = path.join(__dirname, staticPath, 'manifest-auth.json');
+    let manifestFile = path.join(module_dir, staticPath, 'manifest-auth.json');
     try {
       let manifestString = fs.readFileSync(manifestFile, { encoding: "utf8" });
       manifest = JSON.parse(manifestString);
@@ -223,7 +223,7 @@ class DomojaServer {
     var cacheOptions: { maxAge: number } = (env == 'production') ? { maxAge: oneYear } : null;
 
     function serve(req: express.Request, res: express.Response) {
-      res.sendFile(path.join(__dirname, staticPath, req.path), cacheOptions);
+      res.sendFile(path.join(module_dir, staticPath, req.path), cacheOptions);
     }
 
     core.configure(app,
@@ -261,7 +261,7 @@ class DomojaServer {
 
     // / is not forbidden, as it goes to login page
     app.get('/', core.ensureAuthenticated, function (req, res) {
-      res.sendFile(path.join(__dirname, staticPath, indexHTML), cacheOptions);
+      res.sendFile(path.join(module_dir, staticPath, indexHTML), cacheOptions);
     });
 
     app.get(indexHTML, core.ensureAuthenticated, serve);
@@ -276,7 +276,7 @@ class DomojaServer {
       }
     });
 
-    app.use(express.static(path.join(__dirname, staticPath), cacheOptions));
+    app.use(express.static(path.join(module_dir, staticPath), cacheOptions));
 
 
     /*
