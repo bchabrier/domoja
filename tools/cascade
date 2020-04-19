@@ -2,7 +2,7 @@
 
 usage () 
 {
-    echo "Usage: `basename $0` <command> <args>" >&2
+    echo "Usage: `basename $0` [--below] <command> <args>" >&2
     echo "Execute the command recursively in core and modules." >&2
     exit 2
 }
@@ -11,8 +11,15 @@ usage ()
 package=$([ -f package.json ] && awk -F\" '$2 == "name" { print $4 }' package.json)
 [ "$package" = "domoja" ] || usage
 
+dot="."
+if [ "$1" = "--below" ]
+then
+    shift
+    dot=""
+fi
+
 cur=$(pwd)
-for d in . core modules/*
+for d in $dot core modules/*
 do 
     cd $cur/$d
     echo '===============>' $(pwd)
