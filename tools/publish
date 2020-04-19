@@ -49,8 +49,33 @@ do
     'y'|'')
         log=/tmp/log.$$
         > $log
-        $(dirname $0)/test_demo before_publish 2>&1 | tee -a $log
-        sed 's/\x1b\[[0-9;]*m//g' < $log > $log.text
+        demoprocfile=/tmp/demoproc.$$
+        >$demoprocfile
+        trap 'kill $(cat $demoprocfile) 2>/dev/null; exit' INT
+        ( ( $(dirname $0)/test_demo before_publish 2>&1 & echo $! > $demoprocfile; wait ) | tee -a $log ) &
+        demoproc=$(cat $demoprocfile)
+        [ "$demoproc" = "" ] && sleep 5
+        demoproc=$(cat $demoprocfile)
+
+
+        finished=false
+        count=0
+        while [ "$count" -lt 60 ] && ! $finished
+        do
+            sleep 1
+            #echo 'Loop...' $count
+            [ $count -gt 0 ] && count=$(($count + 1))
+            [ $count = 0 ] && grep 'Starting domoja...' $log > /dev/null && count=1
+            [ "$(ps -h $demoproc)" = "" ] && finished=true # process exited
+            grep 'Error: listen EADDRINUSE: address already in use :::' $log > /dev/null && finished=true
+            grep 'server listening on port' $log > /dev/null && finished=true && pkill -P $demoproc && kill $demoproc 
+        done
+
+        if ! $finished
+        then
+            echo 'Timeout: demo lasting too long, killing it!'
+            [ "$(ps -h $demoproc)" = "" ] || pkill -P $demoproc && kill $demoproc  > /dev/null
+        fi
 
         cat >/tmp/msgs.$$ <<EOF
 (ConfigLoader.parse) Loading config file
@@ -61,9 +86,9 @@ ConfigLoader emitted "startup"
 will trigger at
 emitted "change": {"newValue":
 triggers...
-Error: listen EADDRINUSE: address already in use :::4001
 EOF
 
+        sed 's/\x1b\[[0-9;]*m//g' < $log > $log.text
         while read msg 
         do
             if ! grep -q "$msg" $log.text
