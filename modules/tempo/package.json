@@ -1,7 +1,7 @@
 {
   "name": "domoja-tempo",
   "author": "Bruno Chabrier",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": false,
   "description": "EDF Tempo information for Domoja from https://particulier.edf.fr/fr/accueil/contrat-et-conso/options/ejp.html",
   "scripts": {
