@@ -1,5 +1,27 @@
 #!/bin/sh
 
+usage() 
+{
+    echo "Usage: `basename $0` [--notest]" >&2
+    echo "Prepares for publishing and publish to npm registry."  >&2
+    echo  >&2
+    echo "WARNING! Prefer using 'yarn run publish' when available!" >&2
+    exit 2
+}
+
+notest=false
+
+if [ "$1" = "--notest" ]
+then
+    shift
+    notest=true
+fi
+
+if [ "$1" != "" ]
+then
+    usage
+fi
+
 package=$(awk -F\" '/"name": / { print $4}' ./package.json)
 
 echo "About to publish package '$package'..."
@@ -20,7 +42,7 @@ rm -fr dist
 yarn run build
 
 ans='no value'
-while [ "$ans" != 'y' -a "$ans" != 'n' -a "$ans" != '' ]
+$notest || while [ "$ans" != 'y' -a "$ans" != 'n' -a "$ans" != '' ]
 do
     read -p 'Do you want to test the packages installation with test_demo? (y|n) [y] ' ans
     case "$ans" in 
