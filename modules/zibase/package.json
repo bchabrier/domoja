@@ -1,7 +1,7 @@
 {
   "name": "domoja-zibase",
   "author": "Bruno Chabrier",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": false,
   "description": "ZiBase source for Domoja",
   "scripts": {
