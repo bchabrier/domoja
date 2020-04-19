@@ -52,7 +52,7 @@ EOF
             fi
         done < /tmp/msgs.$$
         echo 'SUCCESS! test_demo executed successfully!'
-        rm -f $log $log.text
+        rm -f $log $log.text /tmp/msgs.$$
         ;;
     'n')
         ;;
