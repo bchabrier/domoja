@@ -4,6 +4,7 @@
   "description": "A Typescript framework for home automation",
   "version": "1.1.7",
   "private": false,
+  "license": "GPL-3.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bchabrier/domoja.git"
