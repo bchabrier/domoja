@@ -16,14 +16,6 @@
     "url": "https://github.com/bchabrier/domoja/issues"
   },
   "dependencies": {
-    "@types/connect-ensure-login": "^0.1.4",
-    "@types/connect-flash": "^0.0.35",
-    "@types/cookie-parser": "^1.4.1",
-    "@types/cron": "^1.3.0",
-    "@types/mongodb": "^3.1.3",
-    "@types/passport": "^1.0.3",
-    "@types/passport-http": "^0.3.8",
-    "@types/request": "^2.48.1",
     "assert": "^2.0.0",
     "async": "^3.1.1",
     "connect-ensure-login": "^0.1.1",
@@ -47,15 +39,20 @@
   "devDependencies": {
     "@types/assert": "^1.4.1",
     "@types/async": "^3.0.7",
+    "@types/connect-ensure-login": "^0.1.4",
+    "@types/connect-flash": "^0.0.35",
+    "@types/cookie-parser": "^1.4.1",
+    "@types/cron": "^1.3.0",
     "@types/express": "^4.16.0",
     "@types/mocha": "^7.0.1",
+    "@types/mongodb": "^3.1.3",
     "@types/node": "^13.7.0",
+    "@types/passport": "^1.0.3",
+    "@types/passport-http": "^0.3.8",
     "@types/passport-local": "^1.0.33",
+    "@types/request": "^2.48.1",
     "@types/rewire": "^2.5.28",
-    "coveralls": "^3.0.2",
-    "mocha": "^7.1.1",
     "nyc": "^15.0.0",
-    "ts-mocha": "^7.0.0",
     "typescript": "^3.8.3"
   },
   "engines": {
@@ -63,13 +60,7 @@
   },
   "main": "index.ts",
   "scripts": {
-    "start": "nodejs app",
-    "build": "tsc",
-    "testonly": "ts-mocha test/**/*.ts",
-    "test-watch": "ts-mocha test/**/*.ts -w --watch-extensions ts,yml",
-    "test": "nyc --extension .ts npm run testonly",
-    "report": "nyc report",
-    "coverage": "nyc report --reporter=text-lcov | coveralls"
+    "build": "tsc"
   },
   "files": [
     "dist/**/*"
