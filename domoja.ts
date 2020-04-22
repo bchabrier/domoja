@@ -266,7 +266,7 @@ class DomojaServer {
 
     app.get(indexHTML, core.ensureAuthenticated, serve);
 
-    app.all('/manifest-auth.json', function (req, res) {res.sendStatus(403)});
+    app.all('/manifest-auth.json', function (req, res) { res.sendStatus(403) });
 
     app.all(/^(.*)$/, function (req, res, next) {
       if (alwaysAuthorizedRoutes.some((p) => { let r = new RegExp(p); return r.test(req.path); })) {
@@ -441,6 +441,24 @@ if (!runWithMocha) {
   DmjServer = new DomojaServer(port, port == 443, port == 443);
   logger.error(__dirname);
   DmjServer.loadConfig(CONFIG_FILE);
+
+  if (port == 443) {
+    // also listen on port 80 en redirect to 443
+    let app80 = express();
+    app80.set('env', 'production');
+    app80.use(require('morgan')('dev')); // logger
+
+    // serve certbot
+    app80.get('/.well-known/acme-challenge/*', (req, res) => {
+      res.sendFile(path.join(module_dir, '/www', req.path));
+    });
+    app80.all(/^.*$/, (req, res) => {
+      res.redirect(301, 'https://' + req.hostname + req.originalUrl);
+    });
+    let server80 = http.createServer(app80).listen(80, function () {
+      console.log('Express production server listening on port 80');
+    });
+  }
 
   let n = 1;
   false && setInterval(() => {

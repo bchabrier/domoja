@@ -78,6 +78,8 @@ set_mixer 'PCM' 'PCM Playback Switch' 1
 
 sudo touch /etc/authbind/byport/443
 sudo chmod 777 /etc/authbind/byport/443
+sudo touch /etc/authbind/byport/80
+sudo chmod 777 /etc/authbind/byport/80
 
 main=$(awk -F\" '$2 == "main" { print $4}' package.json)
 
