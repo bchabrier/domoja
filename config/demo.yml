@@ -176,11 +176,11 @@ scenarios:
             //return callback(null);
             var self = this;
             function pgm(device) {
-              var onAt = 20000 + 60000 * Math.random(); 
-              var offAt = onAt + 2000 + 30000 * Math.random(); 
-              self.isReleased() || setTimeout(() => { 
+              var onAt = 20000 + 60000 * Math.random();
+              var offAt = onAt + 2000 + 30000 * Math.random();
+              self.isReleased() || setTimeout(() => {
                 self.isReleased() || self.setDeviceState(device, "0");}, onAt);
-              self.isReleased() || setTimeout(() => { 
+              self.isReleased() || setTimeout(() => {
                 self.isReleased() || self.setDeviceState(device, "1"); pgm(device);}, offAt);
             }
             pgm("hall");
@@ -202,8 +202,8 @@ scenarios:
               let temp = ((prev_temp * 10) % 2 == 0)?0.2:-0.2;
               temp = temp + prev_temp;
 
-              if (temp > MAX) temp = MAX - 0.1; 
-              if (temp < MIN) temp = MIN; 
+              if (temp > MAX) temp = MAX - 0.1;
+              if (temp < MIN) temp = MIN;
 
               temp = temp.toFixed(1);
 
@@ -1025,7 +1025,7 @@ users:
     password: demo
     phone: phone_1
     macaddress: 'e4:b5:26:3a:73:ac'
-    avatar: ...  
+    avatar: ...
   - id: 1 # must be unique
     name: 'Luc'
     initials: 'LC'
