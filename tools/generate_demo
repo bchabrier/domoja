@@ -1,10 +1,12 @@
 #!/bin/sh
 
-SOURCES_CONFIG=`dirname $0`/../config
+SOURCES_CONFIG_DIR=`dirname $0`/../config
 DEMO_CONFIG=`dirname $0`/../config/demo.yml
 SECTIONS="imports sources devices scenarios pages"
 
-SOURCES_CONFIG="$(for f in $SOURCES_CONFIG/*.yml; do echo $f; done | grep -v /demo.yml)"
+SOURCES_CONFIG="$(for f in $SOURCES_CONFIG_DIR/*.yml; do echo $f; done | grep -v /demo.yml)"
+
+SOURCES_CONFIG_DIR="`(cd $SOURCES_CONFIG_DIR; pwd)`"
 
 cp $DEMO_CONFIG /tmp/`basename $DEMO_CONFIG`.`date +%Y%m%d-%H%M%S`
 
@@ -32,11 +34,11 @@ EOF
             //return callback(null);
             var self = this;
             function pgm(device) {
-              var onAt = 20000 + 60000 * Math.random(); 
-              var offAt = onAt + 2000 + 30000 * Math.random(); 
-              self.isReleased() || setTimeout(() => { 
+              var onAt = 20000 + 60000 * Math.random();
+              var offAt = onAt + 2000 + 30000 * Math.random();
+              self.isReleased() || setTimeout(() => {
                 self.isReleased() || self.setDeviceState(device, "0");}, onAt);
-              self.isReleased() || setTimeout(() => { 
+              self.isReleased() || setTimeout(() => {
                 self.isReleased() || self.setDeviceState(device, "1"); pgm(device);}, offAt);
             }
             pgm("hall");
@@ -58,8 +60,8 @@ EOF
               let temp = ((prev_temp * 10) % 2 == 0)?0.2:-0.2;
               temp = temp + prev_temp;
 
-              if (temp > MAX) temp = MAX - 0.1; 
-              if (temp < MIN) temp = MIN; 
+              if (temp > MAX) temp = MAX - 0.1;
+              if (temp < MIN) temp = MIN;
 
               temp = temp.toFixed(1);
 
@@ -72,7 +74,7 @@ EOF
     for file in $SOURCES_CONFIG
     do
         awk '
-        BEGIN   { 
+        BEGIN   {
             where="before imports"
             hasDemoModule=0
             acceptedSources="astronomy demo tempo"
@@ -90,29 +92,29 @@ EOF
         /^users:/ { where="in users"; next }
 
         where=="in imports" && /^ *- *module:/ { module=$NF; if (!hasDemoModule && module=="core/sources/demo") hasDemoModule=1; next }
-        where=="in imports" && /^ *source:/ { 
+        where=="in imports" && /^ *source:/ {
             source=$NF
             gsub("\r", "", source)
             accepted=0
             if (index(acceptedSources, " "source" ")>0) accepted=1
             if (substr(module, 0, 1)==".") accepted=1
-                    
+
             if (accepted==1) {
                 if (doprint) print "  - module:", module
-                if (doprint) print 
+                if (doprint) print
             }
             next
         }
-        where=="in imports" && $1 == "device:" && module !~ /^core.*/ { 
+        where=="in imports" && $1 == "device:" && module !~ /^core.*/ {
             # a device that is not in core, skip it
             next
         }
-        where=="in imports" && $0 !~ /^ *$/ && $1 !~ /^#/ { 
+        where=="in imports" && $0 !~ /^ *$/ && $1 !~ /^#/ {
             if (doprint) print "  - module:", module
             if (doprint) print
             next
         }
-        where=="in imports" && $0 !~ /^ *$/ && hasDemoModule == 0 { 
+        where=="in imports" && $0 !~ /^ *$/ && hasDemoModule == 0 {
             hasDemoModule=1
             if (doprint) print "  - module: core/sources/demo"
             if (doprint) print "    source: demo"
@@ -207,7 +209,7 @@ users:
     password: demo
     phone: phone_1
     macaddress: 'e4:b5:26:3a:73:ac'
-    avatar: ...  
+    avatar: ...
   - id: 1 # must be unique
     name: 'Luc'
     initials: 'LC'
@@ -241,4 +243,50 @@ users:
     macaddress: 'B1:A2:E7:83:96:CB'
     avatar: ...
 EOF
+
+#
+# now create an encrypted file containing the original files
+#
+CONFIG_TAR=/tmp/config_files.tar.$$
+CONFIG_TAR_ENC=$SOURCES_CONFIG_DIR/$(basename $CONFIG_TAR .$$).gpg
+KEY=`echo $(cat ~/.ssh/id_rsa)`
+
+# getting source files
+FILES=$(cd $SOURCES_CONFIG_DIR; find . -name '*.yml' ! -name 'demo.yml')
+
+# generate only if a file is newer than the gpg file
+generate=false
+if [ -f $CONFIG_TAR_ENC ]
+then
+  for f in $FILES
+  do
+    [ $SOURCES_CONFIG_DIR/$f -nt $CONFIG_TAR_ENC ] && generate=true
+  done
+else
+  generate=true
+fi
+
+if $generate
+then
+  # create the tar file
+  echo Creating tar file...
+  ( cd $SOURCES_CONFIG_DIR; tar czf $CONFIG_TAR -C $SOURCES_CONFIG_DIR --exclude './demo.yml' $FILES)
+
+  # then encrypt using the key
+  echo Encrypting...
+  rm -f $CONFIG_TAR_ENC
+  echo $KEY | gpg --batch -c --no-random-seed-file --passphrase-fd 0 --output $CONFIG_TAR_ENC $CONFIG_TAR 
+
+  # checking
+  echo Verifying...
+  echo $KEY | gpg --batch --decrypt --passphrase-fd 0 $CONFIG_TAR_ENC | tar tzvf -
+
+  echo
+  echo "For info, $CONFIG_TAR_ENC can be decrypted using:"
+  echo \$ echo \$\(cat ~/.ssh/id_rsa\) \| gpg --batch --decrypt --passphrase-fd 0 $CONFIG_TAR_ENC \| tar xzvf -
+
+  # cleanup
+  rm -f $CONFIG_TAR
+fi
+
 
