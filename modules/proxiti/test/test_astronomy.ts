@@ -27,8 +27,23 @@ describe('Module proxity', function () {
     describe('#Update', function () {
       it('should not return an error for location 06030', function (done) {
         let a = new astronomy('Path', "06030");
+        let idTab: string[] = [];
+        let origUpdateAttribute = a.updateAttribute;
+        a.updateAttribute = (id: string, attribute: string, value: string, lastUpdateDate?: Date) => {
+          origUpdateAttribute.call(a, id, attribute, value, lastUpdateDate);
+          if (idTab.indexOf(id) == -1) idTab.push(id);
+          assert.equal(attribute, "state");
+        }
         a.Update((err) => {
           assert.equal(err, null);
+          assert.deepEqual(idTab.sort(),
+            ['dawnTime',
+              'dayDuration',
+              'duskTime',
+              'sunriseTime',
+              'sunsetTime',
+              'zenithTime']
+          );
           done();
         });
       });
