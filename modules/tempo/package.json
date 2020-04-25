@@ -34,6 +34,7 @@
     "@types/request": "^2.47.1",
     "mocha": "^7.1.1",
     "nyc": "^15.0.1",
+    "sinon": "^9.0.2",
     "ts-mocha": "^7.0.0",
     "typescript": "^3.8.3"
   },
