@@ -73,7 +73,7 @@
     "start": ": run domoja; ts-node domoja.ts",
     "start:config": ": run domoja; ts-node domoja.ts ./config",
     "test": ": run test coverage; trap 'tput cnorm' INT; nyc --extension .ts npm --scripts-prepend-node-path=auto run test:only",
-    "test:only": ": run test suite once; trap 'tput cnorm' INT; ts-mocha test/**/*.ts modules/*/test/**/*.ts $WATCHPARAMS --exit; tput cnorm",
+    "test:only": ": run test suite once; trap 'tput cnorm' INT; ts-mocha test/**/*.ts modules/*/test/**/*.ts $WATCHPARAMS --exit; rc=$?; tput cnorm; exit $rc",
     "test:watch": ": watch running test suite; trap 'tput cnorm' INT; WATCHPARAMS='-w --watch-extensions ts,yml' npm --scripts-prepend-node-path=auto run test:only",
     "watch": ": watch running domoja in demo mode; handler() { kill $PID; exit; } ; trap handler INT; while true; do npm run start$TARGET & PID=$!; inotifywait -q -e modify -e move -e create -e delete -r . @node_modules --exclude 'test|sessions|\\.git|.*\\.yml|bin|www|\\.\\#.*|.*~'; killchildren() { for p in $*; do CIDs=$(pgrep -P $p); [ -z $CIDs ] || (killchildren $CIDs; kill $p); done; }; killchildren $PID; done",
     "watch:config": ": watch running domoja; TARGET=:config npm --scripts-prepend-node-path=auto run watch",
