@@ -4,7 +4,7 @@ let RewireToMock = rewire('../core/managers/userMgr')
 const userMgrModule: typeof ToMock & typeof RewireToMock = <any>RewireToMock
 let User = userMgrModule.User;
 type User = ToMock.User;
-const  userMgr = new userMgrModule.UserMgr;
+const userMgr = new userMgrModule.UserMgr;
 
 var assert = require("assert");
 var locationMgr = require('../core/managers/locationMgr');
@@ -83,7 +83,7 @@ describe('Module userMgr', function () {
   describe('#getUsers()', function () {
     it('should return the list of users', function () {
       let u = new User("name", "initials", "phone", "macaddress", "avatar");
-      u.id = (userMgr.nbUsers()+1).toString();
+      u.id = (userMgr.nbUsers() + 1).toString();
       userMgr.addUser(u);
       var users = userMgr.getUsers();
       var nbUsers = 0;
@@ -94,7 +94,7 @@ describe('Module userMgr', function () {
     });
     it('should return users with name and phone', function () {
       let u = new User("name", "initials", "phone", "macaddress", "avatar");
-      u.id = (userMgr.nbUsers()+1).toString();
+      u.id = (userMgr.nbUsers() + 1).toString();
       userMgr.addUser(u);
       var users = userMgr.getUsers();
       var nbUsers = 0;
@@ -136,7 +136,7 @@ describe('Module userMgr', function () {
     it('should return the list of users present at locationId', function () {
 
       let u = new User("name", "initials", "phone", "macaddress", "avatar");
-      u.id = (userMgr.nbUsers()+1).toString();
+      u.id = (userMgr.nbUsers() + 1).toString();
       userMgr.addUser(u);
 
       // assume we have some users
@@ -180,13 +180,27 @@ describe('Module userMgr', function () {
   describe('#addUser(user)', function () {
     it('should add a user', function (done) {
       let u = new User("name", "initials", "phone", "macaddress", "avatar");
-      u.id = '1';
       let n = userMgr.nbUsers();
       let np1 = (n + 1).toString();
       u.id = np1;
       userMgr.addUser(u, (err, user) => {
         assert.equal(userMgr.nbUsers(), n + 1)
         done(err)
+      });
+    });
+    it('should do nothing if user already exists', function (done) {
+      let u = new User("name", "initials", "phone", "macaddress", "avatar");
+      let n = userMgr.nbUsers();
+      let np1 = (n + 1).toString();
+      u.id = np1;
+      userMgr.addUser(u, (err, user) => {
+        let u2 = new User("name2", "initials2", "phone2", "macaddress2", "avatar2");
+        u2.id = u.id;
+        userMgr.addUser(u2, (err, user) => {
+          assert.equal(user, null);
+          assert.equal(userMgr.nbUsers(), n + 1)
+          done(err);
+        });
       });
     });
     it('should encode the password', function (done) {
@@ -199,6 +213,83 @@ describe('Module userMgr', function () {
         assert.equal(userMgr.getUser(np1).name, "name")
         assert.notEqual(userMgr.getUser(np1).password, "clear password")
         done(err)
+      });
+    });
+  });
+  describe('#checkUser(user)', function () {
+    it('should find an existing user', function (done) {
+      let u1 = new User("name", "initials", "phone", "macaddress", "avatar");
+      u1.login = "login";
+      u1.password = "password";
+      let n = userMgr.nbUsers();
+      let np1 = (n + 1).toString();
+      u1.id = np1;
+      userMgr.addUser(u1, (err, user) => {
+        let u2 = new User("name2", "initials2", "phone2", "macaddress2", "avatar2");
+        u2.login = "login2";
+        u2.password = "password2";
+        let n = userMgr.nbUsers();
+        let np1 = (n + 1).toString();
+        u2.id = np1;
+        userMgr.addUser(u2, (err, user) => {
+          userMgr.checkUser(u1.login, "password", (err, user) => {
+            assert.equal(user, u1);
+            userMgr.checkUser(u2.login, "password2", (err, user) => {
+              assert.equal(user, u2);
+              done(err);
+            });
+          });
+        });
+      });
+    });
+    it('should not find if wrong password', function (done) {
+      let u1 = new User("name", "initials", "phone", "macaddress", "avatar");
+      u1.login = "login";
+      u1.password = "password";
+      let n = userMgr.nbUsers();
+      let np1 = (n + 1).toString();
+      u1.id = np1;
+      userMgr.addUser(u1, (err, user) => {
+        userMgr.checkUser(u1.login, "wrong password", (err, user) => {
+          assert.equal(user, false);
+          done(err);
+        });
+      });
+    });
+    it('should not find a non-existing user', function (done) {
+      userMgr.checkUser("badlogin", "badpassword", (err, user) => {
+        assert.equal(user, false);
+        done(err);
+      });
+    });
+  });
+  describe('#findUserById(user)', function () {
+    it('should find an existing user', function (done) {
+      let u1 = new User("name", "initials", "phone", "macaddress", "avatar");
+      let n = userMgr.nbUsers();
+      let np1 = (n + 1).toString();
+      u1.id = np1;
+      userMgr.addUser(u1, (err, user) => {
+        userMgr.findUserById(u1.id, (err, user) => {
+          assert.equal(err, null);
+          assert.deepEqual(user, u1);
+          done(err);
+        });
+      });
+    });
+    it('should not find a non-existing user', function (done) {
+      let u1 = new User("name", "initials", "phone", "macaddress", "avatar");
+      let n = userMgr.nbUsers();
+      let np1 = (n + 1).toString();
+      u1.id = np1;
+      userMgr.addUser(u1, (err, user) => {
+        let n = userMgr.nbUsers();
+        let np1 = (n + 1).toString();
+        userMgr.findUserById(np1, (err, user) => {
+          assert.equal(err, null);
+          assert.equal(user, null);
+          done(err);
+        });
       });
     });
   });
