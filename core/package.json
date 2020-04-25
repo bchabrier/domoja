@@ -52,7 +52,7 @@
     "@types/passport-local": "^1.0.33",
     "@types/request": "^2.48.1",
     "@types/rewire": "^2.5.28",
-    "nyc": "^15.0.0",
+    "nyc": "^15.0.1",
     "typescript": "^3.8.3"
   },
   "engines": {
