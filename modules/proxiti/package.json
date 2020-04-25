@@ -6,7 +6,10 @@
   "license": "GPL-3.0",
   "description": "Astronomy source for Domoja from http://www.proxiti.info/",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": ": run test coverage; trap 'tput cnorm' INT; nyc --extension .ts npm --scripts-prepend-node-path=auto run test:only",
+    "test:only": ": run test suite once; trap 'tput cnorm' INT; ts-mocha test/**/*.ts $WATCHPARAMS --exit; tput cnorm",
+    "test:watch": ": watch running test suite; trap 'tput cnorm' INT; WATCHPARAMS='-w --watch-extensions ts,yml' npm --scripts-prepend-node-path=auto run test:only"
   },
   "repository": {
     "type": "git",
@@ -29,7 +32,10 @@
     "@types/cron": "^1.3.0",
     "@types/node": "^13.9.3",
     "@types/request": "^2.47.1",
-    "istanbul": "^0.4.2",
+    "mocha": "^7.1.1",
+    "nyc": "^15.0.1",
+    "sinon": "^9.0.2",
+    "ts-mocha": "^7.0.0",
     "typescript": "^3.8.3"
   },
   "main": "index.ts",

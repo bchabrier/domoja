@@ -28,9 +28,9 @@ const FIN_DU_CREPUSCULE = 7;
 export class astronomy extends Source {
 	job: any;
 	request: request.Request;
-	location: number;
+	location: string;
 
-	constructor(path: string, location: number) {
+	constructor(path: string, location: string) {
 		super(path);
 		this.location = location;
 		let self = this;
