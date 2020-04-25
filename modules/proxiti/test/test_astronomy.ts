@@ -76,10 +76,6 @@ describe('Module proxity', function () {
         let realSetTimeout = setTimeout;
         let clock = sinon.useFakeTimers();
 
-        after(function () {
-          clock.restore();
-        });
-
         let a = new astronomy('Path', "06030");
         let countCalls = 0;
         a.Update = function (callback: (err: Error) => void): void {
@@ -93,6 +89,7 @@ describe('Module proxity', function () {
         }
 
         a.RetryUpdate((err) => {
+          clock.restore();
           assert.equal(err, null);
           assert.equal(countCalls, 2);
           done();

@@ -10,7 +10,7 @@ import * as assert from 'assert';
 import * as sinon from 'sinon';
 import { tempo } from '../sources/tempo';
 
-describe('Module proxity', function () {
+describe('Module tempo', function () {
   describe('class tempo', function () {
 
     describe('#doSetAttribute', function () {
@@ -32,6 +32,7 @@ describe('Module proxity', function () {
         a.updateAttribute = (id: string, attribute: string, value: string, lastUpdateDate?: Date) => {
           origUpdateAttribute.call(a, id, attribute, value, lastUpdateDate);
           if (idTab.indexOf(id) == -1) idTab.push(id);
+          console.log(value)
           assert.equal(attribute, "state");
         }
         a.Update((err) => {
@@ -44,6 +45,8 @@ describe('Module proxity', function () {
     });
 
     describe('#RetryUpdate', function () {
+      this.timeout(5000);
+
       it('should do only one call if no error', function (done) {
         let a = new tempo('Path');
         let countCalls = 0;
@@ -61,11 +64,9 @@ describe('Module proxity', function () {
         let realSetTimeout = setTimeout;
         let clock = sinon.useFakeTimers();
 
-        after(function () {
-          clock.restore();
-        });
-
         let a = new tempo('Path');
+        // tick to 1h + 5 mn to trigger the update of tomorrow colors
+        clock.tick(65*1000 + 10);
         let countCalls = 0;
         a.Update = function (callback: (err: Error) => void): void {
           countCalls++;
@@ -78,6 +79,7 @@ describe('Module proxity', function () {
         }
 
         a.RetryUpdate((err) => {
+          clock.restore();
           assert.equal(err, null);
           assert.equal(countCalls, 3);
           done();
