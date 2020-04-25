@@ -32,13 +32,36 @@ describe('Module tempo', function () {
         a.updateAttribute = (id: string, attribute: string, value: string, lastUpdateDate?: Date) => {
           origUpdateAttribute.call(a, id, attribute, value, lastUpdateDate);
           if (idTab.indexOf(id) == -1) idTab.push(id);
-          console.log(value)
           assert.equal(attribute, "state");
+          if (id == "couleurDuJour") {
+            assert.notEqual([ 'Bleu', 'Blanc', 'Rouge'].indexOf(value), -1, 'Expected value: Bleu | Rouge | Blanc');
+          }
         }
         a.Update((err) => {
           assert.equal(err, null);
           assert.deepEqual(idTab.sort(), ['couleurDeDemain', 'couleurDuJour', 'lastUpdateDate']
           );
+          done();
+        });
+      });
+      it('should provide undetermined colors if in the future', function (done) {
+        let clock = sinon.useFakeTimers(Date.now() + 10 * 24 * 60 * 60 * 1000 ); // now + 10 days
+        let idTab: string[] = [];
+        let a = new tempo('Path');
+        let origUpdateAttribute = a.updateAttribute;
+        a.updateAttribute = (id: string, attribute: string, value: string, lastUpdateDate?: Date) => {
+          origUpdateAttribute.call(a, id, attribute, value, lastUpdateDate);
+          if (idTab.indexOf(id) == -1) idTab.push(id);
+          if (attribute != "state") clock.restore();
+          assert.equal(attribute, "state");
+          if (id == "couleurDuJour" && value != "Indéterminé") clock.restore();
+          if (id == "couleurDuJour") assert.equal(value, "Indéterminé")
+          if (id == "couleurDeDemain" && value != "Indéterminé") clock.restore();
+          if (id == "couleurDeDemain") assert.equal(value, "Indéterminé")
+        }
+        a.Update((err) => {
+          clock.restore();
+          assert.equal(err, null);
           done();
         });
       });
@@ -66,7 +89,7 @@ describe('Module tempo', function () {
 
         let a = new tempo('Path');
         // tick to 1h + 5 mn to trigger the update of tomorrow colors
-        clock.tick(65*1000 + 10);
+        clock.tick(65 * 1000 + 10);
         let countCalls = 0;
         a.Update = function (callback: (err: Error) => void): void {
           countCalls++;
