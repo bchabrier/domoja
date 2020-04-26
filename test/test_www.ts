@@ -4,12 +4,13 @@ import * as assert from "assert";
 
 import * as core from 'domoja-core'
 
-import rewire = require('rewire')
-import * as ToMock from '../domoja'
-import { fstat } from "fs";
-let RewireToMock = rewire('../domoja')
-const mockedDomoja: typeof ToMock & typeof RewireToMock = <any>RewireToMock
-const DomojaServer: new (port: Number, prod: boolean, ssl: boolean, listeningCallback?: () => void) => any = mockedDomoja.__get__('DomojaServer');
+import rewire = require('rewire');
+let sampleRewireToMock = rewire('rewire');
+import * as ToMock from '../domoja';
+assert.notEqual(ToMock, null); // force load of orginal domoja
+let RewireToMock: typeof sampleRewireToMock;
+let domoja: typeof ToMock & typeof RewireToMock;
+let DomojaServer: new (port: Number, prod: boolean, ssl: boolean, listeningCallback?: () => void) => any;
 
 describe('Repository www', function () {
     this.timeout(5000);
@@ -17,6 +18,9 @@ describe('Repository www', function () {
     let server: typeof RewireToMock.DmjServer;
 
     this.beforeAll(function (done) {
+        RewireToMock = rewire('../domoja');
+        domoja = <any>RewireToMock;
+        DomojaServer = domoja.__get__('DomojaServer');
         server = new DomojaServer(null, false, false, () => {
             core.configure(server.app,
                 (user, pwd, done) => { done(null, { id: "test" }) },
@@ -26,8 +30,14 @@ describe('Repository www', function () {
                 (req, resp) => { },
                 null
             );
-            ToMock.___setDmjServer___(server);
-            mockedDomoja.___setDmjServer___(server);
+            //ToMock.___setDmjServer___(server);
+            domoja.___setDmjServer___(server);
+            done();
+        });
+    });
+
+    after(function (done) {
+        server.close(() => {
             done();
         });
     });
@@ -45,6 +55,16 @@ describe('Repository www', function () {
             });
         }
 
+        function runTest(route: string, code: number) {
+            it(`should return ${code} status for GET ${route}`, function (done) {
+                let url = 'http://localhost:' + server.app.get('port');
+                http.get(url + route, (res) => {
+                    assert.equal(res.statusCode, code);
+                    done();
+                });
+            });
+        }
+
         const UIdir = './www';
         const UIdirLength = UIdir.length;
         const alwaysAuthorizedRoutes = [
@@ -53,6 +73,8 @@ describe('Repository www', function () {
             "/assets/fonts/.*",
             "/assets/favicon/.*"
         ];
+
+        runTest('/', 302);
 
         readRecursiveDir(UIdir, (path) => {
             let route = path.substr(UIdirLength);
@@ -68,13 +90,8 @@ describe('Repository www', function () {
                 code = 401; // need authentication
             }
 
-            it(`should return ${code} status for GET ${route}`, function (done) {
-                let url = 'http://localhost:' + server.app.get('port');
-                http.get(url + route, (res) => {
-                    assert.equal(res.statusCode, code);
-                    done();
-                });
-            });
+            runTest(route, code);
+
         });
 
     });
