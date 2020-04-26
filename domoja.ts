@@ -7,8 +7,7 @@ var logger = require("tracer").colorConsole({
   level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
-var fsmonitor = require('fsmonitor');
-
+import * as chokidar from 'chokidar';
 import * as core from 'domoja-core';
 import { Server } from 'typescript-rest';
 
@@ -64,6 +63,7 @@ class DomojaServer {
   previousFile: string;
   startTime: Date = new Date;
   server: http.Server | https.Server;
+  watcher: chokidar.FSWatcher;
 
   constructor(port: Number, prod: boolean, ssl: boolean, listeningCallback?: () => void) {
     let self = this;
@@ -169,32 +169,6 @@ class DomojaServer {
         this.ws.emit('change', this.getApp());
       });
 
-    });
-
-    let watchTimeout: NodeJS.Timer;
-
-    fsmonitor.watch(fs.lstatSync(CONFIG_FILE).isDirectory() ? CONFIG_FILE : path.dirname(CONFIG_FILE),
-      null, function (change: {
-        addedFiles: string, modifiedFiles: string, removedFiles: string,
-        addedFolders: string, modifiedFolders: string, removedFolders: string,
-      }) {
-      console.log("Change detected:\n" + change);
-
-      console.log("Added files:    %j", change.addedFiles);
-      console.log("Modified files: %j", change.modifiedFiles);
-      console.log("Removed files:  %j", change.removedFiles);
-
-      console.log("Added folders:    %j", change.addedFolders);
-      console.log("Modified folders: %j", change.modifiedFolders);
-      console.log("Removed folders:  %j", change.removedFolders);
-
-      if (watchTimeout) {
-        clearTimeout(watchTimeout);
-      }
-      watchTimeout = setTimeout(() => {
-        watchTimeout = null;
-        self.reloadConfig();
-      }, 2000);
     });
   }
 
@@ -349,11 +323,36 @@ class DomojaServer {
    */
   }
 
-  loadConfig(file: string) {
-    if (file !== this.currentFile) {
-      this.previousFile = this.currentFile;
-      this.currentFile = file;
+  loadConfig(configPath: string) {
+    configPath = path.normalize(configPath);
+    
+    if (configPath !== this.currentFile) {
+      if (!fs.existsSync(configPath)) {
+        logger.error("Cannot open configuration '%s'.", CONFIG_FILE);
+        return;
+       }
+       this.previousFile = this.currentFile;
+      this.currentFile = configPath;
     }
+    if (this.watcher) this.watcher.close();
+
+    let watchTimeout: NodeJS.Timer;
+
+    this.watcher = chokidar.watch(configPath);
+    this.watcher.on('all',
+      (event, path) => {
+        console.log("Change detected:", event, path);
+
+        if (watchTimeout) {
+          clearTimeout(watchTimeout);
+        }
+        watchTimeout = setTimeout(() => {
+          watchTimeout = null;
+          this.reloadConfig();
+        }, 2000);
+      });
+
+
     this.reloadConfig();
   }
 
@@ -376,6 +375,8 @@ class DomojaServer {
   }
 
   close(callback?: (err: Error) => void) {
+    if (this.watcher) this.watcher.close();
+    this.watcher = undefined;
     async.parallel([
       (cb) => {
         if (this.server.listening) {
