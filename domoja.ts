@@ -41,13 +41,18 @@ var module_dir = __dirname;
 // remove trailing /dist if any
 module_dir = module_dir.replace(/\/dist$/, '');
 
-const CONFIG_FILE = (process.argv[2] && !runWithMocha) ? process.argv[2] : module_dir + '/config/demo.yml';
+// process.argv is in the following form if run with mocha:
+//[ '/usr/bin/node',
+//  '/home/pi/domoja/node_modules/mocha/bin/mocha',
+//  '-r',
+//  '/home/pi/domoja/node_modules/ts-mocha/src/index.js',
+//  'test/test_domoja.ts',
+//  '--args', // strangely, without this, the next argument is taken as a test spec
+//  'config/demo.yml' ]
+const posOfArgs = process.argv.indexOf('--args');
+const configArg = runWithMocha ? (posOfArgs >= 0 ? posOfArgs + 1 : process.argv.length) : 2;
 
-if (!fs.existsSync(CONFIG_FILE)) {
-  console.log(process.argv);
-  logger.error("Cannot open '%s'. Exiting...", CONFIG_FILE);
-  process.exit(1);
-}
+const CONFIG_FILE = process.argv[configArg] ? process.argv[configArg] : module_dir + '/config/demo.yml';
 
 type http_type = 'HTTP' | 'HTTPS';
 
@@ -422,74 +427,79 @@ export function ___setDmjServer___(d: DomojaServer) {
   }
 }
 
-if (!runWithMocha) {
+if (!fs.existsSync(CONFIG_FILE)) {
+  logger.error("Cannot open configuration '%s'. Exiting...", CONFIG_FILE);
+} else {
 
-  logger.info(colors.magenta('    ____                        _'));
-  logger.info(colors.magenta('   / __ \\____  ________  ____  (_)___ _'));
-  logger.info(colors.magenta('  / / / / __ \\/ _    _ \\/ __ \\/ / __ `/'));
-  logger.info(colors.magenta(' / /_/ / /_/ / / / / / / /_/ / / /_/ /'));
-  logger.info(colors.magenta('/_____/\\____/_/ /_/ /_/\\____/ /\\__,_/ '));
-  logger.info(colors.magenta('                       /_____/'));
-  logger.info('')
+  if (!runWithMocha) {
+
+    logger.info(colors.magenta('    ____                        _'));
+    logger.info(colors.magenta('   / __ \\____  ________  ____  (_)___ _'));
+    logger.info(colors.magenta('  / / / / __ \\/ _    _ \\/ __ \\/ / __ `/'));
+    logger.info(colors.magenta(' / /_/ / /_/ / / / / / / /_/ / / /_/ /'));
+    logger.info(colors.magenta('/_____/\\____/_/ /_/ /_/\\____/ /\\__,_/ '));
+    logger.info(colors.magenta('                       /_____/'));
+    logger.info('')
 
 
-  //var app_prod = createApp(4000, true);
-  //var app_prod = createApp(3000, true);
-  //var app = createApp(3001, false);
-  //DmjServer = new DomojaServer(4001, false, false);
-  let port = process.env.PORT && parseInt(process.env.PORT) || 4001;
-  DmjServer = new DomojaServer(port, port == 443, port == 443);
-  logger.error(__dirname);
-  DmjServer.loadConfig(CONFIG_FILE);
+    //var app_prod = createApp(4000, true);
+    //var app_prod = createApp(3000, true);
+    //var app = createApp(3001, false);
+    //DmjServer = new DomojaServer(4001, false, false);
+    let port = process.env.PORT && parseInt(process.env.PORT) || 4001;
+    DmjServer = new DomojaServer(port, port == 443, port == 443);
+    logger.error(__dirname);
+    DmjServer.loadConfig(CONFIG_FILE);
 
-  if (port == 443) {
-    // also listen on port 80 en redirect to 443
-    let app80 = express();
-    app80.set('env', 'production');
-    app80.use(require('morgan')('dev')); // logger
+    if (port == 443) {
+      // also listen on port 80 en redirect to 443
+      let app80 = express();
+      app80.set('env', 'production');
+      app80.use(require('morgan')('dev')); // logger
 
-    // serve certbot
-    app80.get('/.well-known/acme-challenge/*', (req, res) => {
-      res.sendFile(path.join(module_dir, '/www', req.path));
+      // serve certbot
+      app80.get('/.well-known/acme-challenge/*', (req, res) => {
+        res.sendFile(path.join(module_dir, '/www', req.path));
+      });
+      app80.all(/^.*$/, (req, res) => {
+        res.redirect(301, 'https://' + req.hostname + req.originalUrl);
+      });
+      let server80 = http.createServer(app80).listen(80, function () {
+        console.log('Express production server listening on port 80');
+      });
+    }
+
+    let n = 1;
+    false && setInterval(() => {
+      let dev = core.getDevice("aquarium.lampes_end");
+      dev.setState(n.toString(), () => {
+        n++
+      });
+    }, 10000)
+
+
+
+    /*
+  
+    var options = {
+      key: fs.readFileSync(__dirname + '/ssl/key.pem'),
+      cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
+    };
+  
+    server_sec = https.createServer(options, app_prod).listen(443, function () {
+      console.log("Express server listening on port " + 443);
     });
-    app80.all(/^.*$/, (req, res) => {
-      res.redirect(301, 'https://' + req.hostname + req.originalUrl);
+  
+    server_prod = http.createServer(app_prod).listen(app_prod.get('port'), function () {
+      console.log("Express server listening on port " + app_prod.get('port'));
     });
-    let server80 = http.createServer(app80).listen(80, function () {
-      console.log('Express production server listening on port 80');
+  
+    server_80 = http.createServer(app_prod).listen(80, function () {
+      console.log("Express server listening on port " + 80);
     });
+  */
+    //refreshData.createWebsockets([server, server_prod, server_80], [server_sec]);
+
+
   }
-
-  let n = 1;
-  false && setInterval(() => {
-    let dev = core.getDevice("aquarium.lampes_end");
-    dev.setState(n.toString(), () => {
-      n++
-    });
-  }, 10000)
-
-
-
-  /*
-
-  var options = {
-    key: fs.readFileSync(__dirname + '/ssl/key.pem'),
-    cert: fs.readFileSync(__dirname + '/ssl/cert.pem')
-  };
-
-  server_sec = https.createServer(options, app_prod).listen(443, function () {
-    console.log("Express server listening on port " + 443);
-  });
-
-  server_prod = http.createServer(app_prod).listen(app_prod.get('port'), function () {
-    console.log("Express server listening on port " + app_prod.get('port'));
-  });
-
-  server_80 = http.createServer(app_prod).listen(80, function () {
-    console.log("Express server listening on port " + 80);
-  });
-*/
-  //refreshData.createWebsockets([server, server_prod, server_80], [server_sec]);
-
-
 }
