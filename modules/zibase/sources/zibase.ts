@@ -37,6 +37,10 @@ export class Zibase extends Source {
 		};
 
 		this.armTimeout();
+		this.zibase.on("message", () => {
+			this.timeout && clearInterval(this.timeout);
+			this.armTimeout();
+		});
 	}
 
 	private timeout: NodeJS.Timer = undefined;
@@ -114,6 +118,7 @@ export class Zibase extends Source {
 	}
 
 	release(): void {
+		this.timeout && clearInterval(this.timeout);
 		this.deregisterListener();
 		(<any>this.zibase).removeAllListeners();
 		this.zibase = null;
