@@ -325,20 +325,20 @@ class DomojaServer {
 
   loadConfig(configPath: string) {
     configPath = path.normalize(configPath);
-    
+
     if (configPath !== this.currentFile) {
       if (!fs.existsSync(configPath)) {
         logger.error("Cannot open configuration '%s'.", CONFIG_FILE);
         return;
-       }
-       this.previousFile = this.currentFile;
+      }
+      this.previousFile = this.currentFile;
       this.currentFile = configPath;
     }
     if (this.watcher) this.watcher.close();
 
     let watchTimeout: NodeJS.Timer;
 
-    this.watcher = chokidar.watch(configPath);
+    this.watcher = chokidar.watch(configPath, { ignoreInitial: true });
     this.watcher.on('all',
       (event, path) => {
         console.log("Change detected:", event, path);
