@@ -29,7 +29,7 @@ describe('Module domoja', function () {
       process.argv.pop();
     });
     it('should exit', function (done) {
-      this.timeout(30000);
+      this.timeout(50000);
       child_process.exec("./node_modules/ts-node/dist/bin.js domoja.ts unexistent_file", (err, stdout, stderr) => {
         console.log(stdout);
         console.error(stderr);
