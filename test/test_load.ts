@@ -2,8 +2,8 @@ import 'mocha';
 import rewire = require('rewire')
 import * as ToMock from '../core/lib/load'
 
-let RewireToMock = rewire('../core/lib/load')
-const grammar: typeof ToMock & typeof RewireToMock = <any>RewireToMock
+let sampleRewireToMock = rewire('rewire');
+let grammar: typeof ToMock & typeof sampleRewireToMock;
 
 import assert = require('assert');
 import async = require('async');
@@ -25,6 +25,11 @@ describe('Module load', function () {
     this.timeout(5000);
 
     let doc: doc = null;
+
+    before(function(){
+        let RewireToMock = rewire('../core/lib/load');
+        grammar = <any>RewireToMock;        
+    });
 
     afterEach('Release document', function (done) {
         //console.log('aftereach...')
