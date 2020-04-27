@@ -2,15 +2,15 @@
 import * as assert from 'assert';
 import { Source, Parameters, ConfigLoader, InitObject, GenericDevice, reloadConfig, getCurrentConfig } from '../core';
 import * as http from 'http';
-import * as express from 'express';
-import { AddressInfo } from 'net';
 import * as querystring from 'querystring';
 
-import rewire = require('rewire')
-import * as ToMock from '../domoja'
-let RewireToMock = rewire('../domoja')
-const mockedDomoja: typeof ToMock & typeof RewireToMock = <any>RewireToMock
-const DomojaServer: new (port: Number, prod: boolean, ssl: boolean, listeningCallback?: () => void) => any = mockedDomoja.__get__('DomojaServer');
+import rewire = require('rewire');
+let sampleRewireToMock = rewire('rewire');
+import * as ToMock from '../domoja';
+assert.notEqual(ToMock, null); // force load of orginal domoja
+let RewireToMock: typeof sampleRewireToMock;
+let domoja: typeof ToMock & typeof RewireToMock;
+let DomojaServer: new (port: Number, prod: boolean, ssl: boolean, listeningCallback?: () => void) => any;
 
 import * as apis from '../api';
 import { ServerContainer } from '../node_modules/typescript-rest/dist/server/server-container';
@@ -26,12 +26,15 @@ describe('Module api', function () {
     function _reloadConfig(file: string) {
         reloadConfig(file);
         ToMock.DmjServer.previousFile = ToMock.DmjServer.currentFile;
-        mockedDomoja.DmjServer.previousFile = mockedDomoja.DmjServer.currentFile;
+        domoja.DmjServer.previousFile = domoja.DmjServer.currentFile;
         ToMock.DmjServer.currentFile = file;
-        mockedDomoja.DmjServer.currentFile = file;
+        domoja.DmjServer.currentFile = file;
     }
 
     this.beforeAll(function (done) {
+        RewireToMock = rewire('../domoja');
+        domoja = <any>RewireToMock;
+        DomojaServer = domoja.__get__('DomojaServer');
         server = new DomojaServer(null, false, false, () => {
             core.configure(server.app,
                 (user, pwd, done) => { done(null, { id: "test" }) },
@@ -41,8 +44,8 @@ describe('Module api', function () {
                 (req, resp) => { },
                 null
             );
-            ToMock.___setDmjServer___(server);
-            mockedDomoja.___setDmjServer___(server);
+            domoja.___setDmjServer___(server);
+            ToMock.___setDmjServer___(server); // needed for getApp()
             done();
         });
     });
@@ -198,11 +201,13 @@ describe('Module api', function () {
             doRequest('POST', '/app/demo-mode', { value: true }, (body) => {
                 console.error(body);
                 assert.equal(body, "OK");
-                assert.equal(ToMock.DmjServer.getApp().demoMode, 1);
+                ToMock.DmjServer.reloadConfig(); // force this to make internals consistent (core.getCurrentConfig())
+                assert.equal(ToMock.DmjServer.getApp().demoMode, true);
                 doRequest('POST', '/app/demo-mode', { value: false }, (body) => {
                     console.error(body);
                     assert.equal(body, "OK");
-                    assert.equal(ToMock.DmjServer.getApp().demoMode, 0);
+                    ToMock.DmjServer.reloadConfig(); // force this to make internals consistent (core.getCurrentConfig())
+                    assert.equal(ToMock.DmjServer.getApp().demoMode, false);
                     done();
                 }, done);
             }, done);
