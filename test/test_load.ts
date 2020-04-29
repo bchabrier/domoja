@@ -2,33 +2,35 @@ import 'mocha';
 import rewire = require('rewire')
 import * as ToMock from '../core/lib/load'
 
-let sampleRewireToMock = rewire('rewire');
-let grammar: typeof ToMock & typeof sampleRewireToMock;
-
 import assert = require('assert');
 import async = require('async');
 import fs = require('fs');
 
 //import * as zibase from '../sources/zibase';
 
-// hack to get the doc type
-let d = false ? grammar.loadFileSync("") : undefined;
-type doc = typeof d;
-
-function passToSandbox(done: MochaDone) {
-    grammar.__set__('sandbox.done', function <T>(old: T, val: T) {
-        done();
-    });
-}
 
 describe('Module load', function () {
+    // hack to get the type without loading ../core/lib/load
+    let RewireToMock = false ? rewire('../core/lib/load') : undefined;
+    let grammar: typeof ToMock & typeof RewireToMock;
+
+    // hack to get the doc type
+    let d = false ? grammar.loadFileSync("") : undefined;
+    type doc = typeof d;
+
+    function passToSandbox(done: MochaDone) {
+        grammar.__set__('sandbox.done', function <T>(old: T, val: T) {
+            done();
+        });
+    }
+
     this.timeout(5000);
 
     let doc: doc = null;
 
-    before(function(){
-        let RewireToMock = rewire('../core/lib/load');
-        grammar = <any>RewireToMock;        
+    before(function () {
+        RewireToMock = rewire('../core/lib/load');
+        grammar = <any>RewireToMock;
     });
 
     afterEach('Release document', function (done) {
