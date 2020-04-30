@@ -1,5 +1,12 @@
 import { Errors, Path, PreProcessor, GET, POST, PathParam, FormParam } from 'typescript-rest';
-import { DmjServer } from '../domoja';
+import { getDomojaServer } from '../domoja';
+
+type DomojaServer = ReturnType<typeof getDomojaServer>;
+let DmjServer: DomojaServer;
+
+export function setDomojaServer(server: DomojaServer) {
+  DmjServer = server;
+}
 
 @Path('/app')
 export class AppService {
@@ -8,7 +15,9 @@ export class AppService {
    */
   @GET
   getApp() {
-    return DmjServer.getApp();
+    if (DmjServer) return DmjServer.getApp();
+    console.error('_DmjServer not defined!');
+    return undefined;
   }
 
   /**
@@ -17,8 +26,13 @@ export class AppService {
   @Path('/demo-mode')
   @POST
   setDemoMode(@FormParam('value') value: boolean) {
-    DmjServer.loadConfig(value?'./config/demo.yml':DmjServer.previousFile);
+    if (DmjServer) {
+      DmjServer.loadConfig(value?'./config/demo.yml':DmjServer.previousFile);
     return "OK";
+    } else {
+      console.error('_DmjServer not defined!');
+      return "KO";
+    }
   }
 
 }
