@@ -2,8 +2,10 @@ basePath: null
 definitions: {}
 info:
     description: 'A Typescript framework for home automation'
+    license:
+        name: GPL-3.0
     title: domoja
-    version: 1.1.4
+    version: 1.1.7
 paths:
     /devices:
         get:
