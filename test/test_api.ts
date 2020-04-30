@@ -3,38 +3,23 @@ import * as assert from 'assert';
 import { Source, Parameters, ConfigLoader, InitObject, GenericDevice, reloadConfig, getCurrentConfig } from '../core';
 import * as http from 'http';
 import * as querystring from 'querystring';
-
-import rewire = require('rewire');
-let sampleRewireToMock = rewire('rewire');
-import * as ToMock from '../domoja';
-assert.notEqual(ToMock, null); // force load of orginal domoja
-let RewireToMock: typeof sampleRewireToMock;
-let domoja: typeof ToMock & typeof RewireToMock;
-let DomojaServer: new (port: Number, prod: boolean, ssl: boolean, listeningCallback?: () => void) => any;
+import { DomojaServer } from '../server';
 
 import * as apis from '../api';
 import { ServerContainer } from '../node_modules/typescript-rest/dist/server/server-container';
-let InternalServer = ServerContainer.get();
 
 import * as core from 'domoja-core'
 
 describe('Module api', function () {
+
+    let InternalServer = ServerContainer.get();
+
+
     this.timeout(5000);
 
-    let server: typeof ToMock.DmjServer;
-
-    function _reloadConfig(file: string) {
-        reloadConfig(file);
-        ToMock.DmjServer.previousFile = ToMock.DmjServer.currentFile;
-        domoja.DmjServer.previousFile = domoja.DmjServer.currentFile;
-        ToMock.DmjServer.currentFile = file;
-        domoja.DmjServer.currentFile = file;
-    }
+    let server: DomojaServer;
 
     this.beforeAll(function (done) {
-        RewireToMock = rewire('../domoja');
-        domoja = <any>RewireToMock;
-        DomojaServer = domoja.__get__('DomojaServer');
         server = new DomojaServer(null, false, false, () => {
             core.configure(server.app,
                 (user, pwd, done) => { done(null, { id: "test" }) },
@@ -44,8 +29,6 @@ describe('Module api', function () {
                 (req, resp) => { },
                 null
             );
-            domoja.___setDmjServer___(server);
-            ToMock.___setDmjServer___(server); // needed for getApp()
             done();
         });
     });
@@ -109,7 +92,7 @@ describe('Module api', function () {
 
     describe('GET /devices', function () {
         it('should return the devices', function (done) {
-            _reloadConfig('./test/load/devices/device.yml');
+            server.loadConfig('./test/load/devices/device.yml');
             doRequest('GET', '/devices', null, (body) => {
                 //console.log(body);
                 let result = JSON.parse(body);
@@ -124,7 +107,7 @@ describe('Module api', function () {
     });
     describe('GET /devices/:id', function () {
         it('should return a device', function (done) {
-            _reloadConfig('./test/load/devices/device.yml');
+            server.loadConfig('./test/load/devices/device.yml');
             doRequest('GET', '/devices/simple_device', null, (body) => {
                 //console.log(body);
                 let result = JSON.parse(body);
@@ -135,7 +118,7 @@ describe('Module api', function () {
             }, done);
         });
         it('should raise an exception if device not found', function (done) {
-            _reloadConfig('./test/load/devices/device.yml');
+            server.loadConfig('./test/load/devices/device.yml');
             doRequest('GET', '/devices/unknown_device', null, (body) => {
                 //console.log(body);
                 assert.ok(body.match(/device not found/));
@@ -145,7 +128,7 @@ describe('Module api', function () {
     });
     describe('POST /devices/:id', function () {
         it('should set the state of a device', function (done) {
-            _reloadConfig('./test/load/devices/device.yml');
+            server.loadConfig('./test/load/devices/device.yml');
             doRequest('POST', '/devices/simple_device', {
                 command: 'ON'
             }, (body) => {
@@ -156,7 +139,7 @@ describe('Module api', function () {
             }, done);
         });
         it('should raise an exception if cannot set the state of a device', function (done) {
-            _reloadConfig('./test/load/devices/device.yml');
+            server.loadConfig('./test/load/devices/device.yml');
             doRequest('POST', '/devices/simple_device', {
                 command: 'ERROR'
             }, (body) => {
@@ -167,7 +150,7 @@ describe('Module api', function () {
             }, done);
         });
         it('should raise an exception if device not found', function (done) {
-            _reloadConfig('./test/load/devices/device.yml');
+            server.loadConfig('./test/load/devices/device.yml');
             doRequest('POST', '/devices/unknown_device', {
                 command: 'ON'
             }, (body) => {
@@ -179,7 +162,7 @@ describe('Module api', function () {
     });
     describe('GET /app', function () {
         it('should return the application', function (done) {
-            _reloadConfig('./test/load/devices/device.yml');
+            server.loadConfig('./test/load/devices/device.yml');
             doRequest('GET', '/app/', null, (body) => {
                 let result = JSON.parse(body);
                 assert.notEqual(result, null);
@@ -197,17 +180,15 @@ describe('Module api', function () {
     describe('POST /app/demo-mode', function () {
         it('should switch to demo-mode and vice-versa', function (done) {
             this.timeout(120000);
-            _reloadConfig('./test/load/devices/device.yml');
+            server.loadConfig('./test/load/devices/device.yml');
             doRequest('POST', '/app/demo-mode', { value: true }, (body) => {
                 console.error(body);
                 assert.equal(body, "OK");
-                ToMock.DmjServer.reloadConfig(); // force this to make internals consistent (core.getCurrentConfig())
-                assert.equal(ToMock.DmjServer.getApp().demoMode, true);
+                assert.equal(server.getApp().demoMode, true);
                 doRequest('POST', '/app/demo-mode', { value: false }, (body) => {
                     console.error(body);
                     assert.equal(body, "OK");
-                    ToMock.DmjServer.reloadConfig(); // force this to make internals consistent (core.getCurrentConfig())
-                    assert.equal(ToMock.DmjServer.getApp().demoMode, false);
+                    assert.equal(server.getApp().demoMode, false);
                     done();
                 }, done);
             }, done);
@@ -215,7 +196,7 @@ describe('Module api', function () {
     });
     describe('GET /pages', function () {
         it('should return [] when no page exists', function (done) {
-            _reloadConfig('./test/load/devices/device.yml');
+            server.loadConfig('./test/load/devices/device.yml');
             doRequest('GET', '/pages/', null, (body) => {
                 let result = JSON.parse(body);
                 assert.notEqual(result, null);
@@ -225,7 +206,7 @@ describe('Module api', function () {
             }, done);
         });
         it('should return an array of pages', function (done) {
-            _reloadConfig('./test/load/pages.yml');
+            server.loadConfig('./test/load/pages.yml');
             doRequest('GET', '/pages/', null, (body) => {
                 //console.log(body);
                 let result = JSON.parse(body);

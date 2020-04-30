@@ -1,28 +1,16 @@
 import * as assert from 'assert';
 
-import rewire = require('rewire');
-let sampleRewireToMock = rewire('rewire');
-import * as ToMock from '../domoja';
-assert.notEqual(ToMock, null); // force load of orginal domoja
-let RewireToMock: typeof sampleRewireToMock;
-let domoja: typeof ToMock & typeof RewireToMock;
-let DomojaServer: new (port: Number, prod: boolean, ssl: boolean, listeningCallback?: () => void) => any;
-
 import * as child_process from 'child_process';
 
 describe('Module domoja', function () {
   describe('With non existent config file', function () {
-    before(function (done) {
+
+    before(function () {
+      this.timeout(10000);
+      // let's simulate an unexistent config file as argument in order to go through the code, for the coverage
       process.argv.push('--args');
       process.argv.push('unexistent_file');
-      RewireToMock = rewire('../domoja');
-      domoja = <any>RewireToMock;
-      DomojaServer = domoja.__get__('DomojaServer');
-      assert.notEqual(domoja, null); // force load of domoja 
-      let server = new DomojaServer(null, false, false, () => {
-        //server.loadConfig('unexistent_file');
-        done();
-      });
+      require('../domoja');
     });
     after(function () {
       process.argv.pop();

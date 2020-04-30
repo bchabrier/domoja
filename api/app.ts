@@ -1,7 +1,6 @@
 import { Errors, Path, PreProcessor, GET, POST, PathParam, FormParam } from 'typescript-rest';
-import { getDomojaServer } from '../domoja';
+import { DomojaServer } from '../server';
 
-type DomojaServer = ReturnType<typeof getDomojaServer>;
 let DmjServer: DomojaServer;
 
 export function setDomojaServer(server: DomojaServer) {

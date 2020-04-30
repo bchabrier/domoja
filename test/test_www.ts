@@ -4,23 +4,14 @@ import * as assert from "assert";
 
 import * as core from 'domoja-core'
 
-import rewire = require('rewire');
-let sampleRewireToMock = rewire('rewire');
-import * as ToMock from '../domoja';
-assert.notEqual(ToMock, null); // force load of orginal domoja
-let RewireToMock: typeof sampleRewireToMock;
-let domoja: typeof ToMock & typeof RewireToMock;
-let DomojaServer: new (port: Number, prod: boolean, ssl: boolean, listeningCallback?: () => void) => any;
+import { DomojaServer } from '../server';
 
 describe('Repository www', function () {
     this.timeout(5000);
 
-    let server: typeof RewireToMock.DmjServer;
+    let server: DomojaServer;
 
     this.beforeAll(function (done) {
-        RewireToMock = rewire('../domoja');
-        domoja = <any>RewireToMock;
-        DomojaServer = domoja.__get__('DomojaServer');
         server = new DomojaServer(null, false, false, () => {
             core.configure(server.app,
                 (user, pwd, done) => { done(null, { id: "test" }) },
@@ -30,8 +21,6 @@ describe('Repository www', function () {
                 (req, resp) => { },
                 null
             );
-            //ToMock.___setDmjServer___(server);
-            domoja.___setDmjServer___(server);
             done();
         });
     });
@@ -97,6 +86,8 @@ describe('Repository www', function () {
     });
 
     this.afterAll('Close DmjServer', (done) => {
+        assert.notEqual(server, null);
+        assert.notEqual(server, undefined);
         server.close(done);
     });
 
