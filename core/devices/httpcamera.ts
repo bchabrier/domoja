@@ -1,7 +1,8 @@
 import { GenericDevice, DeviceOptions, CustomDeviceType } from './genericDevice'
 import { camera } from './camera'
 import { Source, ID, DefaultSource } from '../sources/source'
-import * as request from 'request'
+import * as http from 'http';
+import * as https from 'https';
 import { InitObject, Parameters } from '../lib/module';
 import { ConfigLoader } from '../lib/load';
 
@@ -22,22 +23,29 @@ export class httpCamera extends camera {
     this.snapshotUrl = initObject['snapshot-url'];
   }
 
-  getSnapshot(callback: (err: Error, data?: string) => void): void {
-    request.get(this.snapshotUrl, { encoding: null }, function (error: Error, response: request.RequestResponse, body: string) {
-      if (!error && response.statusCode == 200) {
-        //	    logger.error('body:', body);
-        //	    logger.error('response:', response);
-        callback(null, body);
-      } else {
-        if (error) {
-          logger.error('Error in getSnapshot:', error);
-          callback(error);
-        } else {
-          logger.error('Error in getSnapshot: statusCode', response.statusCode);
-          callback(new Error('Status code=' + response.statusCode));
-        }
-      }
+  private doGet(cameraURL: string, baseUrl: string, headers: http.IncomingHttpHeaders, callback: (response: http.IncomingMessage) => void): void {
+    let url: URL = new URL(cameraURL, baseUrl);
+
+    let module = url.protocol == 'https:' ? https : http;
+
+    let options: http.RequestOptions = {};
+
+    // if local url, we use the passed headers to get authentified
+    if (baseUrl.startsWith(url.origin)) {
+      options.headers = headers;
+    }
+
+    module.get(url.href, options, callback).on('error', (e) => {
+      logger.warn('Cannot get snapshot for camera "%s":', this.name, e);
     });
+  }
+
+  getSnapshot(baseUrl: string, headers: http.IncomingHttpHeaders, callback: (response: http.IncomingMessage) => void): void {
+    this.doGet(this.snapshotUrl, baseUrl, headers, callback);
+  }
+
+  getStream(baseUrl: string, headers: http.IncomingHttpHeaders, callback: (response: http.IncomingMessage) => void): void {
+    this.doGet(this.videoUrl, baseUrl, headers, callback);
   }
 
   createInstance(configLoader: ConfigLoader, instanceFullname: string, initObject: InitObject): GenericDevice {
@@ -49,5 +57,5 @@ export class httpCamera extends camera {
 Source.registerDeviceType(DefaultSource, new CustomDeviceType('httpCamera'), {
   'video-url': 'REQUIRED',
   'snapshot-url': 'REQUIRED',
-  name: 'REQUIRED', 
+  name: 'REQUIRED',
 });

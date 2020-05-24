@@ -6,7 +6,7 @@
 			"name": "GPL-3.0"
 		},
 		"title": "domoja",
-		"version": "1.1.7"
+		"version": "1.2.0"
 	},
 	"paths": {
 		"/devices": {
@@ -72,6 +72,29 @@
 						"description": "command sent to the device",
 						"in": "formData",
 						"name": "command",
+						"required": true,
+						"type": "string"
+					}
+				]
+			}
+		},
+		"/devices/{id}/snapshot": {
+			"get": {
+				"operationId": "DevicesServiceGetSnapshot",
+				"produces": [
+					"text/html"
+				],
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Get a snapshot from a camera device",
+				"parameters": [
+					{
+						"description": "path of the device",
+						"in": "path",
+						"name": "id",
 						"required": true,
 						"type": "string"
 					}

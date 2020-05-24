@@ -1,7 +1,7 @@
 import { GenericDevice, DeviceOptions } from './genericDevice'
 import { Source, ID } from '../sources/source'
 import { InitObject, Parameters } from '..';
-import * as express from 'express'
+import * as http from 'http'
 const logger = require("tracer").colorConsole({
   dateformat: "dd/mm/yyyy HH:MM:ss.l",
   level: 3
@@ -12,6 +12,7 @@ export abstract class camera extends GenericDevice {
   constructor(source: Source, instanceFullname: string, id: ID, attribute: string, name: string, initObject: InitObject, options?: DeviceOptions) {
     super(source, 'camera', instanceFullname, id, attribute, name, initObject, options);
   }
-  abstract getSnapshot(callback: (err: Error, data?: string) => void): void;
+  abstract getSnapshot(baseURL: string, headers: http.IncomingHttpHeaders, callback: (response: http.IncomingMessage) => void): void;
+  abstract getStream(baseURL: string, headers: http.IncomingHttpHeaders, callback: (response: http.IncomingMessage) => void): void;
 }
 

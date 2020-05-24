@@ -7,6 +7,10 @@ export function setDomojaServer(server: DomojaServer) {
   DmjServer = server;
 }
 
+export function getDomojaServer() {
+  return DmjServer;
+}
+
 @Path('/app')
 export class AppService {
   /**
