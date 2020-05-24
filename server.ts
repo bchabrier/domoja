@@ -60,8 +60,16 @@ export class DomojaServer {
     this.app = express();
 
     if (!prod) {
+      let whitelist = ['http://192.168.0.10:8100', 'http://raspberrypi:8100', 'https://domo.bchabrier.com']
       this.app.use(cors({
-        origin: ['http://raspberrypi:8100', 'http://192.168.0.10:8100', 'http://raspberrypi:4001', 'http://192.168.0.10:4001'],
+
+        origin: function (origin, callback) {
+          if (whitelist.indexOf(origin) !== -1 || !origin) {
+            callback(null, true)
+          } else {
+            callback(new Error(`Origin \'${origin}\' not allowed by CORS`));
+          }
+        },
         credentials: true
       }));
     }
@@ -146,7 +154,7 @@ export class DomojaServer {
         socket.emit('news', {
         hello : 'world'
         });
-  
+     
         socket.on('my other event', function(data) {
         console.log(data);
         });
