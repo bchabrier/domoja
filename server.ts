@@ -327,7 +327,7 @@ export class DomojaServer {
 
     let watchTimeout: NodeJS.Timer;
 
-    this.watcher = chokidar.watch(configPath, { ignoreInitial: true });
+    this.watcher = chokidar.watch(configPath, { ignoreInitial: true, awaitWriteFinish: true });
     this.watcher.on('all',
       (event, path) => {
         console.log("Change detected:", event, path);
