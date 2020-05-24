@@ -128,7 +128,7 @@ sed -i 's!\("main": *\)"dist/\([^.]*\)\.js"!\1"\2.ts"!' package.json
 
 
 echo "Publishing..."
-npm publish /tmp/$repo.tar.gz #--dry-run 
+npm publish --registry https://registry.npmjs.org /tmp/$repo.tar.gz #--dry-run 
 
 version=$(awk -F\" '/"version": / { print $4}' ./package.json)
 echo "Pushing tag $package.v$version"
