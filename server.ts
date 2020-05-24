@@ -9,6 +9,7 @@ var logger = require("tracer").colorConsole({
 
 import * as chokidar from 'chokidar';
 import * as core from 'domoja-core';
+import * as net from 'net';
 import { Server } from 'typescript-rest';
 
 import * as apis from './api';
@@ -42,6 +43,29 @@ module_dir = module_dir.replace(/\/dist$/, '');
 //  'config/demo.yml' ]
 
 type http_type = 'HTTP' | 'HTTPS';
+
+const whitelist = [
+  "/index.html",
+  "/login.html",
+  "/currentsetting.htm", // from Genie
+  "/cordova.js",
+  /^\/build\/.*/,
+  /^\/devices\/.*/,
+];
+
+export function checkRoute(req: express.Request) {
+  if (!whitelist.some(s => {
+    if (typeof s == "string") return req.path == s;
+    return s.test(req.path)
+  })) {
+    logger.warn("Protocol:", req.protocol);
+    logger.warn("Hostname:", req.hostname);
+    if (req.query) logger.warn("Query:", req.query);
+    if (req.method == "POST") logger.warn("Body:", req.body);
+    logger.warn("User-agent:", req.headers["user-agent"]);
+    logger.warn("Referer:", req.headers.referer);
+  }
+}
 
 export class DomojaServer {
   app: express.Application;
@@ -98,7 +122,7 @@ export class DomojaServer {
     app.get('/test', proxy.test);
     app.get('/getTempoInfos', tempo.getTempoInfos);
     app.get('/presence', presence.presence);
-  */
+    */
 
     Server.swagger(this.app, {
       filePath: module_dir + '/api/swagger.yaml',
@@ -120,6 +144,14 @@ export class DomojaServer {
     let apiTab: Function[] = [];
     Object.keys(apis).forEach(a => apiTab.push((<any>apis)[a]));
     Server.buildServices(this.app, ...apiTab);
+
+    this.app.use((req, res, next) => {
+      if (!res.headersSent) {
+        // response not sent, which means the route has not been handled
+        checkRoute(req);
+      }
+      next();
+    });
 
     let options: { key: Buffer, cert: Buffer } = null;
     let http_https: typeof http | typeof https = http;
@@ -212,7 +244,10 @@ export class DomojaServer {
     );
 
     // � partir de ce point les services doivent etre autoris�s
-    let auth = core.checkAuthenticated;
+    let auth: express.Handler = (req, res, next) => {
+      if (!req.isAuthenticated()) checkRoute(req);
+      core.checkAuthenticated(req, res, next);
+    }
     /*
       app.get('/users', auth, user.list);
       app.get('/tempo', auth, tempo.index);

@@ -8,7 +8,7 @@ var logger = require("tracer").colorConsole({
 });
 
 import * as core from 'domoja-core';
-import { DomojaServer } from './server';
+import { DomojaServer, checkRoute } from './server';
 
 import * as http from 'http';
 
@@ -76,6 +76,7 @@ if (!fs.existsSync(CONFIG_FILE)) {
       res.sendFile(path.join(module_dir, '/www', req.path));
     });
     app80.all(/^.*$/, (req, res) => {
+      checkRoute(req);
       res.redirect(301, 'https://' + req.hostname + req.originalUrl);
     });
     let server80 = http.createServer(app80).listen(80, function () {
