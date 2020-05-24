@@ -30,9 +30,11 @@ export class Zibase extends Source {
 						}
 					})
 				}
-				initialEmitEvent.call(self.zibase, event + ":" + id, arg);
+				self.zibase && initialEmitEvent.call(self.zibase, event + ":" + id, arg);
+				self.zibase || logger.error('self.zibase is null!')
 			} else {
-				initialEmitEvent.call(self.zibase, event, arg1);
+				self.zibase && initialEmitEvent.call(self.zibase, event, arg1);
+				self.zibase || logger.error('self.zibase is null!')
 			}
 		};
 
