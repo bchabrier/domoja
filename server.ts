@@ -127,7 +127,7 @@ export class DomojaServer {
     Server.swagger(this.app, {
       filePath: module_dir + '/api/swagger.yaml',
       endpoint: '/api-docs',
-      schemes: ['http']
+      schemes: [ssl ? 'https' : 'http']
     });
 
     var FileStore = require('session-file-store')(session);
