@@ -14,11 +14,11 @@ function deviceIdValidator(req: express.Request): express.Request {
   var devices = core.getDevices();
 
   if (!devices) {
-    throw new Errors.InternalServerError('no devices')
+    throw new Errors.InternalServerError('no devices');
   }
 
   if (!devices.find(device => device.path == deviceID)) {
-    throw new Errors.BadRequestError('device not found')
+    throw new Errors.BadRequestError(`device ${deviceID} not found`);
   }
 
   return req;
