@@ -11,13 +11,15 @@ var logger = require("tracer").colorConsole({
 
 export class Zibase extends Source {
 	zibase: ZiBase;
+	private initialEmitEvent: (event: string, arg1: any, arg2: any) => void;
+	
 	constructor(path: string, ipAddr: string, deviceId: string, token: string, callback?: (err: Error) => void) {
 		super(path);
 		this.zibase = new ZiBase(ipAddr, deviceId, token, callback);
 
 		// let's intercept the ZiBase's emitEvent to catch all change events
 		let self = this;
-		let initialEmitEvent = (this.zibase as any).emitEvent;
+		this.initialEmitEvent = (this.zibase as any).emitEvent;
 		(this.zibase as any).emitEvent = function (event: string, arg1: any, arg2: any) {
 			if (arg2) {
 				var id = arg1;
@@ -30,11 +32,11 @@ export class Zibase extends Source {
 						}
 					})
 				}
-				self.zibase && initialEmitEvent.call(self.zibase, event + ":" + id, arg);
-				self.zibase || logger.error('self.zibase is null!')
+				self.zibase && this.initialEmitEvent && this.initialEmitEvent.call(self.zibase, event + ":" + id, arg);
+				self.zibase || logger.error('self.zibase is null!', event + ":" + id, arg, new Error)
 			} else {
-				self.zibase && initialEmitEvent.call(self.zibase, event, arg1);
-				self.zibase || logger.error('self.zibase is null!')
+				self.zibase && this.initialEmitEvent && this.initialEmitEvent.call(self.zibase, event, arg1);
+				self.zibase || logger.error('self.zibase is null!', event, arg1, new Error)
 			}
 		};
 
@@ -121,6 +123,8 @@ export class Zibase extends Source {
 
 	release(): void {
 		this.timeout && clearInterval(this.timeout);
+		(this.zibase as any).emitEvent = this.initialEmitEvent;
+		(<any>this.zibase).socket && (<any>this.zibase).socket.removeAllListeners();
 		this.deregisterListener();
 		(<any>this.zibase).removeAllListeners();
 		this.zibase = null;
