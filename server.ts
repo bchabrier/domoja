@@ -58,12 +58,12 @@ export function checkRoute(req: express.Request) {
     if (typeof s == "string") return req.path == s;
     return s.test(req.path)
   })) {
-    logger.warn("Protocol:", req.protocol);
-    logger.warn("Hostname:", req.hostname);
-    if (req.query) logger.warn("Query:", req.query);
+    logger.warn("Url:", req.protocol + "://" + req.hostname + req.url);
+    if (req.query && req.query != {}) logger.warn("Query:", req.query);
     if (req.method == "POST") logger.warn("Body:", req.body);
-    logger.warn("User-agent:", req.headers["user-agent"]);
     logger.warn("Referer:", req.headers.referer);
+    logger.warn("User-agent:", req.headers["user-agent"]);
+    logger.warn("IP:", req.ip);
   }
 }
 
