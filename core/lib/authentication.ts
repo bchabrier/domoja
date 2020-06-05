@@ -1,3 +1,4 @@
+import * as util from 'util';
 import * as passport from 'passport';
 import * as passportLocal from 'passport-local';
 var LocalStrategy = passportLocal.Strategy;
@@ -54,7 +55,7 @@ export function configure(app: express.Application,
   // serializing, and querying the user record by ID from the database when
   // deserializing.
   passport.serializeUser(function (user: User, cb: (err: Error, user: string) => void) {
-    logger.debug('serializeUser %j', user);
+    logger.debug('serializeUser', util.inspect(user));
     cb(null, user.id);
   });
 
@@ -173,10 +174,10 @@ export function configure(app: express.Application,
     function (req: express.Request, res: express.Response, next: express.NextFunction) {
 
       function successReturnToOrRedirect() {
-        if ((<any>req).session.returnTo) {
-          logger.debug('redirecting to ', (<any>req).session.returnTo);
-        }
-        return res.redirect((<any>req).session.returnTo || '/');
+        let target = (<any>req).session.returnTo || '/';
+        logger.debug('redirecting to', target);
+        logger.debug('with headers', res.getHeaders());
+        return res.redirect(target);
       }
 
       logger.debug('passport.authenticate was successful');
