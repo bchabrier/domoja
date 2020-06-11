@@ -9,6 +9,7 @@ var logger = require("tracer").colorConsole({
 
 import * as chokidar from 'chokidar';
 import * as core from 'domoja-core';
+import * as persistence from 'domoja-core/persistence/persistence';
 import * as net from 'net';
 import { Server } from 'typescript-rest';
 

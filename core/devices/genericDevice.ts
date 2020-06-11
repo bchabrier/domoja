@@ -35,6 +35,8 @@ export type DeviceType = 'device' | 'sensor' | 'variable' | 'group' | 'camera' |
 
 export type WidgetType = 'text' | 'toggle';
 
+export type EventType = "change";
+
 //export var pusher = new PushBullet(secrets.getPushBulletPassword());
 
 //enum NotifyEnum { NEVER, ALWAYS, IN_ALARM };
@@ -97,10 +99,10 @@ export abstract class GenericDevice implements DomoModule {
     lastUpdateDate: Date;
     tags: string;
 
+    stateHasBeenSet = false;
+
     constructor(source: Source, type: DeviceType, instancePath: string, id: ID, attribute: string, name: string, initObject: InitObject, options?: DeviceOptions) {
         this.source = source;
-
-        this.persistence = new persistence.persistence();
 
         this.id = id;
         this.path = instancePath;
@@ -139,13 +141,58 @@ export abstract class GenericDevice implements DomoModule {
             }
         }
 
+        // "mongo:temperature_piscine:1200:aggregate:120000"
+        let persistence_spec = initObject && initObject.persistence;
+        if (persistence_spec) {
+            let pspec = persistence_spec.split(":");
+            this.persistence = new persistence.persistence(pspec[1], pspec[2], pspec[3], pspec[4]);
+        } else {
+            this.persistence = new persistence.persistence(this.path);
+        }
         
         this.source.addDevice(this);
 
 
+        this.on("change", (msg) => {
+            if (this.persistence) {
+                var d = new Date();
+                msg.emitter.lastChangeDate = d;
+                var infos = <any>{};
+                Object.keys(msg).forEach((f: keyof message) => {
+                    var t = typeof (msg[f]);
+                    // let's store only the flat properties
+                    if (t != "object" && t != "function") {
+                        infos[f] = msg[f];
+                    }
+                });
 
+                this.persistence.insert({
+                    state: this.state,
+                    date: d
+                }, (err: Error, docs: message[]) => {
+                    if (err != null) {
+                        logger.error("Error while storing in %s: ", this.persistence.id, err)
+                        logger.error(err.stack)
+                    }
+                });
+            }
+        });
 
-        var self = this;
+        // start polling at an interval until the state is set from the DB
+        /*
+        let i = 0
+        let intvl = setInterval(() => {
+            i++;
+            if (i == 30 * 10) logger.error(`timeout for device ${this.path}`);
+            if (this.stateHasBeenSet) {
+                clearInterval(intvl);
+            }
+        }, 100);
+
+        while (!this.stateHasBeenSet) {
+            process.nextTick(() => { });
+        }
+*/
 
         if (id && id[0] == "Z") {
             // it is a ZWave device
@@ -167,6 +214,44 @@ export abstract class GenericDevice implements DomoModule {
         }
     }
 
+    restoreStateFromDB(callback: (err: Error, success: boolean) => void) {
+        this.getLastValueFromDB((err, value) => {
+            if (err) {
+                logger.error(`Could not retrieve last persisted value for device "${this.path}":`, err);
+            } else {
+                if (!this.stateHasBeenSet) {
+                    this.state = (value instanceof Date) ? value.toString() : value;
+                }
+            }
+            logger.warn(`device ${this.path} state restored to ${this.state}`);
+            callback(err, !err);
+        });
+    }
+
+    getLastValueFromDB(callback: (err: Error, value: string | Date) => void) {
+        if (this.persistence) {
+            this.persistence.getLastFromDB((err: Error, result: message) => {
+                if (err != null) {
+                    logger.error(err);
+                    logger.error(err.stack);
+                    callback(err, undefined);
+                } else {
+                    if (result) {
+                        if (result.date && result.date.getTime() + this.persistence.ttl * 60 * 1000 < new Date().getTime()) {
+                            logger.warn(`Got result (state=${result.state}) but obsolete: ${result.date} older than ${this.persistence.ttl} mn`);
+                            result.state = undefined;
+                        }
+                        callback(null, result.state);
+                    } else {
+                        callback(null, undefined);
+                    }
+                }
+            });
+        } else {
+            callback(null, undefined);
+        }
+    }
+
     abstract createInstance(configLoader: ConfigLoader, instanceFullname: string, initObject: InitObject): DomoModule;
 
     release(): void {
@@ -180,6 +265,7 @@ export abstract class GenericDevice implements DomoModule {
         if (newState instanceof Date) return this.setState(newState.toString(), callback);
 
         logger.debug('setState of device "%s" to "%s"', this.path, newState);
+        this.stateHasBeenSet = true;
         this.source.setAttribute(this.id, this.attribute, newState, callback);
     }
 
@@ -271,19 +357,19 @@ export abstract class GenericDevice implements DomoModule {
         }
     }
 
-    on(event: Event, callback: (msg: message) => void) {
+    on(event: EventType, callback: (msg: message) => void) {
         var self = this;
         this.source.on(event, this.path, this.eventListener(callback));
         return this;
     }
 
-    once(event: Event, callback: (msg: message) => void) {
+    once(event: EventType, callback: (msg: message) => void) {
         var self = this;
         this.source.once(event, this.path, this.eventListener(callback));
         return this;
     };
 
-    removeListener(event: Event, callback: (msg: message) => void): this {
+    removeListener(event: EventType, callback: (msg: message) => void): this {
         this.source.removeListener(event, this.path, this.eventListener(callback))
         return this;
     }

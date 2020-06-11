@@ -2,6 +2,7 @@ import { DomoModule, InitObject, Parameters } from '../lib/module';
 import { Source, DefaultSource } from '../sources/source';
 import { GenericDevice, DeviceType } from '../devices/genericDevice';
 import { Scenario } from '../scenarios/scenario'
+import * as async from 'async';
 import * as triggers from '../scenarios/trigger';
 import * as path from "path";
 import * as fs from 'fs';
@@ -272,20 +273,40 @@ export class ConfigLoader extends events.EventEmitter {
             logger.debug("Done instanciating all %d devices.", N)
         }
 
-        if (this.scenarios) {
-            let N = Object.keys(this.scenarios).length;
-            logger.debug("Starting activating all %s scenarios...", N)
-            let n = 0;
-            Object.keys(this.scenarios).forEach(e => {
-                n++;
-                process.stdout.write(n + "/" + N + "\r");
-                let scenario = this.scenarios[e];
-                //console.log(scenario)
-                scenario.activate();
-            })
-            logger.debug("Done activating all %d scenarios.", N)
-        }
+        if (this.devices) {
+            // instanciate all devices
+            logger.debug("Starting restoring all devices initial state...")
+            async.reject(Object.keys(this.devices).map(d => this.devices[d].device.path),
+                (devicePath, callback) => {
+                    this.getDevice(devicePath).restoreStateFromDB((err) => {
+                        callback(null, !err);
+                    });
+                },
+                (err, results) => {
+                    if (results.length > 0) {
+                        logger.debug(`Done restoring devices initial state, ${results.length} failed: ${results.join(", ")}`);
+                    } else {
+                        logger.debug(`Done restoring all ${Object.keys(this.devices).length} devices initial state.`);
+                    }
 
+                    if (this.scenarios) {
+                        let N = Object.keys(this.scenarios).length;
+                        logger.debug("Starting activating all %s scenarios...", N)
+                        let n = 0;
+                        Object.keys(this.scenarios).forEach(e => {
+                            n++;
+                            process.stdout.write(n + "/" + N + "\r");
+                            let scenario = this.scenarios[e];
+                            //console.log(scenario)
+                            scenario.activate();
+                        })
+                        logger.debug("Done activating all %d scenarios.", N)
+                    }
+                    return done(err);
+                });
+        } else {
+            return done();
+        }
     }
 
     private parseSingleFile(file: string, parser: (c: Parser.Parse, section: Section) => void, section: Section) {
@@ -313,7 +334,6 @@ export class ConfigLoader extends events.EventEmitter {
             }
             throw err;
         }
-
     }
 
     unparse(): string {
@@ -1259,7 +1279,7 @@ function object(c: Parser.Parse): { [x: string]: value } {
     let allowedTypeValues: string[] = c.context().allowedTypeValues
 
     if (c.context().type == 'device') {
-        allowedKeys.push("type", "name", "source", "attribute", "id", "camera", "widget", "tags", "transform");
+        allowedKeys.push("type", "name", "source", "attribute", "id", "camera", "widget", "persistence", "tags", "transform");
     }
     if (c.context().type == 'source') {
         allowedKeys.push("type");
@@ -1383,21 +1403,21 @@ function object(c: Parser.Parse): { [x: string]: value } {
 
         if (!isJson) eatComments(c);
     }, isJson ? /^ *, *\n? */ : /^ *\n */);
-    logger.debug('found all key/value pairs')
+    logger.debug('found all key/value pairs');
     if (indented) {
         c.dedent();
         isJson && c.newline();
     }
-    logger.debug('about to check all required keys have been provided')
-    logger.debug('remaining keys:', allowedKeys)
+    logger.debug('about to check all required keys have been provided');
+    logger.debug('remaining keys:', allowedKeys);
     // check that all required keys have been provided
     allowedKeys.forEach(key => {
-        logger.debug('parameters[%s]:', key, parameters[key])
+        logger.debug('parameters[%s]:', key, parameters[key]);
         if (parameters[key] == 'REQUIRED') {
             c.expected('"' + key + '"');
         }
     })
-    logger.debug('checked all required keys have been provided')
+    logger.debug('checked all required keys have been provided');
 
     isJson && c.skip(/^ *} */);
     logger.debug('<=object')

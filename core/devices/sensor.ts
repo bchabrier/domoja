@@ -14,55 +14,7 @@ const logger = require("tracer").colorConsole({
 export class sensor extends GenericDevice {
   constructor(source: Source, path: string, id: ID, attribute: string, name: string, initObject: InitObject, options?: DeviceOptions) {
     super(source, 'sensor', path, id, attribute, name, initObject, options);
-
-  let self = this;
-    this.on("change", function (msg) {
-      var d = new Date();
-      msg.emitter.lastChangeDate = d;
-      var infos = <any>{};
-      Object.keys(msg).forEach((f: keyof message) => {
-        var t = typeof (msg[f]);
-        // let's store only the flat properties
-        if (t != "object" && t != "function") {
-          infos[f] = msg[f];
-        }
-      });
-
-      self.persistence.insert("sensors", {
-        infos: infos,
-        date: d,
-      }, function (err: Error, docs: message[]) {
-        if (err != null) {
-          logger.error("Error while storing in %s: ", this.persistence.name, err)
-          logger.error(err.stack)
-        }
-      });
-    });
   }
-
-  // call callback(value)
-  getLastValueFromDB = function (callback: any) {
-    this.persistence.getLastFromDB("sensors", function (err: Error, results: message[]) {
-      if (err != null) {
-        logger.error(err);
-        logger.error(err.stack);
-        callback(undefined);
-      } else {
-        logger.trace(results.length);
-        if (results.length == 0) {
-          // no value stored!
-          logger.warn("no value stored")
-          callback(undefined);
-        } else {
-          assert(results.length == 1);
-          // should be modified to not be temperature sensor
-          // specific
-          logger.trace("returning ", results[0].tem)
-          callback(results[0].tem);
-        }
-      }
-    });
-  };
 
   createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): GenericDevice {
     return new sensor(initObject.source, path, initObject.id, initObject.attribute, initObject.name, initObject, {

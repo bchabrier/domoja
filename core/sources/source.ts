@@ -90,6 +90,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
             if (device) {
                 let oldValue = device.getState();
                 device.state = value;
+                device.stateHasBeenSet = true;
                 device.lastUpdateDate = new Date;
                 return this.emitEvent('change', device.path, { oldValue: oldValue, newValue: value, date: device.lastUpdateDate })
             }
