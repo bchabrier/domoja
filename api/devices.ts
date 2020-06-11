@@ -96,6 +96,10 @@ export class DevicesService {
 
     return new Promise<{}>((resolve, reject) => {
       method.apply(camera, [baseURL, res.req.headers, function onResponse(response: http.IncomingMessage) {
+        if (res.req.query && res.req.query.t) {
+          // if ?t=, then we cache the query
+          res.setHeader("Cache-Control", "private, max-age=999999"); // max-age is needed for Safari
+        }
         response.pipe(res);
         response.on('end', () => resolve(Return.NoResponse));
         response.on('aborted', () => reject(Return.NoResponse));
@@ -106,6 +110,7 @@ export class DevicesService {
   /**
    * Get a snapshot from a camera device
    * @param name path of the device
+   * Cached if ?t=NNNN is append
    */
   @Path(':id/snapshot')
   @GET
@@ -119,6 +124,7 @@ export class DevicesService {
   /**
    * Get a stream from a camera device
    * @param name path of the device
+   * Cached if ?t=NNNN is append
    */
   @Path(':id/stream')
   @GET
