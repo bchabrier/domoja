@@ -14,8 +14,7 @@ describe('Module domoja', function () {
     before(function (done) {
       this.timeout(10000);
       d = new DomojaServer(0, false, false, () => {
-        d.loadConfig(configFileDir);
-        done();
+        d.loadConfig(configFileDir, done);
       });
     });
     after(function (done) {
@@ -28,9 +27,10 @@ describe('Module domoja', function () {
       });
     });
     function planAction(test: Mocha.Context, done: Mocha.Done, action: () => void) {
-      d.reloadConfig = () => {
+      d.reloadConfig = (callback) => {
         done();
-        d.reloadConfig = () => { console.warn('reload config called????') };
+        d.reloadConfig = (cb) => { console.warn('reload config called????'); cb(null); };
+        callback(null);
       };
       setTimeout(() => {
         action();

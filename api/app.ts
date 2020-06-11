@@ -28,15 +28,18 @@ export class AppService {
    */
   @Path('/demo-mode')
   @POST
-  setDemoMode(@FormParam('value') value: boolean) {
-    if (DmjServer) {
-      DmjServer.loadConfig(value?'./config/demo.yml':DmjServer.previousFile);
-    return "OK";
-    } else {
-      console.error('_DmjServer not defined!');
-      return "KO";
-    }
+  setDemoMode(@FormParam('value') value: boolean): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+      if (DmjServer) {
+        DmjServer.loadConfig(value ? './config/demo.yml' : DmjServer.previousFile, err => {
+          if (err) return reject("KO");
+          return resolve("OK");
+        });
+      } else {
+        console.error('_DmjServer not defined!');
+        return resolve("KO");
+      }
+    });
   }
-
 }
 

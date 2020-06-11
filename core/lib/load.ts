@@ -199,45 +199,50 @@ export class ConfigLoader extends events.EventEmitter {
         this.userMgr.clearUsers();
     }
 
-    parse(fileOrDir: string) {
-        this.rootModule = new Module("sandbox module");
-        this.comments = []
-        let dir = fileOrDir;
-        prevContext = {};
+    parse(fileOrDir: string, done: (err?: Error) => void) {
+        try {
+            this.rootModule = new Module("sandbox module");
+            this.comments = []
+            let dir = fileOrDir;
+            prevContext = {};
 
-        if (!fs.lstatSync(fileOrDir).isDirectory()) {
-            dir = path.dirname(fileOrDir);
-        }
+            if (!fs.lstatSync(fileOrDir).isDirectory()) {
+                dir = path.dirname(fileOrDir);
+            }
 
-        let secretsFile = dir + '/secrets.yml';
+            let secretsFile = dir + '/secrets.yml';
 
-        if (fs.existsSync(secretsFile)) {
-            logger.info("Loading secrets file '%s'...", secretsFile)
-            this.parseSingleFile(secretsFile, secretsSection, 'ALL')
-        }
+            if (fs.existsSync(secretsFile)) {
+                logger.info("Loading secrets file '%s'...", secretsFile)
+                this.parseSingleFile(secretsFile, secretsSection, 'ALL')
+            }
 
-        if (dir === fileOrDir) {
-            let files = fs.readdirSync(dir).filter(f => f.match(/^.*\.yml$/) && !f.match(/^(.*\/)*demo\.yml$/));
+            if (dir === fileOrDir) {
+                let files = fs.readdirSync(dir).filter(f => f.match(/^.*\.yml$/) && !f.match(/^(.*\/)*demo\.yml$/));
 
-            let sections: Section[] = [
-                'IMPORTS',
-                'SOURCES',
-                'DEVICES',
-                'SCENARIOS',
-                'PAGES',
-                'USERS',
-            ];
-            sections.forEach(section => {
-                files.forEach(file => {
-                    if (file != 'secrets.yml') {
-                        logger.info("Loading %s from config file '%s'...", section, file)
-                        this.parseSingleFile(dir + '/' + file, configDoc, section);
-                    }
+                let sections: Section[] = [
+                    'IMPORTS',
+                    'SOURCES',
+                    'DEVICES',
+                    'SCENARIOS',
+                    'PAGES',
+                    'USERS',
+                ];
+                sections.forEach(section => {
+                    files.forEach(file => {
+                        if (file != 'secrets.yml') {
+                            logger.info("Loading %s from config file '%s'...", section, file)
+                            this.parseSingleFile(dir + '/' + file, configDoc, section);
+                        }
+                    });
                 });
-            });
-        } else {
-            logger.info("Loading config file '%s'...", fileOrDir)
-            this.parseSingleFile(fileOrDir, configDoc, 'ALL');
+            } else {
+                logger.info("Loading config file '%s'...", fileOrDir)
+                this.parseSingleFile(fileOrDir, configDoc, 'ALL');
+            }
+        } catch (e) {
+            logger.error(e);
+            return done(e);
         }
 
         if (this.devices) {
@@ -1488,14 +1493,14 @@ function actionsSection(c: Parser.Parse): any {
     return c;
 }
 
-export function loadFileSync(file: string) {
+export function loadFile(file: string, done: (err: Error, doc: ConfigLoader) => void): void {
 
     let document = new ConfigLoader();
-    document.parse(file);
+    document.parse(file, (err) => {
+        done(err, err?null:document);
+    });
     //console.log(document)
     //console.log(document.unparse());
-
-    return document;
 }
 
 //loadFileSync('./config/config.yml');
@@ -1583,15 +1588,30 @@ export function getCurrentConfig() {
     return currentConfig;
 }
 
-export function reloadConfig(file?: string): void {
+type DoneFunction = (err: Error, doc: ConfigLoader) => void;
+export function reloadConfig(done: DoneFunction): void;
+export function reloadConfig(file: string, done: DoneFunction): void;
+export function reloadConfig(arg: string | DoneFunction): void {
+    let file: string;
+    let done: (err: Error, doc: ConfigLoader) => void;
+
+    if (typeof arg == 'string') {
+        file = arg;
+        done = arguments[1];
+    } else {
+        file = null;
+        done = arguments[0];
+    }
 
     const confFile = './config/config.yml';
 
     if (!file) file = confFile;
 
-    try {
-        let doc = loadFileSync(file);
-        if (!doc) return;
+    loadFile(file, (err, doc) => {
+        if (err) {
+            logger.error('Got error loading file "%s":', file, err);
+            return done(err, null);
+        }
 
         sandbox = doc["sandbox"];
 
@@ -1605,9 +1625,8 @@ export function reloadConfig(file?: string): void {
 
         logger.info(`ConfigLoader emitted ${colors.yellow('"startup"')}`)
         doc.emit('startup');
-    } catch (e) {
-        logger.error(e.stack);
-    }
+        return done(null, doc);
+    });
 }
 
 import { IVerifyOptions } from 'passport-local';

@@ -63,7 +63,7 @@ if (!fs.existsSync(CONFIG_FILE)) {
   let port = process.env.PORT && parseInt(process.env.PORT) || 4001;
   let server = new DomojaServer(port, port == 443, port == 443);
   logger.error(__dirname);
-  server.loadConfig(CONFIG_FILE);
+  server.loadConfig(CONFIG_FILE, () => { });
 
   if (port == 443) {
     // also listen on port 80 en redirect to 443

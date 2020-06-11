@@ -355,7 +355,7 @@ export class DomojaServer {
    */
   }
 
-  loadConfig(configPath: string) {
+  loadConfig(configPath: string, done: (err: Error) => void) {
     configPath = path.normalize(configPath);
 
     if (configPath !== this.currentFile) {
@@ -380,30 +380,36 @@ export class DomojaServer {
         }
         watchTimeout = setTimeout(() => {
           watchTimeout = null;
-          this.reloadConfig();
+          this.reloadConfig(err => {});
         }, 2000);
       });
 
 
-    this.reloadConfig();
+    this.reloadConfig(done);
   }
 
-  reloadConfig() {
-    core.reloadConfig(this.currentFile);
-    let devices = core.getDevices();
-    devices.forEach(device => {
-      device.on('change', (message: core.message) => {
-        let msg: core.message = {
-          emitter: undefined,
-          id: message.emitter.path,
-          oldValue: message.oldValue,
-          newValue: message.newValue,
-          date: message.date
-        }
-        this.ws.emit('change', msg);
+  reloadConfig(done: (err : Error) => void) {
+    var runWithMocha = /.*mocha$/.test(process.argv[1]);
+    persistence.setDemoMode(runWithMocha || this.getApp().demoMode);
+    core.reloadConfig(this.currentFile, err => {
+      if (err) return done(err);
+
+      let devices = core.getDevices();
+      devices.forEach(device => {
+        device.on('change', (message: core.message) => {
+          let msg: core.message = {
+            emitter: undefined,
+            id: message.emitter.path,
+            oldValue: message.oldValue,
+            newValue: message.newValue,
+            date: message.date
+          }
+          this.ws.emit('change', msg);
+        });
       });
+      this.ws.emit('reload');  
+      done(null);
     });
-    this.ws.emit('reload');
   }
 
   close(callback?: (err: Error) => void) {

@@ -92,131 +92,141 @@ describe('Module api', function () {
 
     describe('GET /devices', function () {
         it('should return the devices', function (done) {
-            server.loadConfig('./test/load/devices/device.yml');
-            doRequest('GET', '/devices', null, (body) => {
-                //console.log(body);
-                let result = JSON.parse(body);
-                assert.notEqual(result, null);
-                assert.ok(Array.isArray(result));
-                assert.equal(result.length, 1)
-                assert.equal(result[0].id, 'id');
-                assert.equal(result[0].path, 'simple_device');
-                done();
-            }, done);
+            server.loadConfig('./test/load/devices/device.yml', err => {
+                doRequest('GET', '/devices', null, (body) => {
+                    //console.log(body);
+                    let result = JSON.parse(body);
+                    assert.notEqual(result, null);
+                    assert.ok(Array.isArray(result));
+                    assert.equal(result.length, 1)
+                    assert.equal(result[0].id, 'id');
+                    assert.equal(result[0].path, 'simple_device');
+                    done();
+                }, done);
+            });
         });
     });
     describe('GET /devices/:id', function () {
         it('should return a device', function (done) {
-            server.loadConfig('./test/load/devices/device.yml');
-            doRequest('GET', '/devices/simple_device', null, (body) => {
-                //console.log(body);
-                let result = JSON.parse(body);
-                assert.notEqual(result, null);
-                assert.equal(result.id, 'id');
-                assert.equal(result.path, 'simple_device');
-                done();
-            }, done);
+            server.loadConfig('./test/load/devices/device.yml', err => {
+                doRequest('GET', '/devices/simple_device', null, (body) => {
+                    //console.log(body);
+                    let result = JSON.parse(body);
+                    assert.notEqual(result, null);
+                    assert.equal(result.id, 'id');
+                    assert.equal(result.path, 'simple_device');
+                    done();
+                }, done);
+            });
         });
         it('should raise an exception if device not found', function (done) {
-            server.loadConfig('./test/load/devices/device.yml');
-            doRequest('GET', '/devices/unknown_device', null, (body) => {
-                //console.log(body);
-                assert.ok(body.match(/device not found/));
-                done();
-            }, done);
+            server.loadConfig('./test/load/devices/device.yml', err => {
+                doRequest('GET', '/devices/unknown_device', null, (body) => {
+                    //console.log(body);
+                    assert.ok(body.match(/device not found/));
+                    done();
+                }, done);
+            });
         });
     });
     describe('POST /devices/:id', function () {
         it('should set the state of a device', function (done) {
-            server.loadConfig('./test/load/devices/device.yml');
-            doRequest('POST', '/devices/simple_device', {
-                command: 'ON'
-            }, (body) => {
-                assert.equal(body, 'OK');
-                console.log(getCurrentConfig().getDevice('simple_device'));
-                assert.equal(getCurrentConfig().getDevice('simple_device').getState(), 'ON');
-                done();
-            }, done);
+            server.loadConfig('./test/load/devices/device.yml', err => {
+                doRequest('POST', '/devices/simple_device', {
+                    command: 'ON'
+                }, (body) => {
+                    assert.equal(body, 'OK');
+                    console.log(getCurrentConfig().getDevice('simple_device'));
+                    assert.equal(getCurrentConfig().getDevice('simple_device').getState(), 'ON');
+                    done();
+                }, done);
+            });
         });
         it('should raise an exception if cannot set the state of a device', function (done) {
-            server.loadConfig('./test/load/devices/device.yml');
-            doRequest('POST', '/devices/simple_device', {
-                command: 'ERROR'
-            }, (body) => {
-                assert.ok(body.match(/Error: ERROR value received/));
-                console.log(getCurrentConfig().getDevice('simple_device'));
-                assert.equal(getCurrentConfig().getDevice('simple_device').getState(), undefined);
-                done();
-            }, done);
+            server.loadConfig('./test/load/devices/device.yml', err => {
+                doRequest('POST', '/devices/simple_device', {
+                    command: 'ERROR'
+                }, (body) => {
+                    assert.ok(body.match(/Error: ERROR value received/));
+                    console.log(getCurrentConfig().getDevice('simple_device'));
+                    assert.equal(getCurrentConfig().getDevice('simple_device').getState(), undefined);
+                    done();
+                }, done);
+            });
         });
         it('should raise an exception if device not found', function (done) {
-            server.loadConfig('./test/load/devices/device.yml');
-            doRequest('POST', '/devices/unknown_device', {
-                command: 'ON'
-            }, (body) => {
-                //console.log(body);
-                assert.ok(body.match(/device not found/));
-                done();
-            }, done);
+            server.loadConfig('./test/load/devices/device.yml', err => {
+                doRequest('POST', '/devices/unknown_device', {
+                    command: 'ON'
+                }, (body) => {
+                    //console.log(body);
+                    assert.ok(body.match(/device not found/));
+                    done();
+                }, done);
+            });
         });
     });
     describe('GET /app', function () {
         it('should return the application', function (done) {
-            server.loadConfig('./test/load/devices/device.yml');
-            doRequest('GET', '/app/', null, (body) => {
-                let result = JSON.parse(body);
-                assert.notEqual(result, null);
-                assert.equal(result.demoMode, 0);
-                assert.equal(result.nbWebsockets, 0);
-                assert.equal(result.nbWebsocketsHTTP, 0);
-                assert.equal(result.nbDevices, 1);
-                assert.equal(result.nbSources, 0);
-                assert.equal(result.nbScenarios, 0);
-                assert.equal(result.nbPages, 0);
-                done();
-            }, done);
+            server.loadConfig('./test/load/devices/device.yml', err => {
+                doRequest('GET', '/app/', null, (body) => {
+                    let result = JSON.parse(body);
+                    assert.notEqual(result, null);
+                    assert.equal(result.demoMode, 0);
+                    assert.equal(result.nbWebsockets, 0);
+                    assert.equal(result.nbWebsocketsHTTP, 0);
+                    assert.equal(result.nbDevices, 1);
+                    assert.equal(result.nbSources, 0);
+                    assert.equal(result.nbScenarios, 0);
+                    assert.equal(result.nbPages, 0);
+                    done();
+                }, done);
+            });
         });
     });
     describe('POST /app/demo-mode', function () {
         it('should switch to demo-mode and vice-versa', function (done) {
             this.timeout(120000);
-            server.loadConfig('./test/load/devices/device.yml');
-            doRequest('POST', '/app/demo-mode', { value: true }, (body) => {
-                console.error(body);
-                assert.equal(body, "OK");
-                assert.equal(server.getApp().demoMode, true);
-                doRequest('POST', '/app/demo-mode', { value: false }, (body) => {
+            server.loadConfig('./test/load/devices/device.yml', err => {
+                doRequest('POST', '/app/demo-mode', { value: true }, (body) => {
                     console.error(body);
                     assert.equal(body, "OK");
-                    assert.equal(server.getApp().demoMode, false);
-                    done();
+                    assert.equal(server.getApp().demoMode, true);
+                    doRequest('POST', '/app/demo-mode', { value: false }, (body) => {
+                        console.error(body);
+                        assert.equal(body, "OK");
+                        assert.equal(server.getApp().demoMode, false);
+                        done();
+                    }, done);
                 }, done);
-            }, done);
+            });
         });
     });
     describe('GET /pages', function () {
         it('should return [] when no page exists', function (done) {
-            server.loadConfig('./test/load/devices/device.yml');
-            doRequest('GET', '/pages/', null, (body) => {
-                let result = JSON.parse(body);
-                assert.notEqual(result, null);
-                assert.ok(Array.isArray(result));
-                assert.equal(result.length, 0);
-                done();
-            }, done);
+            server.loadConfig('./test/load/devices/device.yml', err => {
+                doRequest('GET', '/pages/', null, (body) => {
+                    let result = JSON.parse(body);
+                    assert.notEqual(result, null);
+                    assert.ok(Array.isArray(result));
+                    assert.equal(result.length, 0);
+                    done();
+                }, done);
+            });
         });
         it('should return an array of pages', function (done) {
-            server.loadConfig('./test/load/pages.yml');
-            doRequest('GET', '/pages/', null, (body) => {
-                //console.log(body);
-                let result = JSON.parse(body);
-                assert.notEqual(result, null);
-                assert.ok(Array.isArray(result));
-                assert.equal(result.length, 1);
-                assert.equal(result[0].name, 'About');
-                assert.equal(result[0].menuItem, 'A propos');
-                done();
-            }, done);
+            server.loadConfig('./test/load/pages.yml', err => {
+                doRequest('GET', '/pages/', null, (body) => {
+                    //console.log(body);
+                    let result = JSON.parse(body);
+                    assert.notEqual(result, null);
+                    assert.ok(Array.isArray(result));
+                    assert.equal(result.length, 1);
+                    assert.equal(result[0].name, 'About');
+                    assert.equal(result[0].menuItem, 'A propos');
+                    done();
+                }, done);
+            });
         });
     });
     describe('/api-docs', function () {
