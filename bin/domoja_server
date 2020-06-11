@@ -85,7 +85,13 @@ main=$(awk -F\" '$2 == "main" { print $4}' package.json)
 
 case "$main" in 
 domoja.ts)
-	PORT=443 authbind --deep ts-node domoja.ts ./config
+	if [ "$1" = "-d" ]
+	then
+#		PORT=443 authbind --deep node --inspect=0.0.0.0 --require ts-node/register --require tsconfig-paths/register domoja.ts ./config
+		PORT=443 authbind --deep nodemon --ext ts --watch . --ignore node_modules,www --exec node --inspect=0.0.0.0 --require ts-node/register domoja.ts ./config
+	else
+		PORT=443 authbind --deep ts-node domoja.ts ./config
+	fi
 	;;
 *domoja.js)
 	PORT=443 authbind --deep node dist/domoja.js ./config
