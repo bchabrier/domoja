@@ -252,7 +252,7 @@ export abstract class GenericDevice implements DomoModule {
                     this.state = (val instanceof Date) ? val.toString() : val;
                 }
             }
-            logger.warn(`device ${this.path} state restored to ${this.state}`);
+            logger.debug(`device ${this.path} state restored to ${this.state}`);
             callback(err, !err);
         });
     }
@@ -262,7 +262,7 @@ export abstract class GenericDevice implements DomoModule {
             if (err) {
                 logger.error(`Could not backup state of device "${this.path}":`, err);
             }
-            logger.warn(`device ${this.path} state backed up: ${this.state}`);
+            logger.debug(`device ${this.path} state backed up: ${this.state}`);
             callback(err, !err);
         });
     }
