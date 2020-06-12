@@ -471,7 +471,7 @@ export class ConfigLoader extends events.EventEmitter {
                 */
                 return self.vm.run(script);
             } catch (err) {
-                logger.error("%s: %s while executing script '%s'.", err.name, err.message, fct);
+                logger.error("Error while executing script '%s':", fct, err);
 
                 // find the error location
                 let location = /.*[ :]([0-9]+):([0-9]+)/.exec(err.stack)
