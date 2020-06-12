@@ -23,12 +23,15 @@ export class persistence {
     ttl: number;
     strategy: Strategy;
     keep: number;
+
     constructor(id: string, ttl?: number, strategy?: Strategy, keep?: number) {
+
         this.strategy = strategy || "raw";
         this.id = id;
         this.ttl = ttl > 0 ? ttl : 1 * 60; // 1h by default
         this.keep = keep || 5 * 365 * 24 * 60; // 5 years by default
     }
+
     insert(record: Object, callback: (err: Error, doc: Object) => void): void {
         if (demoMode) return callback(null, undefined);
         MongoClient.connect('mongodb://127.0.0.1:27017/domoja', (err, client) => {
@@ -47,26 +50,15 @@ export class persistence {
                 if (err != null) {
                     logger.error("Error while storing in Mongo:", err)
                     logger.error(err.stack)
-                    callback(err, null);
                 }
                 // Let's close the db
                 client.close();
-                /*
-                 * collection.count(function(err, count) { if (err != null) {
-                 * logger.error(err); logger.error(err.stack); }
-                 * logger.trace(format("%s (%s) count = %s", id, name, count)); //
-                 * Locate all the entries using find
-                 * collection.find().toArray(function(err, results) { if (err !=
-                 * null) { logger.error(err); logger.error(err.stack); } else {
-                 * logger.trace(results.length); // Let's close the db
-                 * db.close(); } }); });
-                 */
                 callback(null, record);
             });
         });
     }
 
-    getLastFromDB(callback: (err: Error, result: Object) => void): void {
+    restoreStateFromDB(callback: (err: Error, result: { id: string, state: string | Date, date: Date }) => void): void {
         if (demoMode) return callback(null, undefined);
         MongoClient.connect('mongodb://127.0.0.1:27017/domoja', (err, client) => {
             if (err != null) {
@@ -76,17 +68,50 @@ export class persistence {
                 return;
             }
             var db = client.db();
-            var collectionName = this.id;
-            var collection = db.collection(collectionName);
-            // Locate all the entries using find
-            collection.find().sort({
-                //date: -1
-                $natural: -1
-            }).limit(1).toArray((err, results) => {
-                let result = err ? undefined : results[0];
-                console.log(this.id);
-                callback(err, result);
-            });
+            var collection = db.collection('Backup states');
+            let result = collection.findOne(
+                { 'id': this.id },
+                (err, result) => {
+                    // Let's close the db
+                    client.close();
+                    callback(err, result);
+                }
+            );
         });
     };
+
+    backupStateToDB(state: string | Date, callback: (err: Error) => void): void {
+        if (demoMode) return callback(null);
+        MongoClient.connect('mongodb://127.0.0.1:27017/domoja', (err, client) => {
+            if (err != null) {
+                logger.error("Cannot connect to Mongo:", err);
+                logger.error(err.stack);
+                callback(err);
+                return;
+            }
+            var db = client.db();
+            var collection = db.collection('Backup states');
+
+            let error: Error;
+            try {
+                let result = collection.findOneAndReplace(
+                    {
+                        'id': this.id
+                    },
+                    {
+                        'id': this.id,
+                        state: state,
+                        date: new Date()
+                    },
+                    { upsert: true }
+                );
+            } catch (e) {
+                error = e;
+            }
+            // Let's close the db
+            client.close();
+            callback(error);
+        });
+    };
+
 }

@@ -5,6 +5,7 @@ import { InitObject, Parameters, DomoModule } from '../lib/module';
 import { ConfigLoader, getSource, getCurrentConfig } from '../lib/load';
 import * as events from 'events';
 import * as persistence from '../persistence/persistence';
+import * as async from 'async';
 
 //import secrets = require("../secrets");
 //const PushBullet = require('pushbullet');
@@ -85,6 +86,10 @@ function mappingFunction(mapping: string): TransformFunction {
     });
 }
 
+let allDevices: GenericDevice[] = [];
+
+let backupJob: NodeJS.Timeout;
+
 export abstract class GenericDevice implements DomoModule {
     [x: string]: any;
     name: string;
@@ -149,8 +154,24 @@ export abstract class GenericDevice implements DomoModule {
         } else {
             this.persistence = new persistence.persistence(this.path);
         }
-        
+
         this.source.addDevice(this);
+        allDevices.push(this);
+        if (!backupJob) backupJob = setInterval(() => {
+            async.reject(allDevices, (device, callback) => {
+                device.backupStateToDB((err) => {
+                    callback(null, !err);
+                });
+            }, (err, results) => {
+                if (err) {
+                    logger.error('Something happened while backing up all devices states:', err)
+                }
+                if (results.length > 0) {
+                    logger.debug(`Some devices could not backup their state, ${results.length} failed: ${results.join(", ")}`);
+                }
+            });
+        }, 60 * 1000);
+
 
 
         this.on("change", (msg) => {
@@ -172,6 +193,13 @@ export abstract class GenericDevice implements DomoModule {
                 }, (err: Error, docs: message[]) => {
                     if (err != null) {
                         logger.error("Error while storing in %s: ", this.persistence.id, err)
+                        logger.error(err.stack)
+                    }
+                });
+
+                this.persistence.backupStateToDB(this.state, (err: Error) => {
+                    if (err != null) {
+                        logger.error("Error while backing up %s: ", this.persistence.id, err)
                         logger.error(err.stack)
                     }
                 });
@@ -215,12 +243,13 @@ export abstract class GenericDevice implements DomoModule {
     }
 
     restoreStateFromDB(callback: (err: Error, success: boolean) => void) {
-        this.getLastValueFromDB((err, value) => {
+        this.persistence.restoreStateFromDB((err, value) => {
             if (err) {
                 logger.error(`Could not retrieve last persisted value for device "${this.path}":`, err);
             } else {
                 if (!this.stateHasBeenSet) {
-                    this.state = (value instanceof Date) ? value.toString() : value;
+                    let val = value ? value.state : undefined;
+                    this.state = (val instanceof Date) ? val.toString() : val;
                 }
             }
             logger.warn(`device ${this.path} state restored to ${this.state}`);
@@ -228,33 +257,24 @@ export abstract class GenericDevice implements DomoModule {
         });
     }
 
-    getLastValueFromDB(callback: (err: Error, value: string | Date) => void) {
-        if (this.persistence) {
-            this.persistence.getLastFromDB((err: Error, result: message) => {
-                if (err != null) {
-                    logger.error(err);
-                    logger.error(err.stack);
-                    callback(err, undefined);
-                } else {
-                    if (result) {
-                        if (result.date && result.date.getTime() + this.persistence.ttl * 60 * 1000 < new Date().getTime()) {
-                            logger.warn(`Got result (state=${result.state}) but obsolete: ${result.date} older than ${this.persistence.ttl} mn`);
-                            result.state = undefined;
-                        }
-                        callback(null, result.state);
-                    } else {
-                        callback(null, undefined);
-                    }
-                }
-            });
-        } else {
-            callback(null, undefined);
-        }
+    backupStateToDB(callback: (err: Error, success: boolean) => void) {
+        this.persistence.backupStateToDB(this.state, (err) => {
+            if (err) {
+                logger.error(`Could not backup state of device "${this.path}":`, err);
+            }
+            logger.warn(`device ${this.path} state backed up: ${this.state}`);
+            callback(err, !err);
+        });
     }
 
     abstract createInstance(configLoader: ConfigLoader, instanceFullname: string, initObject: InitObject): DomoModule;
 
     release(): void {
+        allDevices.splice(allDevices.indexOf(this), 1);
+        if (allDevices.length == 0) {
+            clearInterval(backupJob);
+            backupJob = null;
+        }
         if (this.source) {
             this.source.releaseDevice(this);
         }
