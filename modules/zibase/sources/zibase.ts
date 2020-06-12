@@ -18,9 +18,8 @@ export class Zibase extends Source {
 		this.zibase = new ZiBase(ipAddr, deviceId, token, callback);
 
 		// let's intercept the ZiBase's emitEvent to catch all change events
-		let self = this;
 		this.initialEmitEvent = (this.zibase as any).emitEvent;
-		(this.zibase as any).emitEvent = function (event: string, arg1: any, arg2: any) {
+		(this.zibase as any).emitEvent =  (event: string, arg1: any, arg2: any) => {
 			if (arg2) {
 				var id = arg1;
 				var arg = arg2;
@@ -28,15 +27,15 @@ export class Zibase extends Source {
 					Object.keys(arg).forEach(k => {
 						if (k != "emitter") {
 							//if (k == 'value') self.setAttribute(id, arg[k]);
-							self.updateAttribute(id, (k == 'value') ? 'state' : k, arg[k], new Date);
+							this.updateAttribute(id, (k == 'value') ? 'state' : k, arg[k], new Date);
 						}
-					})
+					});
 				}
-				self.zibase && this.initialEmitEvent && this.initialEmitEvent.call(self.zibase, event + ":" + id, arg);
-				self.zibase || logger.error('self.zibase is null!', event + ":" + id, arg, new Error)
+				this.zibase && this.initialEmitEvent && this.initialEmitEvent.call(this.zibase, event + ":" + id, arg);
+				this.zibase || logger.error('self.zibase is null!', event + ":" + id, arg, new Error)
 			} else {
-				self.zibase && this.initialEmitEvent && this.initialEmitEvent.call(self.zibase, event, arg1);
-				self.zibase || logger.error('self.zibase is null!', event, arg1, new Error)
+				this.zibase && this.initialEmitEvent && this.initialEmitEvent.call(this.zibase, event, arg1);
+				this.zibase || logger.error('self.zibase is null!', event, arg1, new Error)
 			}
 		};
 
