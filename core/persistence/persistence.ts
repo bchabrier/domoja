@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import { MongoClient } from 'mongodb';
 import { message } from '../sources/source';
+import { stringify } from 'querystring';
 
 const logger = require("tracer").colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -17,6 +18,8 @@ export function setDemoMode(mode: boolean) {
 }
 
 type Strategy = "raw" | "aggregate";
+
+declare function emit(k: any, v: any): void;
 
 export class persistence {
     id: string;
@@ -113,5 +116,75 @@ export class persistence {
             callback(error);
         });
     };
+
+
+    getHistory(aggregate: "none" | "minute" | "hour" | "day" | "week" | "month" | "year", from: Date, to: Date, callback: (err: Error, results: any[]) => void) {
+        if (demoMode) return callback(null, []);
+        MongoClient.connect('mongodb://127.0.0.1:27017/domoja', (err, client) => {
+            if (err != null) {
+                logger.error("Cannot connect to Mongo:", err);
+                logger.error(err.stack);
+                callback(err, undefined);
+                return;
+            }
+            var db = client.db();
+            var collection = db.collection(this.id);
+            let filter = "";
+            switch (aggregate) {
+                case "none":
+                    collection.find(
+                        {
+                            'date': { $gte: from, $lte: to },
+                            'state': { $ne: null }, // avoid if no state defined
+                        },
+                        {
+                            'projection': { '_id': 0, 'date': 1, 'state': 1 }
+                        }
+                    ).toArray((err, results) => {
+                        // Let's close the db
+                        client.close();
+                        callback(err, results);
+                    });
+                    break;
+                case "year":
+                    filter += "d.setMonth(0);"
+                case "month":
+                    filter += "d.setDate(1);"
+                case "day":
+                    filter += "d.setHours(0);"
+                case "hour":
+                    filter += "d.setMinutes(0);"
+                case "minute":
+                    filter += "d.setMilliseconds(0);"
+                    console.log(from, to)
+                    collection.mapReduce(
+                        "function () {\
+                            var d = this.date;\
+                            d.setSeconds(0);\
+                            d.setMilliseconds(0);"
+                            + filter + 
+                            "this.state && emit(d, parseFloat(this.state)); /* avoid if no state defined */ \
+                        }",
+                        "function (key, values) {\
+                            return Array.sum(values) / values.length;\
+                        }",
+                        {
+                            query: {
+                                'date': { $gte: from, $lte: to }
+                            },
+                            out: { inline: 1 },
+                        },
+                        (err, results) => {
+                            // Let's close the db
+                            client.close();
+                            console.log(results && results[0]);
+                            console.log(results && results[0] && new Date(results[0]._id).toLocaleDateString());
+                            callback(err, results.map((r: {_id: string, value: any}) => {return {"date": r._id, "value": r.value}}));
+                        });
+                    break;
+
+            }
+        });
+    }
 
 }
