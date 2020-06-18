@@ -1,4 +1,4 @@
-import { Errors, Path, PreProcessor, GET, POST, PathParam, FormParam, ContextResponse, Return } from 'typescript-rest';
+import { Errors, Path, PreProcessor, GET, POST, PathParam, FormParam, QueryParam, ContextResponse, Return } from 'typescript-rest';
 import * as express from 'express';
 import * as net from 'net';
 import * as http from 'http';
@@ -134,5 +134,46 @@ export class DevicesService {
     let camera = device as core.camera;
     return this.doGet(camera.getStream, device, res, req);
   }
+
+  /**
+   * Get the history of a device
+   * @param name path of the device
+   * @param aggregate type of aggregation: none|minute|hour|day|week|month|year
+   * @param from from date, in YYYY-MM-DD or JSON formats, included
+   * @param to from date, in YYYY-MM-DD or JSON formats, included
+   */
+  @Path(':id/history')
+  @GET
+  @PreProcessor(deviceIdValidator)
+  getHistory(@PathParam('id') name: string, @QueryParam('aggregate') aggregate: "none" | "minute" | "hour" | "day" | "week" | "month" | "year", @QueryParam('from') from: string, @QueryParam('to') to: string) {
+    let device = core.getDevices().find(device => device.path == name);
+    return new Promise<{}>((resolve, reject) => {
+      let fromDate: Date;
+      let toDate: Date;
+      if (!from) {
+        fromDate = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), 0, 0, 0, 0);
+      } else if (from.match(/^\d\d\d\d-\d\d-\d\d$/)) {
+        fromDate = new Date(parseInt(from.substr(0, 4)), parseInt(from.substr(5, 2)), parseInt(from.substr(8, 2)), 0, 0, 0, 0);
+      } else {
+        fromDate = new Date(from);
+      }
+      if (!to) {
+        toDate = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), 23, 59, 59, 999);
+      } else if (to.match(/^\d\d\d\d-\d\d-\d\d$/)) {
+        toDate = new Date(parseInt(to.substr(0, 4)), parseInt(to.substr(5, 2)), parseInt(to.substr(8, 2)), 23, 59, 59, 999);
+      } else {
+        toDate = new Date(to);
+      }
+      device.persistence.getHistory(aggregate, fromDate, toDate, (err, results) => {
+        if (err) {
+          console.log(err);
+          reject("KO");
+        } else {
+          resolve(results);
+        }
+      });
+    });
+  }
+
 }
 
