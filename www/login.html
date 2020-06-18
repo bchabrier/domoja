@@ -189,7 +189,7 @@
                   <div class="button-effect"></div>
                 </ion-item>
                 <button onclick="doLogin()" block="" ion-button="" ng-reflect-block="" class="button button-md button-default button-default-md button-block button-block-md"><span
-                    class="button-inner">Login</span>
+                    class="button-inner"><img id=spinner style="display:none;" src="/assets/imgs/LoadingBasketContents.gif" width=15px>Login</span>
                   <div class="button-effect"></div>
                 </button>
               </ion-list>
@@ -202,6 +202,31 @@
   </ion-app>
 
   <script language="javascript">
+    if (false) {
+      console.log = function () {
+        for (var i in arguments) {
+          if (typeof arguments[i] == 'string') {
+            nmax = 2000;
+            alert(arguments[i].substring(0, nmax));
+            if (arguments[i].length > nmax) {
+              console.log(arguments[i].substring(nmax))
+            }
+          } else {
+            var output = '';
+            var tab = [];
+            for (var property in arguments[i]) {
+              tab.push(property);
+            }
+            tab.sort();
+            tab.forEach(property => {
+              output += property + ': ' + arguments[i][property] + '\n';
+            });
+            console.log(output);
+          }
+        }
+      }
+    }
+
     function doLogin() {
       var XHR = new XMLHttpRequest();
       var data = "username=" + getInputField("username").value
@@ -213,6 +238,7 @@
         console.log(this);
         if (this.responseText.match(/\/login\.html/)) {
           console.log('XHR response to /login.html contains ref to /login.html, wrong authentication?');
+          document.getElementById('spinner').style.display = "none";
           var error = document.getElementsByClassName("error")[0];
           error.innerHTML = "Identification erronée";
           setTimeout(() => { error.innerHTML = "&nbsp;" }, 2000);
@@ -221,7 +247,11 @@
           window.location.href = '/';
         }
       }
-      DomojaURL = document.cookie.replace(/.*DomojaURL=([^;]*);.*/, '$1');
+      document.cookie = "DomojaURL=https://domo.bchabrier.com";
+      console.log(document.cookie);
+      DomojaURL = document.cookie.replace(/.*DomojaURL=([^;]*);?.*/, '$1');
+      console.log(DomojaURL + '/login.html');
+      document.getElementById('spinner').style.display = "inline";
       XHR.open('POST', DomojaURL + '/login.html');
       XHR.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
       XHR.send(data);
