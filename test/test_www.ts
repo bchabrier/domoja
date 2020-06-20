@@ -60,7 +60,8 @@ describe('Repository www', function () {
             "/login.html",
             "/build/main.css",
             "/assets/fonts/.*",
-            "/assets/favicon/.*"
+            "/assets/favicon/.*",
+            "/assets/imgs/LoadingBasketContents.gif"
         ];
 
         runTest('/', 302);
