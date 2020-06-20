@@ -219,7 +219,7 @@ export function ensureAuthenticated(req: express.Request, res: express.Response,
     logger.debug('req.isAuthenticated():', req.isAuthenticated());
     logger.debug('req.session:', (<any>req).session);
   }
-  ensureLogin.ensureLoggedIn(_loginPath)(req, res, function (err: Error): void {
+  ensureLogin.ensureLoggedIn(_loginPath)(req, res, function (err: any): void {
     logger.debug('not redirected to login.html!');
     if (!req.isAuthenticated()) {
       logger.error('Assertion failed: user is NOT authenticated!');
@@ -272,7 +272,7 @@ export function socketIoAuthorize(): (socket: socketio.Socket, next: (err?: any)
     let req = socket.request as express.Request;
     let response: express.Response;
 
-    passport.initialize()(req, response, (err?) => {
+    passport.initialize()(req, response, (err?: any) => {
       authenticateBasicAndApiKey(req, response, (err?) => {
         if (req.isAuthenticated()) return next();
         return passportSocketIo.authorize({

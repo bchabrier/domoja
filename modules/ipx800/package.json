@@ -29,8 +29,9 @@
     "tracer": "^1.0.1"
   },
   "devDependencies": {
+    "@types/node": "^14.0.13",
     "@types/request": "^2.47.1",
-    "mocha": "^7.1.1",
+    "mocha": "^8.0.1",
     "nyc": "^15.0.1",
     "ts-mocha": "^7.0.0",
     "typescript": "^3.8.3"
