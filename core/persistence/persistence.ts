@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import { MongoClient } from 'mongodb';
 import { message } from '../sources/source';
-import { stringify } from 'querystring';
+import * as async from 'async';
 
 const logger = require("tracer").colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -19,7 +19,7 @@ export function setDemoMode(mode: boolean) {
 
 type Strategy = "raw" | "aggregate";
 
-declare function emit(k: any, v: any): void;
+type AggregationType = "none" | "minute" | "hour" | "day" | "week" | "month" | "year";
 
 export class persistence {
     id: string;
@@ -35,9 +35,9 @@ export class persistence {
         this.keep = keep || 5 * 365 * 24 * 60; // 5 years by default
     }
 
-    insert(record: Object, callback: (err: Error, doc: Object) => void): void {
+    insert(record: { date: Date, state: any }, callback: (err: Error, doc: Object) => void): void {
         if (demoMode) return callback(null, undefined);
-        MongoClient.connect('mongodb://127.0.0.1:27017/domoja', (err, client) => {
+        MongoClient.connect('mongodb://127.0.0.1:27017/domoja', { poolSize: 10 }, (err, client) => {
             if (err) { logger.error("error:", err, err.stack); return }
             if (err != null) {
                 logger.error("Cannot connect to Mongo:", err);
@@ -48,16 +48,57 @@ export class persistence {
             logger.trace("inserting in Mongo...")
             var db = client.db();
             var collection = this.id;
-            var collectionStore = db.collection(collection);
-            collectionStore.insertOne(record, (err, doc) => {
-                if (err != null) {
-                    logger.error("Error while storing in Mongo:", err)
-                    logger.error(err.stack)
-                }
-                // Let's close the db
-                client.close();
-                callback(null, record);
-            });
+            async.every(!isNaN(parseFloat(record.state)) ? ["year", "month", "day", "hour", "minute", "none"] : ["none"],
+                (aggregate, callback) => {
+                    if (aggregate == "none") {
+                        var collectionStore = db.collection(collection);
+                        collectionStore.insertOne(record, (err, result) => {
+                            if (err != null) {
+                                logger.error("Error while storing in Mongo:", err)
+                                logger.error(err.stack)
+                            }
+                            callback(err);
+                        });
+                    } else {
+                        let d = new Date(record.date);
+                        switch (aggregate) {
+                            case "year":
+                                d.setMonth(0);
+                            case "month":
+                                d.setDate(1);
+                            case "day":
+                                d.setHours(0);
+                            case "hour":
+                                d.setMinutes(0);
+                            case "minute":
+                                d.setSeconds(0);
+                                d.setMilliseconds(0);
+                        }
+                        var collectionStore = db.collection(collection + " by " + aggregate);
+                        collectionStore.updateOne(
+                            {
+                                date: d
+                            },
+                            {
+                                $inc: { sum: parseFloat(record.state), count: 1 }
+                            },
+                            {
+                                upsert: true
+                            },
+                            (err, result) => {
+                                if (err != null) {
+                                    logger.error("Error while storing in Mongo:", err)
+                                }
+                                console.log(err, collection + " by " + aggregate);
+                                callback(err);
+                            });
+                    }
+                },
+                (err) => {
+                    // Let's close the db
+                    client.close();
+                    callback(err, record);
+                });
         });
     }
 
@@ -118,7 +159,40 @@ export class persistence {
     };
 
 
-    getHistory(aggregate: "none" | "minute" | "hour" | "day" | "week" | "month" | "year", from: Date, to: Date, callback: (err: Error, results: any[]) => void) {
+    getHistory(aggregate: AggregationType, from: Date, to: Date, callback: (err: Error, results: any[]) => void) {
+        if (demoMode) return callback(null, []);
+        MongoClient.connect('mongodb://127.0.0.1:27017/domoja', { poolSize: 10 }, (err, client) => {
+            if (err != null) {
+                logger.error("Cannot connect to Mongo:", err);
+                logger.error(err.stack);
+                callback(err, undefined);
+                return;
+            }
+            var db = client.db();
+            var collection = this.id;
+            if (aggregate != "none") {
+                collection += " by " + aggregate;
+            } else {
+
+            }
+            let collectionStore = db.collection(collection);
+            collectionStore.find(
+                /* {
+                     //'date': { $gte: from, $lte: to },
+                 },
+                 {
+                     'projection': { '_id': 0, 'date': 1, 'count': 1, 'state': 1 }
+                 }*/
+            ).toArray((err, results) => {
+                console.log('find:', err, collection, results && results.length);
+                // Let's close the db
+                client.close();
+                callback(err, results.map(r => { return { date: r.date, value: r.sum / r.count } }));
+            });
+        });
+    }
+
+    getHistory2(aggregate: AggregationType, from: Date, to: Date, callback: (err: Error, results: any[]) => void) {
         if (demoMode) return callback(null, []);
         MongoClient.connect('mongodb://127.0.0.1:27017/domoja', (err, client) => {
             if (err != null) {
@@ -162,8 +236,8 @@ export class persistence {
                             var d = this.date;\
                             d.setSeconds(0);\
                             d.setMilliseconds(0);"
-                            + filter + 
-                            "this.state && emit(d, parseFloat(this.state)); /* avoid if no state defined */ \
+                        + filter +
+                        "this.state && emit(d, parseFloat(this.state)); /* avoid if no state defined */ \
                         }",
                         "function (key, values) {\
                             return Array.sum(values) / values.length;\
@@ -179,12 +253,13 @@ export class persistence {
                             client.close();
                             console.log(results && results[0]);
                             console.log(results && results[0] && new Date(results[0]._id).toLocaleDateString());
-                            callback(err, results.map((r: {_id: string, value: any}) => {return {"date": r._id, "value": r.value}}));
+                            callback(err, results.map((r: { _id: string, value: any }) => { return { "date": r._id, "value": r.value } }));
                         });
                     break;
 
             }
         });
     }
+
 
 }
