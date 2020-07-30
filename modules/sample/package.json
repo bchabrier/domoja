@@ -24,7 +24,7 @@
   },
   "homepage": "https://github.com/bchabrier/domoja/modules/sample#readme",
   "dependencies": {
-    "tracer": "^1.0.1"
+    "tracer": "^1.1.2"
   },
   "devDependencies": {
     "@types/node": "^14.0.13",

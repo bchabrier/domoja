@@ -33,7 +33,7 @@
     "passport.socketio": "^3.7.0",
     "request": "^2.87.0",
     "shitty-peg": "0.0.5",
-    "tracer": "^1.0.2",
+    "tracer": "^1.1.2",
     "vm2": "^3.6.2"
   },
   "devDependencies": {
