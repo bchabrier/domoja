@@ -100,7 +100,7 @@ export abstract class GenericDevice implements DomoModule {
     type: DeviceType;
     widget: WidgetType;
     state: string;
-    persistence: persistence.persistence;
+    persistence: persistence.mongoDB;
     lastUpdateDate: Date;
     tags: string;
 
@@ -150,9 +150,9 @@ export abstract class GenericDevice implements DomoModule {
         let persistence_spec = initObject && initObject.persistence;
         if (persistence_spec) {
             let pspec = persistence_spec.split(":");
-            this.persistence = new persistence.persistence(pspec[1], pspec[2], pspec[3], pspec[4]);
+            this.persistence = new persistence.mongoDB(pspec[1], pspec[2], pspec[3], pspec[4]);
         } else {
-            this.persistence = new persistence.persistence(this.path);
+            this.persistence = new persistence.mongoDB(this.path);
         }
 
         this.source.addDevice(this);
@@ -278,6 +278,7 @@ export abstract class GenericDevice implements DomoModule {
         if (this.source) {
             this.source.releaseDevice(this);
         }
+        this.persistence.release();
         this.persistence = null;
     }
 
