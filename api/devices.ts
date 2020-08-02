@@ -145,7 +145,7 @@ export class DevicesService {
   @Path(':id/history')
   @GET
   @PreProcessor(deviceIdValidator)
-  getHistory(@PathParam('id') name: string, @QueryParam('aggregate') aggregate: "none" | "minute" | "hour" | "day" | "week" | "month" | "year", @QueryParam('from') from: string, @QueryParam('to') to: string) {
+  getHistory(@PathParam('id') name: string, @QueryParam('aggregate') aggregate: "none" | "minute" | "hour" | "day" | "month" | "year", @QueryParam('from') from: string, @QueryParam('to') to: string) {
     let device = core.getDevices().find(device => device.path == name);
     return new Promise<{}>((resolve, reject) => {
       let fromDate: Date;
