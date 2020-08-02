@@ -14,42 +14,109 @@ let demoMode: boolean = false;
 
 export function setDemoMode(mode: boolean) {
     demoMode = mode;
-    console.log('demoMode set to', demoMode);
 }
 
 type Strategy = "raw" | "aggregate";
 
-type AggregationType = "none" | "minute" | "hour" | "day" | "week" | "month" | "year";
+const ALL_AGGREGATION_TYPES = ["year", "month", "day", "hour", "minute", "none"] as const;
+type AggregationType = (typeof ALL_AGGREGATION_TYPES)[number];
 
-export class persistence {
+export abstract class persistence {
     id: string;
     ttl: number;
     strategy: Strategy;
     keep: number;
+    cleanJob: NodeJS.Timeout;
 
     constructor(id: string, ttl?: number, strategy?: Strategy, keep?: number) {
-
         this.strategy = strategy || "raw";
         this.id = id;
         this.ttl = ttl > 0 ? ttl : 1 * 60; // 1h by default
         this.keep = keep || 5 * 365 * 24 * 60; // 5 years by default
-    }
 
+        this.cleanJob = setInterval(() => {
+            this.cleanOldData((err) => {
+                if (err) logger.warn('Could not clean history of "%s":', this.id, err);
+            });
+        }, 24 * 60 * 60 * 1000);
+
+    }
     insert(record: { date: Date, state: any }, callback: (err: Error, doc: Object) => void): void {
         if (demoMode) return callback(null, undefined);
-        MongoClient.connect('mongodb://127.0.0.1:27017/domoja', { poolSize: 10 }, (err, client) => {
-            if (err) { logger.error("error:", err, err.stack); return }
-            if (err != null) {
-                logger.error("Cannot connect to Mongo:", err);
-                logger.error(err.stack);
-                callback(err, null);
+        this.doInsert(record, callback);
+    }
+    getHistory(aggregate: AggregationType, from: Date, to: Date, callback: (err: Error, results: any[]) => void): void {
+        if (demoMode) return callback(null, []);
+        this.doGetHistory(aggregate, from, to, callback);
+    }
+    restoreStateFromDB(callback: (err: Error, result: { id: string, state: string | Date, date: Date }) => void): void {
+        if (demoMode) return callback(null, undefined);
+        this.doRestoreStateFromDB(callback);
+    }
+    backupStateToDB(state: string | Date, callback: (err: Error) => void): void {
+        if (demoMode) return callback(null);
+        this.doBackupStateToDB(state, callback);
+    }
+    cleanOldData(callback: (err: Error) => void): void {
+        if (demoMode) return callback(null);
+        this.doCleanOldData(callback);
+    }
+    abstract doInsert(record: { date: Date, state: any }, callback: (err: Error, doc: Object) => void): void;
+    abstract doGetHistory(aggregate: AggregationType, from: Date, to: Date, callback: (err: Error, results: any[]) => void): void;
+    abstract doRestoreStateFromDB(callback: (err: Error, result: { id: string, state: string | Date, date: Date }) => void): void;
+    abstract doBackupStateToDB(state: string | Date, callback: (err: Error) => void): void;
+    abstract doCleanOldData(callback: (err: Error) => void): void;
+    release() {
+        clearInterval(this.cleanJob);
+        this.cleanJob = null;
+    }
+}
+
+export class mongoDB extends persistence {
+    static mongoClient: MongoClient;
+    static connecting: boolean = false;
+
+    constructor(id: string, ttl?: number, strategy?: Strategy, keep?: number) {
+        super(id, ttl, strategy, keep);
+    }
+
+    private getMongoClient(callback: (err: Error, client: MongoClient) => void): void {
+        if (mongoDB.mongoClient && mongoDB.mongoClient.isConnected()) {
+            callback(null, mongoDB.mongoClient);
+        } else {
+            if (mongoDB.connecting) {
+                setTimeout(() => this.getMongoClient(callback), 1000);
                 return;
+            } else {
+                mongoDB.connecting = true;
             }
+            mongoDB.mongoClient && mongoDB.mongoClient.close();
+            MongoClient.connect('mongodb://127.0.0.1:27017/domoja', { poolSize: 10 }, (err, client) => {
+                if (err) {
+                    logger.error("Cannot (re)connect to Mongo:", err);
+                    callback(err, null);
+                    return;
+                }
+                if (mongoDB.mongoClient) {
+                    logger.warn('Connection to mongodb was lost! Successfully reconnected...')
+                } else {
+                    logger.info('Successfully connected to mongodb!')
+                }
+                mongoDB.mongoClient = client;
+                mongoDB.connecting = false;
+                if (!mongoDB.mongoClient.isConnected()) logger.error('Strange, juste (re)connected mongo client is not connected!!!');
+                callback(null, client);
+            });
+        }
+    }
+
+    doInsert(record: { date: Date, state: any }, callback: (err: Error, doc: Object) => void): void {
+        this.getMongoClient((err, client) => {
             logger.trace("inserting in Mongo...")
             var db = client.db();
             var collection = this.id;
-            async.every(!isNaN(parseFloat(record.state)) ? ["year", "month", "day", "hour", "minute", "none"] : ["none"],
-                (aggregate, callback) => {
+            async.every(!isNaN(parseFloat(record.state)) ? ALL_AGGREGATION_TYPES.values() : ["none"],
+                (aggregate: AggregationType, callback) => {
                     if (aggregate == "none") {
                         var collectionStore = db.collection(collection);
                         collectionStore.insertOne(record, (err, result) => {
@@ -73,6 +140,9 @@ export class persistence {
                             case "minute":
                                 d.setSeconds(0);
                                 d.setMilliseconds(0);
+                                break;
+                            default:
+                                let n: never = aggregate;
                         }
                         var collectionStore = db.collection(collection + " by " + aggregate);
                         collectionStore.updateOne(
@@ -89,50 +159,31 @@ export class persistence {
                                 if (err != null) {
                                     logger.error("Error while storing in Mongo:", err)
                                 }
-                                console.log(err, collection + " by " + aggregate);
                                 callback(err);
                             });
                     }
                 },
                 (err) => {
-                    // Let's close the db
-                    client.close();
                     callback(err, record);
                 });
         });
     }
 
-    restoreStateFromDB(callback: (err: Error, result: { id: string, state: string | Date, date: Date }) => void): void {
-        if (demoMode) return callback(null, undefined);
-        MongoClient.connect('mongodb://127.0.0.1:27017/domoja', (err, client) => {
-            if (err != null) {
-                logger.error("Cannot connect to Mongo:", err);
-                logger.error(err.stack);
-                callback(err, undefined);
-                return;
-            }
+    doRestoreStateFromDB(callback: (err: Error, result: { id: string, state: string | Date, date: Date }) => void): void {
+        this.getMongoClient((err, client) => {
             var db = client.db();
             var collection = db.collection('Backup states');
             let result = collection.findOne(
                 { 'id': this.id },
                 (err, result) => {
-                    // Let's close the db
-                    client.close();
                     callback(err, result);
                 }
             );
         });
     };
 
-    backupStateToDB(state: string | Date, callback: (err: Error) => void): void {
-        if (demoMode) return callback(null);
-        MongoClient.connect('mongodb://127.0.0.1:27017/domoja', (err, client) => {
-            if (err != null) {
-                logger.error("Cannot connect to Mongo:", err);
-                logger.error(err.stack);
-                callback(err);
-                return;
-            }
+    doBackupStateToDB(state: string | Date, callback: (err: Error) => void): void {
+        this.getMongoClient((err, client) => {
             var db = client.db();
             var collection = db.collection('Backup states');
 
@@ -152,22 +203,12 @@ export class persistence {
             } catch (e) {
                 error = e;
             }
-            // Let's close the db
-            client.close();
             callback(error);
         });
     };
 
-
-    getHistory(aggregate: AggregationType, from: Date, to: Date, callback: (err: Error, results: any[]) => void) {
-        if (demoMode) return callback(null, []);
-        MongoClient.connect('mongodb://127.0.0.1:27017/domoja', { poolSize: 10 }, (err, client) => {
-            if (err != null) {
-                logger.error("Cannot connect to Mongo:", err);
-                logger.error(err.stack);
-                callback(err, undefined);
-                return;
-            }
+    doGetHistory(aggregate: AggregationType, from: Date, to: Date, callback: (err: Error, results: any[]) => void) {
+        this.getMongoClient((err, client) => {
             var db = client.db();
             var collection = this.id;
             if (aggregate != "none") {
@@ -177,24 +218,45 @@ export class persistence {
             }
             let collectionStore = db.collection(collection);
             collectionStore.find(
-                /* {
-                     //'date': { $gte: from, $lte: to },
-                 },
-                 {
-                     'projection': { '_id': 0, 'date': 1, 'count': 1, 'state': 1 }
-                 }*/
+                {
+                    'date': { $gte: from, $lt: to },
+                },
+                {
+                    'projection': { '_id': 0, 'date': 1, 'count': 1, 'sum': 1 }
+                }
             ).toArray((err, results) => {
-                console.log('find:', err, collection, results && results.length);
-                // Let's close the db
-                client.close();
                 callback(err, results.map(r => { return { date: r.date, value: r.sum / r.count } }));
             });
         });
     }
 
+    doCleanOldData(callback: (err: Error) => void) {
+        this.getMongoClient((err, client) => {
+            if (err != null) {
+                logger.error("Cannot connect to Mongo:", err);
+                logger.error(err.stack);
+                callback(err);
+                return;
+            }
+            var db = client.db();
+            var collection = this.id;
+            let collectionStore = db.collection(collection);
+            collectionStore.deleteMany(
+                {
+                    'date': { $lt: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000) }, // 1 month old
+                },
+                (err, result) => {
+                    if (err) logger.error('Could not remove old data!');
+                    else logger.info('Removed %d old data in collection "%s".', result.deletedCount, collection);
+                    callback(err);
+                }
+            );
+        });
+    }
+
     getHistory2(aggregate: AggregationType, from: Date, to: Date, callback: (err: Error, results: any[]) => void) {
         if (demoMode) return callback(null, []);
-        MongoClient.connect('mongodb://127.0.0.1:27017/domoja', (err, client) => {
+        this.getMongoClient((err, client) => {
             if (err != null) {
                 logger.error("Cannot connect to Mongo:", err);
                 logger.error(err.stack);
@@ -215,8 +277,6 @@ export class persistence {
                             'projection': { '_id': 0, 'date': 1, 'state': 1 }
                         }
                     ).toArray((err, results) => {
-                        // Let's close the db
-                        client.close();
                         callback(err, results);
                     });
                     break;
@@ -249,8 +309,6 @@ export class persistence {
                             out: { inline: 1 },
                         },
                         (err, results) => {
-                            // Let's close the db
-                            client.close();
                             console.log(results && results[0]);
                             console.log(results && results[0] && new Date(results[0]._id).toLocaleDateString());
                             callback(err, results.map((r: { _id: string, value: any }) => { return { "date": r._id, "value": r.value } }));
@@ -261,5 +319,8 @@ export class persistence {
         });
     }
 
-
+    release() {
+        super.release();
+        mongoDB.mongoClient && mongoDB.mongoClient.close();
+    }
 }
