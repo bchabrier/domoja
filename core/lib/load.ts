@@ -312,7 +312,9 @@ export class ConfigLoader extends events.EventEmitter {
     private parseSingleFile(file: string, parser: (c: Parser.Parse, section: Section) => void, section: Section) {
         let str = fs.readFileSync(file, "utf8");
 
-        str = str.replace(/\r\n/g, '\n')
+        str = str.replace(/\r\n/g, '\n');
+
+        this.currentParsedFile = file;
 
         let document = this;
         try {
@@ -444,45 +446,52 @@ export class ConfigLoader extends events.EventEmitter {
                 this.compiledScripts[fct] = script;
             } catch (err) {
                 logger.error("Failed to compile script '%s':", fct, err);
-                return () => { }
+                return function functionCannotCompileLoadedFromFile(file: string) { return function couldNotCompile() { } }(this.currentParsedFile);
             }
         }
-        return function (...args: any[]) {
 
+        return function functionLoadedFromFile(file: string) {
 
-            if (!self.vm) {
-                self.vm = new VM({
-                    timeout: 1000,
-                    sandbox: self.sandbox
-                });
-            }
+            return function sandboxedFunc(...args: any[]): void {
 
-            self.sandbox.args.args = args;
-
-            try {
-                /*
-                (<any>self.sandbox.args).titi = 0;
-                (<any>self.sandbox.msg).tutu = 0;
-
-                self.vm.run('console.log("avant", args, msg)');
-                (<any>self.sandbox.args).titi = 1;
-                (<any>self.sandbox.msg).tutu = 1;
-                self.vm.run('console.log("apres", args, msg)');
-                */
-                return self.vm.run(script);
-            } catch (err) {
-                logger.error("Error while executing script '%s':", fct, err);
-
-                // find the error location
-                let location = /.*[ :]([0-9]+):([0-9]+)/.exec(err.stack)
-                if (location) {
-                    let linePos = parseInt(location[1]);
-                    let charPos = parseInt(location[2]);
-                    err.message = err.message + "\n\n" + errorContext(fct + '\n', linePos, charPos);
+                if (!self.vm) {
+                    self.vm = new VM({
+                        timeout: 1000,
+                        sandbox: self.sandbox
+                    });
                 }
-                logger.error(err.message);
+
+                self.sandbox.args.args = args;
+
+                try {
+                    /*
+                    (<any>self.sandbox.args).titi = 0;
+                    (<any>self.sandbox.msg).tutu = 0;
+         
+                    self.vm.run('console.log("avant", args, msg)');
+                    (<any>self.sandbox.args).titi = 1;
+                    (<any>self.sandbox.msg).tutu = 1;
+                    self.vm.run('console.log("apres", args, msg)');
+                    */
+                    self.vm.run(script);
+                } catch (err) {
+                    //logger.error(`Error while executing script '%s...':%s`, fct.toString().substr(0,20), err.message);
+
+                    // find the error location
+                    if (err) {
+                        let location = /at .*\(vm.js:([0-9]+):([0-9]+)\)/.exec(err.stack);
+                        if (location) {
+                            let linePos = parseInt(location[1]);
+                            let charPos = parseInt(location[2]);
+                            err.message = err.message + "\n\n" + errorContext(fct + '\n', linePos, charPos);
+                        }
+                        logger.error(`In file '${file}': `, err);
+                    } else {
+                        logger.error(`In file '${file}': ` + 'Error "null" raised while executing', fct.toString().substr(0, 128));
+                    }
+                }
             }
-        }
+        }(this.currentParsedFile);
     }
 
     sandboxedExtFunction(func: string): Function {
@@ -1517,7 +1526,7 @@ export function loadFile(file: string, done: (err: Error, doc: ConfigLoader) => 
 
     let document = new ConfigLoader();
     document.parse(file, (err) => {
-        done(err, err?null:document);
+        done(err, err ? null : document);
     });
     //console.log(document)
     //console.log(document.unparse());
