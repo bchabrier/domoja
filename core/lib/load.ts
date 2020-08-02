@@ -119,6 +119,8 @@ export class ConfigLoader extends events.EventEmitter {
 
     rootModule: Module;
 
+    currentParsedFile: string;
+
     private sandbox: Sandbox = {
         isReleased: () => { return this.released },
         console: console,
