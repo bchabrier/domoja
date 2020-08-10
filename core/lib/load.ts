@@ -11,6 +11,8 @@ import * as userMgr from '../managers/userMgr'
 type User = userMgr.User;
 import * as events from 'events';
 import { ConfigLoader as importedConfigLoader } from '..'
+import { Console } from 'console';
+import { WriteStream } from 'tty';
 
 const { VM, VMScript } = require('vm2');
 
@@ -448,7 +450,11 @@ export class ConfigLoader extends events.EventEmitter {
 
             return function sandboxedFunc(...args: any[]): void {
 
-                if (!self.vm) {
+                // because of issue https://github.com/patriksimek/vm2/issues/306, we apply the followig workaround:
+                // - create the VM before each run
+                // - create in the sandbox a new console with a new WriteStream for each sandbox
+                self.sandbox.console = new Console(new WriteStream(1));     // workaround
+                if (true || !self.vm) {                                     // workaround
                     self.vm = new VM({
                         timeout: 1000,
                         sandbox: self.sandbox
@@ -1654,6 +1660,7 @@ export function reloadConfig(arg: string | DoneFunction): void {
 
 import { IVerifyOptions } from 'passport-local';
 import { isUndefined } from 'util';
+
 
 export function checkUser(username: string, password: string, done: (error: any, user?: any, options?: IVerifyOptions) => void) {
     return currentConfig.userMgr.checkUser(username, password, done);
