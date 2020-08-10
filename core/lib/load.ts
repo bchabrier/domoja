@@ -132,15 +132,7 @@ export class ConfigLoader extends events.EventEmitter {
         clearInterval: clearInterval,
         getDevice: getDevice,
         getSource: getSource,
-        setDeviceState: (path: string, state: string, callback?: (err: Error) => void) => {
-            // log error just in case
-            return setDeviceState(path, state, (err) => {
-                if (err) {
-                    console.log(err.stack);
-                }
-                callback && callback(err);
-            })
-        },
+        setDeviceState: setDeviceState,
         getDeviceState: getDeviceState,
         getDeviceLastUpdateDate: getDeviceLastUpdateDate,
         msg: <{ emitter: string, oldValue: string, newValue: string }>new Object(), // new Object needed to access outside of the sandbox
