@@ -109,7 +109,7 @@ Example for a switch:
 ```
 {
       "accessory": "HTTP-SWITCH",
-      "name": "Lampe préau",
+      "name": "Lampe prÃ©au",
       "switchType": "stateful",
       "pullInterval": 5000,
       "onUrl": {
@@ -152,7 +152,7 @@ Example for a sensor:
 ```
     {
       "accessory": "HTTP-TEMPERATURE",
-      "name": "Température piscine",
+      "name": "TempÃ©rature piscine",
       "debug": 1,
       "getUrl": {
         "url": "https://XXX/devices/piscine.temperature",
@@ -168,4 +168,26 @@ Example for a sensor:
 ```
 
 Siri is then available on iOS through the Home application.
+
+## To do
+
+- Use KEEP for persistence
+- Temperature graphs
+    - passer par API pour renvoyer sur login si non connectÃ©
+- Siri integration
+- implement TRACE in yml files
+- MQTT source
+- reactiver la voix
+- source Freebox
+
+## Issues
+
+- on config reload it seems that we get mongodb drain
+- sur iOS revenir sur l'app ne fonctionne pas toujours
+- lumieres clignotantes a fixer
+
+### Fixed
+
+- en cas de script timeout on n'a plus de logging info ?!?! -> https://github.com/patriksimek/vm2/issues/306
+
 
