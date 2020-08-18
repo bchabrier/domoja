@@ -463,6 +463,7 @@ export class ConfigLoader extends events.EventEmitter {
 
                 self.sandbox.args.args = args;
 
+                let result;
                 try {
                     /*
                     (<any>self.sandbox.args).titi = 0;
@@ -473,7 +474,7 @@ export class ConfigLoader extends events.EventEmitter {
                     (<any>self.sandbox.msg).tutu = 1;
                     self.vm.run('console.log("apres", args, msg)');
                     */
-                    self.vm.run(script);
+                    result = self.vm.run(script);
                 } catch (err) {
                     //logger.error(`Error while executing script '%s...':%s`, fct.toString().substr(0,20), err.message);
 
@@ -490,6 +491,7 @@ export class ConfigLoader extends events.EventEmitter {
                         logger.error(`In file '${file}': ` + 'Error "null" raised while executing', fct.toString().substr(0, 128));
                     }
                 }
+                return result;
             }
         }(this.currentParsedFile);
     }
