@@ -272,7 +272,7 @@ export class ConfigLoader extends events.EventEmitter {
         if (this.devices) {
             // instanciate all devices
             logger.debug("Starting restoring all devices initial state...")
-            async.reject(Object.keys(this.devices).map(d => this.devices[d].device.path),
+            async.rejectSeries(Object.keys(this.devices).map(d => this.devices[d].device.path),
                 (devicePath, callback) => {
                     this.getDevice(devicePath).restoreStateFromDB((err) => {
                         callback(null, !err);

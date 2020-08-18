@@ -171,6 +171,7 @@ export class mongoDB extends persistence {
 
     doRestoreStateFromDB(callback: (err: Error, result: { id: string, state: string | Date, date: Date }) => void): void {
         this.getMongoClient((err, client) => {
+            if (err) return callback(err, null);
             var db = client.db();
             var collection = db.collection('Backup states');
             let result = collection.findOne(
