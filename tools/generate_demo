@@ -76,8 +76,7 @@ EOF
         awk '
         BEGIN   {
             where="before imports"
-            hasDemoModule=0
-            acceptedSources="astronomy demo tempo"
+            acceptedSources="astronomy tempo"
             acceptedSources=" "acceptedSources" "
         }
 
@@ -91,8 +90,9 @@ EOF
         /^pages:/ { where="in pages"; next }
         /^users:/ { where="in users"; next }
 
-        where=="in imports" && /^ *- *module:/ { module=$NF; if (!hasDemoModule && module=="core/sources/demo") hasDemoModule=1; next }
-        where=="in imports" && /^ *source:/ {
+        where=="in imports" && /^ *- *module:/ { module=$NF; next }
+        where=="in imports" && module == "core/sources/demo" { next }
+        where=="in imports" && $1 == "source:" {
             source=$NF
             gsub("\r", "", source)
             accepted=0
@@ -109,16 +109,12 @@ EOF
             # a device that is not in core, skip it
             next
         }
-        where=="in imports" && $0 !~ /^ *$/ && $1 !~ /^#/ {
+        where=="in imports" && $0 !~ /^ *\r?$/ && $1 !~ /^#/ {
             if (doprint) print "  - module:", module
             if (doprint) print
             next
         }
-        where=="in imports" && $0 !~ /^ *$/ && hasDemoModule == 0 {
-            hasDemoModule=1
-            if (doprint) print "  - module: core/sources/demo"
-            if (doprint) print "    source: demo"
-            if (doprint) print
+        where=="in imports"  {
             next
         }
 
