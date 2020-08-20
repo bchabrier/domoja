@@ -95,12 +95,12 @@ describe('Module sources', function () {
         });
         assert.deepEqual(source['devicesByAttribute'], {
           'attrA': {
-            'id1': dev1,
-            'id2': dev2,
+            'id1': [dev1],
+            'id2': [dev2],
           },
           'attrB': {
-            'id3': dev3,
-            'id4': dev4,
+            'id3': [dev3],
+            'id4': [dev4],
           },
         });
         source.releaseDevice(dev2);
@@ -111,11 +111,11 @@ describe('Module sources', function () {
         });
         assert.deepEqual(source['devicesByAttribute'], {
           'attrA': {
-            'id1': dev1,
+            'id1': [dev1],
           },
           'attrB': {
-            'id3': dev3,
-            'id4': dev4,
+            'id3': [dev3],
+            'id4': [dev4],
           },
         });
         source.release();

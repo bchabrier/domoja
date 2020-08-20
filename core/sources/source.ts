@@ -46,6 +46,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     abstract createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source;
     abstract getParameters(): Parameters;
     abstract doSetAttribute(id: string, attribute: string, value: string, callback: (err: Error) => void): void;
+
     release(): void {
         Object.keys(this.devicesByPath).forEach(path => {
             this.devicesByPath[path].release();
@@ -80,6 +81,10 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         });
 
         this.devicesByAttribute[device.attribute][device.id].splice(this.devicesByAttribute[device.attribute][device.id].indexOf(device), 1);
+        if (this.devicesByAttribute[device.attribute][device.id].length == 0) {
+            this.devicesByAttribute[device.attribute][device.id] = null;
+            delete this.devicesByAttribute[device.attribute][device.id];
+        }
 
         this.devicesByPath[device.path] = null;
         delete this.devicesByPath[device.path];

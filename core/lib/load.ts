@@ -1582,8 +1582,17 @@ function setDeviceState(path: string, state: string, callback: (err: Error) => v
 }
 
 function getDeviceState(path: string): string {
-    return getDevice(path).getState();
+    let device = getDevice(path);
+    if (device.transform) return device.transform(device.getState());
+    else return device.getState();
 }
+
+function getDevicePreviousState(path: string): string {
+    let device = getDevice(path);
+    if (device.transform) return device.transform(device.getPreviousState());
+    else return device.getPreviousState();
+}
+
 
 function getDeviceLastUpdateDate(path: string): Date {
     return getDevice(path).lastUpdateDate;
