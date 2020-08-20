@@ -164,12 +164,7 @@ export class DomojaServer {
       };
       http_https = https;
     }
-    this.server = http_https.createServer(options, this.app).listen(this.app.get('port'), function () {
-      self.app.set('port', this.address().port); // in case app.get('port') is null
-      console.log('Express %s server listening on port %s', self.app.get('env'), self.app.get('port'));
-      listeningCallback && listeningCallback.apply(self);
-    });
-
+    this.server = http_https.createServer(options, this.app);
 
     this.ws = socketio.listen(this.server);
     this.ws.use(core.socketIoAuthorize());
@@ -180,7 +175,7 @@ export class DomojaServer {
       let url = request.headers.origin as string;
       let http_string: http_type = url ? url.split(':')[0].toUpperCase() as http_type : 'HTTP';
       logger.error("websocket connected with", http_string);
-      self.nbWebsockets[http_string]++;
+      this.nbWebsockets[http_string]++;
       this.ws.emit('change', this.getApp());
 
       /*
@@ -195,10 +190,20 @@ export class DomojaServer {
 
       socket.on('disconnect', () => {
         logger.error("websocket disconnected with", http_string);
-        self.nbWebsockets[http_string]--;
+        this.nbWebsockets[http_string]--;
         this.ws.emit('change', this.getApp());
       });
 
+    });
+
+    listeningCallback && this.start(listeningCallback);
+  }
+
+  start(listeningCallback?: () => void) {
+    this.server.listen(this.app.get('port'), () => {
+      this.app.set('port', (<net.AddressInfo>this.server.address()).port); // in case app.get('port') is null
+      console.log('Express %s server listening on port %s', this.app.get('env'), this.app.get('port'));
+      listeningCallback && listeningCallback.apply(this);
     });
   }
 
@@ -361,8 +366,7 @@ export class DomojaServer {
 
     if (configPath !== this.currentFile) {
       if (!fs.existsSync(configPath)) {
-        logger.error("Cannot open configuration '%s'.", configPath);
-        return;
+        return done(new Error(`Cannot open configuration '${configPath}'.`));
       }
       this.previousFile = this.currentFile;
       this.currentFile = configPath;
@@ -381,7 +385,7 @@ export class DomojaServer {
         }
         watchTimeout = setTimeout(() => {
           watchTimeout = null;
-          this.reloadConfig(err => {});
+          this.reloadConfig(err => { });
         }, 2000);
       });
 
@@ -389,7 +393,7 @@ export class DomojaServer {
     this.reloadConfig(done);
   }
 
-  reloadConfig(done: (err : Error) => void) {
+  reloadConfig(done: (err: Error) => void) {
     var runWithMocha = /.*mocha$/.test(process.argv[1]);
     persistence.setDemoMode(runWithMocha || this.getApp().demoMode);
     core.reloadConfig(this.currentFile, err => {
@@ -408,7 +412,7 @@ export class DomojaServer {
           this.ws.emit('change', msg);
         });
       });
-      this.ws.emit('reload');  
+      this.ws.emit('reload');
       done(null);
     });
   }

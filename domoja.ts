@@ -63,26 +63,26 @@ if (!fs.existsSync(CONFIG_FILE)) {
   let port = process.env.PORT && parseInt(process.env.PORT) || 4001;
   let server = new DomojaServer(port, port == 443, port == 443);
   logger.error(__dirname);
-  server.loadConfig(CONFIG_FILE, () => { });
+  server.loadConfig(CONFIG_FILE, () => {
+    server.start(() => {
+      if (port == 443) {
+        // also listen on port 80 en redirect to 443
+        let app80 = express();
+        app80.set('env', 'production');
+        app80.use(require('morgan')('dev')); // logger
 
-  if (port == 443) {
-    // also listen on port 80 en redirect to 443
-    let app80 = express();
-    app80.set('env', 'production');
-    app80.use(require('morgan')('dev')); // logger
-
-    // serve certbot
-    app80.get('/.well-known/acme-challenge/*', (req, res) => {
-      res.sendFile(path.join(module_dir, '/www', req.path));
+        // serve certbot
+        app80.get('/.well-known/acme-challenge/*', (req, res) => {
+          res.sendFile(path.join(module_dir, '/www', req.path));
+        });
+        app80.all(/^.*$/, (req, res) => {
+          checkRoute(req);
+          res.redirect(301, 'https://' + req.hostname + req.originalUrl);
+        });
+        let server80 = http.createServer(app80).listen(80, function () {
+          console.log('Express production server listening on port 80');
+        });
+      }
     });
-    app80.all(/^.*$/, (req, res) => {
-      checkRoute(req);
-      res.redirect(301, 'https://' + req.hostname + req.originalUrl);
-    });
-    let server80 = http.createServer(app80).listen(80, function () {
-      console.log('Express production server listening on port 80');
-    });
-  }
-
-  //  }
+  });
 }
