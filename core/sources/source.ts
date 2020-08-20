@@ -31,7 +31,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     //id: id;
 
     private eventEmitter: events.EventEmitter;
-    private devicesByAttribute: { [attribute: string]: { [id: string]: GenericDevice } };
+    private devicesByAttribute: { [attribute: string]: { [id: string]: GenericDevice[] } };
     private devicesByPath: { [path: string]: GenericDevice }
     path: string;
     private discoveredDevices: { [id_attribute: string]: boolean } = {};
@@ -65,7 +65,10 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         if (!this.devicesByAttribute[device.attribute]) {
             this.devicesByAttribute[device.attribute] = {}
         }
-        this.devicesByAttribute[device.attribute][device.id] = device;
+        if (!this.devicesByAttribute[device.attribute][device.id]) {
+            this.devicesByAttribute[device.attribute][device.id] = [];
+        }
+        this.devicesByAttribute[device.attribute][device.id].push(device);
     }
 
     releaseDevice(device: GenericDevice): void {
@@ -76,8 +79,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
             }
         });
 
-        this.devicesByAttribute[device.attribute][device.id] = null;
-        delete this.devicesByAttribute[device.attribute][device.id];
+        this.devicesByAttribute[device.attribute][device.id].splice(this.devicesByAttribute[device.attribute][device.id].indexOf(device), 1);
 
         this.devicesByPath[device.path] = null;
         delete this.devicesByPath[device.path];
@@ -86,13 +88,17 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     updateAttribute(id: ID, attribute: string, value: string, lastUpdateDate: Date = new Date) {
         logger.debug('updateAttribute', id, attribute, value);
         if (this.isAttributeSupported(id, attribute)) {
-            let device = this.devicesByAttribute[attribute][id];
-            if (device) {
-                let oldValue = device.getState();
-                device.state = value;
-                device.stateHasBeenSet = true;
-                device.lastUpdateDate = new Date;
-                return this.emitEvent('change', device.path, { oldValue: oldValue, newValue: value, date: device.lastUpdateDate })
+            let devices = this.devicesByAttribute[attribute][id];
+            if (devices) {
+                devices.forEach(device => {
+                    let oldValue = device.getState();
+                    device.state = value;
+                    device.stateHasBeenSet = true;
+                    device.lastUpdateDate = new Date;
+                    logger.debug('emitting change event for', device.path);
+                    this.emitEvent('change', device.path, { oldValue: oldValue, newValue: value, date: device.lastUpdateDate });
+                });
+                return;
             }
         }
         // here the space for discovered devices
