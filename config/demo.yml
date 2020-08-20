@@ -17,6 +17,12 @@ imports:
     source: tempo
 
 sources:
+  - freebox: {
+    type: demo
+  }
+  - freeboxSemeria: {
+      type: demo
+  }
   - myZibase: {
       type: demo
   }
@@ -32,26 +38,32 @@ sources:
   }
   - tempo: { type: tempo }
 
+  - voice: {
+      type: demo
+  }
 
 devices:
   - aquarium:
     - controle : { type: variable, widget: "multistate:AUTO,ON,OFF:primary,secondary,danger", tags: 'aquarium-page', name: "Commande de l'aquarium"} 
     - pompes : { type: device, widget: toggle, tags: 'aquarium-page', source: myZibase, id: "ZC8", name: "Pompes aquarium" }
     - lampes : { type: device, widget: toggle, tags: 'aquarium-page', source: myZibase, id: "ZP7", name: "Lampes UV aquarium" }
-    - lampes_start : { type: variable, widget: text, tags: 'aquarium', name: "Heure allumage aquarium" }
+    - lampes_start : { type: variable, widget: text, tags: 'aquarium-page', name: "Heure allumage aquarium" }
     - lampes_end : { type: variable, widget: text, tags: 'aquarium', name: "Heure extinction aquarium" }
-    - pompes_start : { type: variable, widget: text, tags: 'aquarium', name: "Heure démarrage pompes aquarium" }
+    - pompes_start : { type: variable, widget: text, tags: 'aquarium-page', name: "Heure démarrage pompes aquarium" }
     - pompes_end : { type: variable, widget: text, tags: 'aquarium', name: "Heure arrêt pompes aquarium" }
 
-  - sunset: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunsetTime, name: "Coucher du soleil" }
+  - sunset: { type: device, persistence: "mongo:sunset:1200:aggregate", widget: text, tags: 'astronomy', source: astronomy, id: sunsetTime, name: "Coucher du soleil" }
   - sunset_plus_30mn: { type: variable, widget: text, tags: 'astronomy', name: "Coucher du soleil + 30mn" }
   - sunrise: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunriseTime, name: "Lever du soleil" }
   - zenith: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: zenithTime, name: "Zénith" }
   - daynight: { type: variable, widget: text, tags: 'astronomy', name: "Jour/nuit" }
 
+  #- camera_interieure: { type: httpCamera, widget: camera, tags: 'aquarium-page', video-url: /assets/imgs/demo_camera_interieure.jpg, snapshot-url: /assets/imgs/demo_camera_interieure.jpg, name: "Caméra intérieure" }
   - camera_interieure: { type: httpCamera, widget: camera, tags: 'aquarium-page', video-url: /assets/imgs/demo_camera_interieure.jpg, snapshot-url: /assets/imgs/demo_camera_interieure.jpg, name: "Caméra intérieure" }
+  #- camera_exterieure: { type: httpCamera, widget: camera, tags: 'portails, entrée', video-url: /assets/imgs/demo_camera_exterieure.jpg, snapshot-url: /assets/imgs/demo_camera_exterieure.jpg, name: "Caméra extérieure" }
+  #- camera_exterieure: { type: httpCamera, widget: camera, tags: 'portails, entrée', video-url: /assets/imgs/demo_camera_exterieure.jpg, snapshot-url: /assets/imgs/demo_camera_exterieure.jpg, name: "Caméra extérieure" }
   - camera_exterieure: { type: httpCamera, widget: camera, tags: 'portails, entrée', video-url: /assets/imgs/demo_camera_exterieure.jpg, snapshot-url: /assets/imgs/demo_camera_exterieure.jpg, name: "Caméra extérieure" }
-  - camera_piscine: { type: httpCamera, widget: camera, tags: 'piscine', video-url: /assets/imgs/demo_camera_piscine.jpg, snapshot-url: /assets/imgs/demo_camera_piscine.jpg, name: "Caméra piscine" }
+  - camera_piscine: { type: httpCamera, widget: camera, tags: 'piscine-page', video-url: /assets/imgs/demo_camera_piscine.jpg, snapshot-url: /assets/imgs/demo_camera_piscine.jpg, name: "Caméra piscine" }
   - alarme:
     - en_route: { type: device , widget: toggle, tags: 'alarme', source: myZibase, id: A1, name: "Alarme en route" }
     - presence : { type: variable, widget: text, tags: 'alarme', name: "Présence dans la maison"} 
@@ -103,6 +115,46 @@ devices:
 #      - { device: pompes_aquarium, attribute: state, value: 'ON' }
 
 
+  - semeria:
+    - voix : { type: variable, widget: toggle, tags: semeria, name: "Voix Séméria" }
+    - nb_connected: { type: variable, widget: text, tags: 'semeria', name: "nb Connectés Séméria" }
+    - hosts-connected: { type: sensor, widget: text, tags: 'semeria', source: freeboxSemeria, id: '/lan/browser/pub/', transform: !!js/function 'function (value) { 
+      if (!value) return value; 
+      //console.log("<<<<<",JSON.parse(value).length,JSON.parse(value)[0],">>>>>"); 
+      let tab = JSON.parse(value).filter(lh => lh.active && lh.reachable && lh.vendor_name != "Freebox SAS");
+      //console.log("<<<<<",tab.length,tab.length && tab[0],">>>>>"); 
+      return tab.map(lh => lh.primary_name).join(", ");
+    }', name: "Connectés Séméria" }
+    - presence : { type: variable, widget: text, tags: 'semeria', name: "Présence au Séméria"} 
+    - presence-couleur : { type: variable, widget: text, tags: 'semeria', name: "Couleur icon"} 
+    - presence-message : { type: variable, widget: text, tags: 'semeria', name: "Message présence"} 
+    - presence-last-changed-date : { type: variable, widget: text, tags: 'semeria', name: "Date de changement de présence"} 
+  - home:
+    - dernier-appel: { type: sensor, widget: text, tags: 'appels', source: freebox, id: '/call/log/', transform: !!js/function 'function (value) { 
+      if (!value) return value; 
+      //console.log("<<<<<",JSON.parse(value).length,JSON.parse(value)[0],">>>>>"); 
+      let tab = JSON.parse(value);
+      //console.log("<<<<<",tab.length,tab.length && tab[0],">>>>>"); 
+      if (tab.length>0)
+        return tab[0].number==""?"Inconnu":tab[0].number;
+      else
+        return "";
+    }', name: "Dernier appel" }
+    - appel-en-cours: { type: sensor, widget: text, tags: 'appels', source: freebox, id: '/call/log/', transform: !!js/function 'function (value) { 
+      if (!value) return value; 
+      //console.log("<<<<<",JSON.parse(value).length,JSON.parse(value)[0],">>>>>"); 
+      let tab = JSON.parse(value);
+      //console.log("<<<<<",tab.length,tab.length && tab[0],">>>>>"); 
+      if (tab.length>0 && tab[0].type=="missed" && tab[0].duration == 0) {
+        if (tab[0].number=="") return "Inconnu";
+        if (tab[0].contact_id != 0) {
+          // handle contact
+        }
+        return tab[0].number;
+      } else
+        return "";
+    }', name: "Appel en cours" }
+
   - lampes:
     - lampe_chambre_parents: { type: device, widget: toggle, tags: 'lampes-presence', source: myZibase, id: "ZA4", name: "Lampe Chambre parents" }
     - lampe_table_cuisine: { type: device, widget: toggle, tags: 'lampes-presence', source: myZibase , id: "ZP4", name: "Spots Table Cuisine" }
@@ -118,13 +170,18 @@ devices:
     - couleur : { type: variable, widget: color, tags: 'lampes-couleur', name: "Couleur du widget de lampes"} 
 
   - piscine:
-     - controle : { type: variable, widget: "multistate:AUTO,ON,OFF:primary,secondary,danger", tags: 'piscine', name: "Programmation filtration"} 
-     - filtration: { type: device, widget: toggle, tags: 'piscine', source: myESPs, id: "04a87b", name: "Filtration piscine" }
-     - pieuvre: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZP8", name: "Pieuvre" }
+     - controle : { type: variable, widget: "multistate:AUTO,ON,OFF:primary,secondary,danger", tags: 'piscine-page', name: "Programmation filtration"} 
+     - filtration: { type: device, widget: toggle, tags: 'piscine-page', source: myESPs, id: "04a87b", name: "Filtration piscine" }
+     - pieuvre: { type: device, widget: toggle, tags: 'piscine-page', source: myZibase, id: "ZP8", name: "Pieuvre" }
      - chlore_plus: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZA14", name: "Chlore +" }
      - chlore_moins: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZO14", name: "Chlore -" }
-     - temperature: { type: sensor, widget: text, tags: 'piscine', source: myZibase, id: "OS439157539", attribute: "tem", name: "Température" }
+     - temperature: { type: sensor, widget: text, tags: 'piscine-page, piscine-temp-page', source: myZibase, id: "OS439157539", attribute: "tem", 
+        persistence: "mongo:temperature_piscine:0:aggregate:120000", 
+        name: "Température" }
+        # id:TTL:raw|aggregate:KEEP    default, 5 ans
+     - temperature-graph : { type: variable, widget: temp-graph:piscine.temperature, tags: 'piscine-temp-page', name: "Courbe de température"} 
      - couleur : { type: variable, widget: color, tags: 'piscine', name: "Couleur de la température"} 
+     - planning-filtration-graph : { type: variable, widget: graph, tags: 'piscine-page', name: "Planning de filtration"} 
      - filtration-couleur : { type: variable, widget: color, tags: 'piscine', name: "Couleur de la filtration"} 
      - filtration-icon : { type: variable, widget: text, tags: 'piscine', name: "Icône de la filtration"} 
      - filtration-message : { type: variable, widget: text, tags: 'piscine', name: "Message de la filtration"} 
@@ -134,13 +191,15 @@ devices:
      - filtration-stop2 : { type: variable, widget: text, tags: 'piscine', name: "Heure 2 d'arrêt de la filtration"} 
      - filtration-duration : { type: variable, widget: text, tags: 'piscine', name: "Durée de la filtration (heures)"} 
      - durees-filtration : { type: variable, widget: text, tags: 'piscine', name: "Tableau des durées de filtration [°C, h]"} 
+     - durees-filtration-graph : { type: variable, widget: graph, tags: 'piscine-page', name: "Durées de filtration"} 
+     - planning-filtration-graph : { type: variable, widget: graph, tags: 'piscine-page', name: "Planning de filtration"} 
 
   - petit_portail:
     - controle : { type: variable, widget: "confirm:Actionner:primary:Petit portail:Actionner le petit portail?:Partiel,Grand,Non", tags: 'portails-page, entrée', name: "Actionner le petit portail"} 
     - partiel: { type: device, widget: text, tags: 'portails', source: myZibase, id: "ZA3", name: "Petit Portail", camera: camera_exterieure }
     - grand: { type: device, widget: text, tags: 'portails', source: myZibase, id: "ZO10", name: "Petit Portail ouvert en grand", camera: camera_exterieure }
   - grand_portail:
-    - controle : { type: variable, widget: "confirm:Actionner:primary:Grand portail:Actionner le grand portail?:Grand,Non", tags: 'portails-page', name: "Actionner le grand portail"} 
+    - controle : { type: variable, widget: "confirm:Actionner:primary:Grand portail:Actionner le grand portail?:Grand,Non", tags: 'portails-page, entrée', name: "Actionner le grand portail"} 
     - grand: { type: device, widget: text, tags: 'portails', source: myZibase, id: "ZA10", name: "Grand Portail" }
     - senseur_fermeture: { type: sensor, widget: text, tags: 'détecteurs, portails', source: myZibase, id: "ZB9", name: "Universal sensor Grand Portail", transform: !!js/function 'function (newValue) {
         return newValue == "1" ? "OFF" : "ON";
@@ -165,6 +224,7 @@ devices:
     - extinction : { type: variable, widget: text, tags: '', name: "Heure d'extinction cuisine"} 
 
 
+  - say : { type: device, widget: text, source: voice, id: unused, name: "Message parlé"} 
 
 scenarios:
   - demo:
@@ -354,6 +414,140 @@ scenarios:
 
 
 
+  - semeria:
+    - nb_connected_calculation:
+        triggers:
+          - state: semeria.hosts-connected
+        actions:
+          - !!js/function 'function f(callback) {
+            let list = this.getDeviceState("semeria.hosts-connected");
+            //console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>", list);
+            let tab = [];
+            if (list) {
+              tab = list.split(", ");
+              //console.log(">>>>>>>>>>>>>>>>>>>>>>>>", tab);
+            }
+            this.setDeviceState("semeria.nb_connected", tab.length, callback);
+          }'   
+    - hosts-connected_changed:
+        triggers:
+          - state: semeria.hosts-connected
+        conditions:
+          - {operator: "=", left: semeria.voix, right: "ON"}
+          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
+        actions:
+          - !!js/function 'function f(callback) {
+              let newlist = this.getDeviceState("semeria.hosts-connected");
+              let newtab = [];
+              if (newlist) newtab = newlist.split(", ");
+
+              let oldlist = this.getDevicePreviousState("semeria.hosts-connected");
+              let oldtab = [];
+              if (oldlist) oldtab = oldlist.split(", ");
+
+              console.log(oldtab);
+              console.log(newtab);
+              oldtab.forEach(n => {
+                if (newtab.indexOf(n) == -1) {
+                  this.setDeviceState("say", n + " n" + String.fromCharCode(39) + "est plus au Séméria");
+                }
+              });
+              newtab.forEach(n => {
+                if (oldtab.indexOf(n) == -1) {
+                  this.setDeviceState("say", n + " est maintenant au Séméria");
+                }
+              });
+
+              let n = newtab.length;
+              console.log(n);
+
+              if (n == 0) {
+                this.setDeviceState("say", "Il n" + String.fromCharCode(39) + "y a maintenant plus personne au Séméria");
+              } else {
+                this.setDeviceState("say", "Il y a maintenant " + n + " personnes au Séméria");
+              }
+
+              callback(null);
+            }'
+    - presence:
+        triggers:
+          - state: semeria.nb_connected
+        conditions:
+          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
+        actions:
+            - { device: semeria.presence, state: this.getDeviceState("semeria.nb_connected")>0?"ON":"OFF"}
+            - { device: semeria.presence-couleur, state: this.getDeviceState("semeria.nb_connected")>0?"#33cd5f":"grey"}
+            - { device: semeria.presence-last-changed-date, state: new Date }
+    - presence-last-changed-date:
+        triggers:
+          - state: semeria.nb_connected
+          - state: semeria.presence-last-changed-date
+        actions:
+            - !!js/function 'function setFiltrationMessage (callback) {
+              function displayAsTime(dateVal) {
+                let now = new Date();
+                let hh = dateVal.getHours();
+                let mm = dateVal.getMinutes();
+                let ss = dateVal.getSeconds();
+                let yyyy = dateVal.getFullYear();
+                let MM = dateVal.getMonth() + 1;
+                let dd = dateVal.getDate();
+
+                if (dateVal.getFullYear() === now.getFullYear()) {
+                    if (dateVal.getMonth() === now.getMonth()) {
+                        if (dateVal.getDate() === now.getDate()) return (hh<10?"0":"")+hh+":"+(mm<10?"0":"")+mm;
+                        else if (dateVal.getDate() === now.getDate()-1) str = "hier";
+                        else if (dateVal.getDate() === now.getDate()+1) str = "demain";
+                        else str = (dd<10?"0":"")+dd+"/"+(MM<10?"0":"")+MM+"/"+yyyy;
+                    } else str = (dd<10?"0":"")+dd+"/"+(MM<10?"0":"")+MM+"/"+yyyy;
+                } else str = (dd<10?"0":"")+dd+"/"+(MM<10?"0":"")+MM+"/"+yyyy;
+                str += " " + (hh<10?"0":"")+hh+":"+(mm<10?"0":"")+mm;
+                return str;
+              }            
+
+              let lastDateChanged = this.getDeviceState("semeria.presence-last-changed-date");
+              let _lastDateChanged = lastDateChanged && new Date(lastDateChanged);
+
+              let nb = this.getDeviceState("semeria.nb_connected");
+
+              let msg = "<h1>" + nb + "</h1> connection" + (nb>1?"s":""); 
+              if (_lastDateChanged) {
+                msg += " depuis " + displayAsTime(_lastDateChanged);
+              }
+              this.setDeviceState("semeria.presence-message", msg, callback);
+            }'
+  - home:
+    - appel-en-cours:
+        triggers:
+          - state: home.appel-en-cours
+        actions:
+          - !!js/function 'function f(callback) {
+            let appel_en_cours = this.getDeviceState("home.appel-en-cours");
+            if (appel_en_cours) {
+              let num = appel_en_cours;
+              if (num == "0607186716") {
+                num = "Bruno";
+              } else if (num == "0615457163") {
+                num = "Marie-Pierre";
+              } else if (num == "0477506276") {
+                num = "Grand-mère de Fontaneilles";
+              } else if (appel_en_cours.match(/^[0-9]{10}$/)) {
+                num = "";
+                for (i = 0; i < 10; i+=2) {
+                    num += appel_en_cours[i] + appel_en_cours[i+1] + " ";
+                }
+              }
+              //console.log(num);
+              this.setDeviceState("say", "Appel de " + num);
+            }
+            callback(null);
+          }'
+
+
+
+
+
+
   - lampes:
     - lampes-couleur:
       triggers:
@@ -446,6 +640,8 @@ scenarios:
       - init:
         triggers:
           - at: startup
+        conditions:
+          - {operator: =, left: piscine.filtration-message, right: undefined}
         actions:
           - {device: piscine.filtration-message, state: "En attente..." } 
       - AUTO:
@@ -507,17 +703,25 @@ scenarios:
               let start2 = this.getDeviceState("piscine.filtration-start2");
               let _start2 = start2 && new Date(start2);
               let start = _start1 && _start1 > Date.now() ? _start1 : (_start2 && _start2 > Date.now() ? _start2 : undefined );
-              let startTime = displayAsTime(start);
-              msg = `Mise en<BR/>marche<br><strong>${startTime}</strong><br>pour ${durationLength}`;
+              if (start) {
+                let startTime = displayAsTime(start);
+                msg = `Mise en<BR/>marche<br><strong>${startTime}</strong><br>pour ${durationLength}`;
+              } else {
+                msg = `Marche<br>permanente`;
+              }
             } 
             if (filtration == "ON") {
               let stop1 = this.getDeviceState("piscine.filtration-stop1");
               let _stop1 = stop1 && new Date(stop1);
               let stop2 = this.getDeviceState("piscine.filtration-stop2");
               let _stop2 = stop2 && new Date(stop2);
-              let stop = _stop1 && _stop1 > Date.now() ? _stop1 : (_stop2 && _sstop2 > Date.now() ? _stop2 : undefined );
-              let stopTime = displayAsTime(stop);
-              msg = `Arrêt<br><strong>${stopTime}</strong><br>Durée<br>${durationLength}`;
+              let stop = _stop1 && _stop1 > Date.now() ? _stop1 : (_stop2 && _stop2 > Date.now() ? _stop2 : undefined );
+              if (stop) {
+                let stopTime = displayAsTime(stop);
+                msg = `Arrêt<br><strong>${stopTime}</strong><br>Durée<br>${durationLength}`;
+              } else {
+                msg = `Marche<br>permanente`;
+              }
             }
             this.setDeviceState("piscine.filtration-message", msg, callback);
           }'
@@ -610,7 +814,6 @@ scenarios:
         actions:
           # tableau des durées de filtration [ °C, durée en heures ]
           - {device: piscine.durees-filtration, state: "[
-              [10, 3],    
               [13, 3],
               [16, 7],
               [20, 11],
@@ -750,11 +953,11 @@ scenarios:
 
             //console.log(new Date(start1).toString(), new Date(start2).toString())
 
-            start1 && this.setDeviceState("piscine.filtration-start1", new Date(start1));
-            stop1 && this.setDeviceState("piscine.filtration-stop1", new Date(stop1));
-            start2 && this.setDeviceState("piscine.filtration-start2", new Date(start2));
-            stop2 && this.setDeviceState("piscine.filtration-stop2", new Date(stop2), callback);
-            stop2 || callback();
+            this.setDeviceState("piscine.filtration-start1", new Date(start1));
+            this.setDeviceState("piscine.filtration-stop1", new Date(stop1));
+            this.setDeviceState("piscine.filtration-start2", new Date(start2));
+            this.setDeviceState("piscine.filtration-stop2", new Date(stop2), callback);
+            //stop2 || callback();
           }'    
     - filtration-start:
       triggers:
@@ -792,6 +995,384 @@ scenarios:
               setTimeout(() => { f(callback); }, delay);
             }
           }' 
+    - update-durees-filtration-graph:
+      triggers:
+        - state: piscine.durees-filtration
+        - state: piscine.temperature
+        - state: piscine.filtration-duration
+      actions:
+        - !!js/function 'function f(callback) {
+
+            function HHhMMmm(duree) {
+              let h = Math.floor(duree);
+              let m = Math.round((duree - h) * 60);
+              let s = h + "h";
+              if (m > 0) s = s + m +"mn";
+
+              return s;
+            }
+            let tem = this.getDeviceState("piscine.temperature");
+            let temperature = undefined;
+            if (tem) {
+              temperature = parseFloat(this.getDeviceState("piscine.temperature"));
+              temperature = tem;
+            }
+            let duree = this.getDeviceState("piscine.filtration-duration");
+            let durees = JSON.parse(this.getDeviceState("piscine.durees-filtration"));
+            let data = {
+              chartType: "LineChart",
+              dataTable: [["Température", {"role":"annotation"}, {"role":"annotationText"}, "Durée", {role: "style"} ]].concat(
+              [
+                [ {v: 0, f:"0°C"}, null, null, {v: durees[0][1], f: HHhMMmm(durees[0][1])}, null ],
+                ...durees.map(d => [ {v: d[0], f: d[0] + "°C"}, null, null, {v: d[1], f: HHhMMmm(d[1])}, null]),
+                [ {v: 40, f:"40°C"}, null, null, {v: durees[durees.length-1][1], f: HHhMMmm(durees[durees.length-1][1])}, null ],
+                [ {v: temperature, f: parseFloat(temperature) + "°C"}, "Maintenant", null, {v: duree, f: HHhMMmm(duree)}, "point {fill-color: orange;}" ],
+              ].sort((a, b) => { if (isNaN(a[0].v) || isNaN(b[0].v)) return 0; if (a[0].v < b[0].v) return -1; if (a[0].v > b[0].v) return 1; return 0;})),
+              options: {
+                legend: { position: "none" },
+                pointSize: 5,
+                vAxis: { title: "Durée", format:"#h", ticks: [ 0, 3, 6, 9, 12, 15, 18, 21, 24] },
+                hAxis: { title: "Température", format:"#.#°C", slantedText: false, ticks: [0, 5, 10, 15, 20, 25, 30, 35, 40].concat(temperature?[temperature]:[]) },
+                annotations: { style: "line", stem: { color: "orange"} },
+              }
+            }
+            this.setDeviceState("piscine.durees-filtration-graph", JSON.stringify(data), callback);
+          }'
+    - update-planning-filtration-graph:
+      triggers:
+        - at: startup
+        - cron: 00 * * * * * # reload every minutes
+        - state: piscine.filtration-duration
+        - state: piscine.filtration-start1
+        - state: piscine.filtration-start2
+        - state: piscine.filtration-stop1
+        - state: piscine.filtration-stop2
+      actions:
+        - !!js/function 'function f(callback) {
+            function h(d) {
+              if (d) {
+                let _d = new Date(d);
+                //console.log("=", _d.toString());
+                let hh = _d.getHours() + _d.getMinutes()/60 + _d.getSeconds()/3600;
+                //console.log("=>", hh);
+                return hh
+              }
+              return undefined;
+            }
+
+            function formatHour(hour) {
+              let h = Math.floor(hour);
+              let m = Math.round((hour - h) * 60);
+              let str = (h<10?"0":"") + h + ":" + (m<10?"0":"") + m;
+
+              return str;
+            }
+
+            function formatDuration(duration) {
+              if (!duration) return "<non définie>";
+
+              let h = Math.floor(duration);
+              let m = Math.round((duration - h) * 60);
+              let str = (h>0?h+"h":"") + (m>0?m+"mn":"");
+
+              return str;
+            }
+
+            let duration = this.getDeviceState("piscine.filtration-duration");
+
+            let _start1 = this.getDeviceState("piscine.filtration-start1");
+            let _stop1 = this.getDeviceState("piscine.filtration-stop1");
+            let _start2 = this.getDeviceState("piscine.filtration-start2");
+            let _stop2 = this.getDeviceState("piscine.filtration-stop2");
+            
+            let start1 = _start1 && _start1.toString() != "Invalid Date" && new Date(_start1).getTime() || undefined;
+            let stop1 = _stop1 && _stop1.toString() != "Invalid Date" && new Date(_stop1).getTime() || undefined;
+            let start2 = _start2 && _start2.toString() != "Invalid Date" && new Date(_start2).getTime() || undefined;
+            let stop2 = _stop2 && _stop2.toString() != "Invalid Date" && new Date(_stop2).getTime() || undefined;
+            
+            let prev_stop1 = stop1 && stop1 - 24 * 60 * 60 * 1000;
+            let prev_stop2 = stop2 && stop2 - 24 * 60 * 60 * 1000;
+
+            let state24;
+            let _d24 = new Date();
+            _d24.setHours(23);
+            _d24.setMinutes(59);
+            _d24.setSeconds(0);
+            let d24 = _d24.getTime();
+            let now = new Date().getTime();
+
+            // handle the case where start1 is already tomorrow.
+            // we translate it back to today
+            if (start1 > d24) {
+              start1 = start1 - 24 * 60 * 60 * 1000;
+              stop1 = stop1 && stop1 - 24 * 60 * 60 * 1000;
+            } 
+
+            console.log("============================");
+            console.log("start1:", _start1);
+            console.log("stop1:", _stop1);
+            console.log("prev_stop1:", prev_stop1 && new Date(prev_stop1).toString());
+            console.log("start2:", _start2);
+            console.log("stop2:", _stop2);
+            console.log("prev_stop2:", prev_stop2 && new Date(prev_stop2).toString());
+            console.log("d24:", new Date(d24).toString());
+            console.log("now:", new Date(now).toString());
+
+
+            let _data;
+
+            let ON = { v: 1, f: "ON"};
+            let OFF = { v: 0, f: "OFF"};
+
+            if (!start1 && !stop1 && !start2 && !stop2) {
+              console.log("no date");
+              _data = [
+                [ {v: 0, f: formatHour(0)}, null, null, OFF, false ],
+                [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, OFF, false ],
+                [ {v: 24, f: formatHour(24)}, null, null, OFF, false ],
+              ];
+            } else if (!stop1 && !start2 && !stop2) {
+              // full time
+              console.log("full time");
+              _data = [
+                [ {v: 0, f: formatHour(0)}, null, null, ON, true ],
+                [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, ON, true ],
+                [ {v: 24, f: formatHour(24)}, null, null, ON, true ],
+              ];
+            } else {
+              if (!start2 && !stop1) {
+                // start1 ---------------- stop1
+                //              start2 --------------- stop2
+                console.log("overlap, start2 before stop1");
+                if (d24 <= stop2) {
+                  // ON at midnight
+                  if (now < prev_stop2) {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, ON, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, ON, true ],
+                      [ {v: h(prev_stop2), f: formatHour(h(prev_stop2))}, null, null, ON, true ],
+                      [ {v: h(prev_stop2), f: formatHour(h(prev_stop2))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, ON, true ],
+                    ];
+                  } else if (now < start1) {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, ON, true ],
+                      [ {v: h(prev_stop2), f: formatHour(h(prev_stop2))}, null, null, ON, true ],
+                      [ {v: h(prev_stop2), f: formatHour(h(prev_stop2))}, null, null, OFF, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, ON, true ],
+                    ];
+                  } else {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, ON, true ],
+                      [ {v: h(prev_stop2), f: formatHour(h(prev_stop2))}, null, null, ON, true ],
+                      [ {v: h(prev_stop2), f: formatHour(h(prev_stop2))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, ON, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, ON, true ],
+                    ];
+                  }
+                } else {
+                  // OFF at midnight
+                  if (now < start1) {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, OFF, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, OFF, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, OFF, true ],
+                    ];
+                  } else if (now < stop2) {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, OFF, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, OFF, true ],
+                    ];
+                  } else {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, OFF, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, OFF, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, OFF, true ],
+                    ];
+                  }
+                }
+              } else if (!start2 && !stop2) {
+                // start1 ----------------------------- stop1
+                //              start2 ----- stop2
+                console.log("complete overlap, start2-stop2 inside start1-stop1");
+                if (d24 <= stop1) {
+                  // ON at midnight
+                  if (now < prev_stop1) {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, ON, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, ON, true ],
+                      [ {v: h(prev_stop1), f: formatHour(h(prev_stop1))}, null, null, ON, true ],
+                      [ {v: h(prev_stop1), f: formatHour(h(prev_stop1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, ON, true ],
+                    ];
+                  } else if (now < start1) {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, ON, true ],
+                      [ {v: h(prev_stop1), f: formatHour(h(prev_stop1))}, null, null, ON, true ],
+                      [ {v: h(prev_stop1), f: formatHour(h(prev_stop1))}, null, null, OFF, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, ON, true ],
+                    ];
+                  } else {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, ON, true ],
+                      [ {v: h(prev_stop1), f: formatHour(h(prev_stop1))}, null, null, ON, true ],
+                      [ {v: h(prev_stop1), f: formatHour(h(prev_stop1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, ON, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, ON, true ],
+                    ];
+                  }
+                } else {
+                  // OFF at midnight
+                  if (now < start1) {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, OFF, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, OFF, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, OFF, true ],
+                    ];
+                  } else if (now < stop1) {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, OFF, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, OFF, true ],
+                    ];
+                  } else {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, OFF, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, OFF, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, OFF, true ],
+                    ];
+                  }
+                }
+              } else {
+                // no overlap
+                console.log("no overlap");
+                if (now < start1) {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, OFF, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, OFF, true ],
+                      [ {v: h(start2), f: formatHour(h(start2))}, null, null, OFF, true ],
+                      [ {v: h(start2), f: formatHour(h(start2))}, null, null, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, OFF, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, OFF, true ],
+                    ];
+                } else if (now < stop1) {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, OFF, true ],
+                      [ {v: h(start2), f: formatHour(h(start2))}, null, null, OFF, true ],
+                      [ {v: h(start2), f: formatHour(h(start2))}, null, null, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, OFF, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, OFF, true ],
+                    ];
+                } else if (now < start2) {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, OFF, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, OFF, true ],
+                      [ {v: h(start2), f: formatHour(h(start2))}, null, null, OFF, true ],
+                      [ {v: h(start2), f: formatHour(h(start2))}, null, null, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, OFF, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, OFF, true ],
+                    ];
+                } else if (now < stop2) {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, OFF, true ],
+                      [ {v: h(start2), f: formatHour(h(start2))}, null, null, OFF, true ],
+                      [ {v: h(start2), f: formatHour(h(start2))}, null, null, ON, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, OFF, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, OFF, true ],
+                    ];
+                } else {
+                    _data = [
+                      [ {v: 0, f: formatHour(0)}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, OFF, true ],
+                      [ {v: h(start1), f: formatHour(h(start1))}, null, null, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, ON, true ],
+                      [ {v: h(stop1), f: formatHour(h(stop1))}, null, null, OFF, true ],
+                      [ {v: h(start2), f: formatHour(h(start2))}, null, null, OFF, true ],
+                      [ {v: h(start2), f: formatHour(h(start2))}, null, null, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, ON, true ],
+                      [ {v: h(stop2), f: formatHour(h(stop2))}, null, null, OFF, true ],
+                      [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, OFF, true ],
+                      [ {v: 24, f: formatHour(24)}, null, null, OFF, true ],
+                    ];
+                }
+              }
+            }
+
+            let data = {
+              chartType: "AreaChart",
+              dataTable: [["Heure", {"role":"annotation"}, {"role":"annotationText"}, "Etat", {role: "certainty"} ]].concat(_data),
+              options: {
+                legend: { position: "none" },
+                vAxis: { ticks: [ 1 ], textPosition: "none", minValue: 0, maxValue: 1 },
+                hAxis: { title: "Durée de filtration : " + formatDuration(duration), format:"#h", slantedText: false, ticks: [ 0, 3, 6, 9, 12, 15, 18, 21, 24] },
+                annotations: { style: "line", stem: { color: "orange"} },
+                height: "200",
+              }
+            }
+
+            this.setDeviceState("piscine.planning-filtration-graph", JSON.stringify(data), callback);
+          }'
   - petit_portail:
     - controle:
       - init:
@@ -930,7 +1511,7 @@ pages:
           - pool-temp:
             widget: dashboard-icon
             icon: "thermometer" # a valid ionic icon name
-            linkPage: Piscine
+            linkPage: PiscineTemp
             label: "Piscine"
             color: "${piscine.couleur}"
             text: "<h1><BR/><strong>${piscine.temperature}</strong><BR/>°C</h1>"
@@ -943,17 +1524,20 @@ pages:
             text: "${piscine.filtration-message}"
           - entrée:
             widget: dashboard-camera
-            url: /assets/imgs/demo_dashboard_entrée.jpg
+            #url: /assets/imgs/demo_dashboard_entrée.jpg
+            camera: camera_exterieure
             linkPage: Entrée
             label: "Entrée"
           - aquarium:
             widget: dashboard-camera
-            url: /assets/imgs/demo_dashboard_aquarium.jpg
+            #url: /assets/imgs/demo_dashboard_aquarium.jpg
+            camera: camera_interieure
             linkPage: Aquarium
             label: "Aquarium ${aquarium.lampes}"
           - piscine:
             widget: dashboard-camera
-            url: /assets/imgs/demo_dashboard_piscine.jpg
+            #url: /assets/imgs/demo_dashboard_piscine.jpg
+            camera: camera_piscine
             linkPage: Piscine
             label: Piscine
           - lights:
@@ -973,6 +1557,13 @@ pages:
             couleurDuJour: "${tempo.couleur_du_jour}"
             couleurDeDemain: "${tempo.couleur_de_demain}"
             label: "Tempo"           
+          - presence-semeria:
+            widget: dashboard-icon
+            icon: home # a valid ionic icon name
+            linkPage: Séméria
+            label: "Séméria"
+            color: "${semeria.presence-couleur}"
+            text: "${semeria.presence-message}"
           - users:
             widget: dashboard-icon
             icon: people # a valid ionic icon name
@@ -986,7 +1577,7 @@ pages:
       title: 'Aquarium'
       page: list.html
       args: 
-        - tag-list: 'aquarium-page'
+        - tag-list: 'aquarium-page*'
         - headers: false
   - Entrée:
       title: "Entrée"
@@ -1000,16 +1591,34 @@ pages:
       args: 
         - tag-list: 'portails-page'
         - headers: false
+  - Piscine:
+      title: "Piscine"
+      page: list.html
+      args: 
+        - tag-list: 'piscine-page'
+        - headers: false
+        - widgets-override: durees-filtration:graph
+  - PiscineTemp:
+      title: "Température Piscine"
+      page: list.html
+      args: 
+        - tag-list: 'piscine-temp-page'
+        - headers: false
   - Lampes:
       title: 'Lampes'
       page: list.html
       args: 
         - tag-list: 'lampes*:lampes'
+  - Séméria:
+      title: 'Séméria'
+      page: list.html
+      args: 
+        - tag-list: 'semeria*:Séméria'
   - Devices:
       title: 'Tous les devices'
       page: list.html
       args: 
-        - tag-list: 'alarme, lampes*:lampes, détecteurs, websockets, piscine, aquarium*:aquarium, portails*:portails, astronomy, tempo, *:autres'
+        - tag-list: 'alarme, lampes*:lampes, détecteurs, websockets, piscine*:piscine, aquarium*:aquarium, portails*:portails, astronomy, tempo, semeria:Séméria, *:autres'
         - image-size: tiny
   - About:
       menu-item: 'A propos'
