@@ -97,6 +97,7 @@ export type Sandbox = {
     getSource: typeof getSource,
     setDeviceState: typeof setDeviceState,
     getDeviceState: typeof getDeviceState,
+    getDevicePreviousState: typeof getDevicePreviousState,
     getDeviceLastUpdateDate: typeof getDeviceLastUpdateDate,
     msg: {
         emitter: string,
@@ -136,6 +137,7 @@ export class ConfigLoader extends events.EventEmitter {
         getSource: getSource,
         setDeviceState: setDeviceState,
         getDeviceState: getDeviceState,
+        getDevicePreviousState: getDevicePreviousState,
         getDeviceLastUpdateDate: getDeviceLastUpdateDate,
         msg: <{ emitter: string, oldValue: string, newValue: string }>new Object(), // new Object needed to access outside of the sandbox
         args: <{ args: any[] }>new Object(), // new Object needed to access outside of the sandbox

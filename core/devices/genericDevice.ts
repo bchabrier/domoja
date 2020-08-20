@@ -100,6 +100,7 @@ export abstract class GenericDevice implements DomoModule {
     type: DeviceType;
     widget: WidgetType;
     state: string;
+    previousState: string;
     persistence: persistence.mongoDB;
     persistStates = false;
     lastUpdateDate: Date;
@@ -289,12 +290,18 @@ export abstract class GenericDevice implements DomoModule {
 
         logger.debug('setState of device "%s" to "%s"', this.path, newState);
         this.stateHasBeenSet = true;
+        this.previousState = this.state;
         this.source.setAttribute(this.id, this.attribute, newState, callback);
     }
 
     getState() {
         return this.state;
     }
+
+    getPreviousState() {
+        return this.previousState;
+    }
+
 
     /*
     notify(when: string, msg: string) {
