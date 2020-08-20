@@ -28,7 +28,7 @@ function deviceAsJSON(device: GenericDevice) {
   return {
     id: device.id,
     path: device.path,
-    state: device.getState(),
+    state: device.transform ? device.transform(device.getState()) : device.getState(),
     lastUpdateDate: device.lastUpdateDate,
     name: device.name,
     type: device.type,
