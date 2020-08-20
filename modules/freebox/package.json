@@ -17,7 +17,9 @@
     "url": "git+https://github.com/bchabrier/domoja.git"
   },
   "keywords": [
-    "home automation"
+    "home automation",
+    "domoja",
+    "freebox"
   ],
   "bugs": {
     "url": "https://github.com/bchabrier/domoja/issues"
