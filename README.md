@@ -65,25 +65,66 @@ The following modules are currently available:
 
 [//]: # (modulesList START)
 - [domoja-core](https://www.npmjs.com/package/domoja-core): Core components of Domoja
+- [domoja-freebox](https://www.npmjs.com/package/domoja-freebox): The Freebox domoja module
 - [domoja-ipx800](https://www.npmjs.com/package/domoja-ipx800): IPX800 source for Domoja
 - [domoja-proxiti](https://www.npmjs.com/package/domoja-proxiti): Astronomy source for Domoja from http://www.proxiti.info/
 - [domoja-sample](https://www.npmjs.com/package/domoja-sample): A sample Domoja module skeleton
 - [domoja-tempo](https://www.npmjs.com/package/domoja-tempo): EDF Tempo information for Domoja from https://particulier.edf.fr/fr/accueil/contrat-et-conso/options/ejp.html
+- [domoja-voice-google](https://www.npmjs.com/package/domoja-voice-google): Allows Domoja to speak, thanks to Google
 - [domoja-zibase](https://www.npmjs.com/package/domoja-zibase): ZiBase source for Domoja
 
 [//]: # (modulesList END)
+
+### Adding a new module
+
+Before importing a module in the config file, you need to make it available. In the domoja directory, use `yarn add <themodule>`.
+
+If you are developing the module, you might want to add it linked:
+```
+$ cd <themodule_dir>
+$ yarn link
+$ cd <domoja_dir>
+$ yarn link <themodule>
+```
+
+### How to develop a new module
+
+Developers can develop new Domoja modules. For this, proceed this way:
+- Copy the `domoja/modules/sample` repository.
+- Update `package.json`. Note that the module name must start with `domoja-`
+- You can find in `sources/sample.ts` a sample source, 
+- Link your module using `cd <yourmodule_dir>; yarn link` and `cd <domoja_dir>; yarn link "domoja-<yourmodule>"`
+- You can now import your module from the config file.
+
+It can be convenient to setup a small test file and run it with `nodemon`. This will make it possible to automatically restart the test execution when the module source is modified, and also to debug with Chrome for instance.
+
+Example:
+File test_module.ts:
+```
+import { MyModule } from 'domoja-samplemodule';
+
+let freebox = new MyClass('path', 'some', 'parameters');
+
+```
+
+and run it with:
+`nodemon --ext ts --watch test-module.ts --watch <module_dir> --exec node --inspect=0.0.0.0 --require ts-node/register test-module.ts`
+
 
 ## API
 
 Domoja provides a REST/JSON api, which is available through Swagger at [/api-docs](http://localhost/api-docs).
 
 [//]: # (apiList START)
+- GET /app: Retrieve the app data
+- POST /app/demo-mode: Set the app demo mode
 - GET /devices: Retrieves the list of devices
 - GET /devices/{id}: Retrieves a device
 - POST /devices/{id}: Sends a command to a device
+- GET /devices/{id}/snapshot: Get a snapshot from a camera device
+- GET /devices/{id}/stream: Get a stream from a camera device
+- GET /devices/{id}/history: Get the history of a device
 - GET /pages: Retrieves the list of pages
-- GET /app: Retrieve the app data
-- POST /app/demo-mode: Set the app demo mode
 
 [//]: # (apiList END)
 

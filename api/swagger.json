@@ -9,6 +9,50 @@
 		"version": "1.2.0"
 	},
 	"paths": {
+		"/app": {
+			"get": {
+				"operationId": "AppServiceGetApp",
+				"produces": [
+					"text/html"
+				],
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Retrieve the app data",
+				"parameters": []
+			}
+		},
+		"/app/demo-mode": {
+			"post": {
+				"operationId": "AppServiceSetDemoMode",
+				"produces": [
+					"text/html"
+				],
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"schema": {
+							"type": "string"
+						}
+					}
+				},
+				"description": "Set the app demo mode",
+				"consumes": [
+					"application/x-www-form-urlencoded"
+				],
+				"parameters": [
+					{
+						"description": "",
+						"in": "formData",
+						"name": "value",
+						"required": true,
+						"type": "boolean"
+					}
+				]
+			}
+		},
 		"/devices": {
 			"get": {
 				"operationId": "DevicesServiceGetDevices",
@@ -92,9 +136,84 @@
 				"description": "Get a snapshot from a camera device",
 				"parameters": [
 					{
+						"description": "path of the device\rCached if ?t=NNNN is append",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"type": "string"
+					}
+				]
+			}
+		},
+		"/devices/{id}/stream": {
+			"get": {
+				"operationId": "DevicesServiceGetStream",
+				"produces": [
+					"text/html"
+				],
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Get a stream from a camera device",
+				"parameters": [
+					{
+						"description": "path of the device\rCached if ?t=NNNN is append",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"type": "string"
+					}
+				]
+			}
+		},
+		"/devices/{id}/history": {
+			"get": {
+				"operationId": "DevicesServiceGetHistory",
+				"produces": [
+					"text/html"
+				],
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Get the history of a device",
+				"parameters": [
+					{
 						"description": "path of the device",
 						"in": "path",
 						"name": "id",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"description": "type of aggregation: none|minute|hour|day|week|month|year",
+						"in": "query",
+						"name": "aggregate",
+						"required": true,
+						"type": "string",
+						"enum": [
+							"none",
+							"minute",
+							"hour",
+							"day",
+							"month",
+							"year"
+						]
+					},
+					{
+						"description": "from date, in YYYY-MM-DD or JSON formats, included",
+						"in": "query",
+						"name": "from",
+						"required": true,
+						"type": "string"
+					},
+					{
+						"description": "from date, in YYYY-MM-DD or JSON formats, included",
+						"in": "query",
+						"name": "to",
 						"required": true,
 						"type": "string"
 					}
@@ -114,47 +233,6 @@
 				},
 				"description": "Retrieves the list of pages",
 				"parameters": []
-			}
-		},
-		"/app": {
-			"get": {
-				"operationId": "AppServiceGetApp",
-				"produces": [
-					"text/html"
-				],
-				"responses": {
-					"204": {
-						"description": "No content"
-					}
-				},
-				"description": "Retrieve the app data",
-				"parameters": []
-			}
-		},
-		"/app/demo-mode": {
-			"post": {
-				"operationId": "AppServiceSetDemoMode",
-				"produces": [
-					"text/html"
-				],
-				"responses": {
-					"204": {
-						"description": "No content"
-					}
-				},
-				"description": "Set the app demo mode",
-				"consumes": [
-					"application/x-www-form-urlencoded"
-				],
-				"parameters": [
-					{
-						"description": "",
-						"in": "formData",
-						"name": "value",
-						"required": true,
-						"type": "boolean"
-					}
-				]
 			}
 		}
 	},
