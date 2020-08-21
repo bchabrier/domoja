@@ -37,7 +37,6 @@
     "shitty-peg": "^0.0.5",
     "socket.io": "^2.1.1",
     "tracer": "^1.1.2",
-    "typescript": "^3.7.5",
     "typescript-rest": "^3.0.1",
     "vm2": "^3.6.3"
   },
@@ -56,13 +55,14 @@
     "@types/rewire": "^2.5.28",
     "@types/socket.io": "^2.1.0",
     "coveralls": "^3.0.2",
-    "mocha": "^8.0.1",
+    "mocha": "7",
     "nyc": "^15.0.1",
     "passport-headerapikey": "^1.2.1",
     "passport-http": "^0.3.0",
     "rewire": "^5.0.0",
     "sinon": "^9.0.2",
-    "ts-mocha": "^7.0.0"
+    "ts-mocha": "^7.0.0",
+    "typescript": "^4.0.2"
   },
   "engines": {
     "node": ">=0.10.0"
