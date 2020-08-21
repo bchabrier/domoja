@@ -351,6 +351,7 @@ scenarios:
   - astronomy:
     - sunset_calculation:
       triggers:
+        - at: startup
         - state: sunset
       actions:
         - !!js/function 'function f(callback) {
