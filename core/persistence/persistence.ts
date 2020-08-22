@@ -226,7 +226,7 @@ export class mongoDB extends persistence {
                     'projection': { '_id': 0, 'date': 1, 'count': 1, 'sum': 1 }
                 }
             ).toArray((err, results) => {
-                callback(err, results.map(r => { return { date: r.date, value: r.sum / r.count } }));
+                callback(err, results.map(r => { return { date: r.date, value: (r.sum as number) / (r.count as number) } }));
             });
         });
     }
