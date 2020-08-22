@@ -2,7 +2,7 @@
   "name": "domoja-core",
   "author": "Bruno Chabrier",
   "description": "Core components of Domoja",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": false,
   "license": "GPL-3.0",
   "repository": {
