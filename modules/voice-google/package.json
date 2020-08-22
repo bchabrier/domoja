@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "private": false,
   "license": "GPL-3.0",
-  "description": "Allows Domoja to speaks, thanks to Google",
+  "description": "Allows Domoja to speak, thanks to Google",
   "main": "index.ts",
   "scripts": {
     "build": "tsc",
