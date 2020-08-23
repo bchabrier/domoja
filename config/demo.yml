@@ -477,7 +477,7 @@ scenarios:
           - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
         actions:
             - { device: semeria.presence, state: this.getDeviceState("semeria.nb_connected")>0?"ON":"OFF"}
-            - { device: semeria.presence-couleur, state: this.getDeviceState("semeria.nb_connected")>0?"#33cd5f":"grey"}
+            - { device: semeria.presence-couleur, state: this.getDeviceState("semeria.nb_connected")>0?"#33cd5f":"lightgrey"}
             - { device: semeria.presence-last-changed-date, state: new Date }
     - presence-last-changed-date:
         triggers:
