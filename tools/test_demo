@@ -96,6 +96,8 @@ test_from_pack_tarballs ()
             cd /home/pi/$ldir
             repo=`basename $(pwd)`.$$
             sed -i 's!\("main": *\)"\([^.]*\)\.ts"!\1"dist/\2.js"!' package.json
+            rm -fr dist
+            yarn run build
             yarn pack --filename $DEMO_DIR/$repo.tar.gz
             sed -i 's!\("main": *\)"dist/\([^.]*\)\.js"!\1"\2.ts"!' package.json
         )
