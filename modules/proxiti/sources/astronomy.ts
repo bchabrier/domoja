@@ -95,7 +95,8 @@ export class astronomy extends Source {
 
 		let self = this;
 
-		this.request = request.get("http://www.proxiti.info/horaires_soleil.php?o=" + this.location, function (err, response, bodyString) {
+		let url = "http://www.proxiti.info/horaires_soleil.php?o=" + this.location;
+		this.request = request.get(url, function (err, response, bodyString) {
 
 			if (err) return callback(err);
 
@@ -111,8 +112,8 @@ export class astronomy extends Source {
 			var err = null;
 			var match = reh.exec(cBodyString)
 			if (match == undefined) {
-				logger.error("Couldn't find headers in:", bodyString)
-				err = new Error("Couldn't find headers in:" + bodyString)
+				logger.debug(`While retrieving ${url}, couldn't find headers ${reh} in:`, bodyString);
+				err = new Error(`While retrieving ${url}, couldn't find headers ${reh} in:` + bodyString);
 			} else {
 				assert.notEqual(match, undefined)
 				assert.equal(match.length - 1, NB_COLS, "Wrong number of columns (" + (match.length - 1) + ") in proxiti table.");
