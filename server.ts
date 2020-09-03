@@ -9,7 +9,6 @@ var logger = require("tracer").colorConsole({
 
 import * as chokidar from 'chokidar';
 import * as core from 'domoja-core';
-import * as persistence from 'domoja-core/persistence/persistence';
 import * as net from 'net';
 import { Server } from 'typescript-rest';
 
@@ -395,7 +394,7 @@ export class DomojaServer {
 
   reloadConfig(done: (err: Error) => void) {
     var runWithMocha = /.*mocha$/.test(process.argv[1]);
-    persistence.setDemoMode(runWithMocha || this.getApp().demoMode);
+    core.setDemoMode(runWithMocha || this.getApp().demoMode);
     core.reloadConfig(this.currentFile, err => {
       if (err) return done(err);
 
