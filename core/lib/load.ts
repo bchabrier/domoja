@@ -14,7 +14,11 @@ import { ConfigLoader as importedConfigLoader } from '..'
 import { Console } from 'console';
 import { WriteStream } from 'tty';
 
-const { VM, VMScript } = require('vm2');
+let depth = 0;
+
+//const { VM, VMScript } = require('vm2');
+
+import { VM, VMScript } from 'vm2';
 
 import * as Parser from "shitty-peg/dist/Parser";
 
@@ -83,6 +87,89 @@ type user = {
 }
 */
 
+class ExternalFunction {
+    private script: any; //  instance of VMScript
+    public fct: Function;
+    constructor(public readonly file: string, public readonly line: number, private readonly functionString: string, private readonly sandbox: Sandbox) {
+        this.script = new VMScript("args.result = (" + this.functionString + ")(...args.args)");
+        try {
+            this.script.compile();
+        } catch (err) {
+            logger.error("In file '%s', failed to compile script '%s':\n", this.file, this.functionString, err);
+            this.fct = function couldNotCompile(...args: any[]) { };
+            return;
+        }
+
+        let self = this; // to be used inside the named function
+        this.fct = function sandboxedFunc(...args: any[]): void {
+
+            // because of issue https://github.com/patriksimek/vm2/issues/306, we apply the followig workaround:
+            // - create the VM before each run
+            // - create in the sandbox a new console with a new WriteStream for each sandbox
+            let stream = new WriteStream(1);
+            self.sandbox.console = new Console(stream);     // workaround
+            //if (true || !self.vm) {                                     // workaround
+            const timeout = 2000;
+            let vm = new VM({
+                timeout: 0, // no timeout as it causes problems when VMs are created in cascade and having a timeout
+                sandbox: self.sandbox
+            });
+            //}
+
+            self.sandbox.args.args = args;
+            self.sandbox.args.result = undefined;
+
+            let vm_run_didComplete = false; // patch to track failure in vm.run and avoid FATAL ERROR: v8::ToLocalChecked Empty MaybeLocal.
+            let start: number;
+            try {
+                //console.group();
+                // console.error('calling vm.run', ++depth, self.file, self.functionString);
+                start = (new Date).getTime();
+                vm.run(self.script);
+                //console.error('out vm.run', depth--);
+                vm_run_didComplete = true;
+            } catch (err) {
+                //console.error('out vm.run en err', depth--);
+                //logger.error(`Error while executing script '%s...':%s`, fct.toString().substr(0,20), err.message);
+
+                // find the error location
+                logger.warn('=======> err:', err, 'functionString:', self.functionString, 'script:', self.script);
+                if (err) {
+                    let location = /at .*\(vm.js:([0-9]+):([0-9]+)\)/.exec(err.stack);
+                    if (location) {
+                        let linePos = parseInt(location[1]);
+                        let charPos = parseInt(location[2]);
+                        err.message = err.message + "\n\n" + errorContext(self.functionString + '\n', linePos, charPos);
+                    }
+                    logger.error(`In file '${file}': %s\n`, err.message, err.stack);
+                } else {
+                    logger.error(`In file '${file}': ` + 'Error "null" raised while executing', self.functionString.substr(0, 128), new Error("here"));
+                }
+
+                // call the callback if any
+                let lastArg = args && args.length && args[args.length - 1];
+                if (typeof lastArg == 'function') {
+                    logger.warn('Calling callback');
+                    lastArg(err);
+                }
+            }
+            let end = (new Date).getTime();
+            if (end - start > timeout) {
+                logger.warn(`In file '${file}': function has taken longer than ${timeout} ms (${end - start} ms):`, self.functionString);
+            }
+
+            self.sandbox.console = null;
+            vm = null;
+            stream.destroy();
+            //console.groupEnd();
+            if (!vm_run_didComplete) {
+                console.error('!!!!!!!!!!!!!!!!!!!!===============================================!!!!!! vm run did not complete');
+            }
+            return sandbox.args.result;
+        }
+    }
+}
+
 export type Sandbox = {
     isReleased(): boolean, // indicates if the sandbox is in released state
     console: typeof console,
@@ -92,7 +179,7 @@ export type Sandbox = {
     clearTimeout: typeof clearTimeout,
     setInterval: typeof setInterval,
     clearInterval: typeof clearInterval,
-    args: { args: any },
+    args: { args: any, result: any },
     getDevice: typeof getDevice,
     getSource: typeof getSource,
     setDeviceState: typeof setDeviceState,
@@ -140,7 +227,7 @@ export class ConfigLoader extends events.EventEmitter {
         getDevicePreviousState: getDevicePreviousState,
         getDeviceLastUpdateDate: getDeviceLastUpdateDate,
         msg: <{ emitter: string, oldValue: string, newValue: string }>new Object(), // new Object needed to access outside of the sandbox
-        args: <{ args: any[] }>new Object(), // new Object needed to access outside of the sandbox
+        args: <{ args: any[], result: any }>new Object(), // new Object needed to access outside of the sandbox
     }
 
 
@@ -430,72 +517,7 @@ export class ConfigLoader extends events.EventEmitter {
     private vm: any;
 
     sandboxedFunction(fct: string): Function {
-
-        fct = fct.replace(/^ *function *\(/, "function unnamed (");
-
-        let self = this;
-        let script = this.compiledScripts[fct];
-
-        if (!script) {
-            try {
-                script = new VMScript("(" + fct + ")(...args.args)");
-                //script = new VMScript(fct);
-                script.compile();
-                this.compiledScripts[fct] = script;
-            } catch (err) {
-                logger.error("Failed to compile script '%s':", fct, err);
-                return function functionCannotCompileLoadedFromFile(file: string) { return function couldNotCompile() { } }(this.currentParsedFile);
-            }
-        }
-
-        return function functionLoadedFromFile(file: string) {
-
-            return function sandboxedFunc(...args: any[]): void {
-
-                // because of issue https://github.com/patriksimek/vm2/issues/306, we apply the followig workaround:
-                // - create the VM before each run
-                // - create in the sandbox a new console with a new WriteStream for each sandbox
-                self.sandbox.console = new Console(new WriteStream(1));     // workaround
-                if (true || !self.vm) {                                     // workaround
-                    self.vm = new VM({
-                        timeout: 1000,
-                        sandbox: self.sandbox
-                    });
-                }
-
-                self.sandbox.args.args = args;
-
-                let result;
-                try {
-                    /*
-                    (<any>self.sandbox.args).titi = 0;
-                    (<any>self.sandbox.msg).tutu = 0;
-         
-                    self.vm.run('console.log("avant", args, msg)');
-                    (<any>self.sandbox.args).titi = 1;
-                    (<any>self.sandbox.msg).tutu = 1;
-                    self.vm.run('console.log("apres", args, msg)');
-                    */
-                    result = self.vm.run(script);
-                } catch (err) {
-                    //logger.error(`Error while executing script '%s...':%s`, fct.toString().substr(0,20), err.message);
-
-                    // find the error location
-                    if (err) {
-                        let location = /at .*\(vm.js:([0-9]+):([0-9]+)\)/.exec(err.stack);
-                        if (location) {
-                            let linePos = parseInt(location[1]);
-                            let charPos = parseInt(location[2]);
-                            err.message = err.message + "\n\n" + errorContext(fct + '\n', linePos, charPos);
-                        }
-                        logger.error(`In file '${file}': `, err);
-                    } else {
-                        logger.error(`In file '${file}': ` + 'Error "null" raised while executing', fct.toString().substr(0, 128));
-                    }
-                }
-                return result;
-            }
-        }(this.currentParsedFile);
+        return new ExternalFunction(this.currentParsedFile, 9999, fct, this.sandbox).fct;
     }
 
     sandboxedExtFunction(func: string): Function {
