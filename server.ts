@@ -171,7 +171,14 @@ export class DomojaServer {
       let request: http.IncomingMessage = socket.request;
       console.log(request.headers.cookie);
 
-      let url = request.headers.origin as string;
+      let url: string;
+      if (request.headers.origin) {
+        url = request.headers.origin;
+      } else if (request.headers.referer) {
+        url = request.headers.referer;
+      } else {
+        logger.warn('Could not retrieve HTTP(S) type from headers:', request.headers);
+      }
       let http_string: http_type = url ? url.split(':')[0].toUpperCase() as http_type : 'HTTP';
       logger.error("websocket connected with", http_string);
       this.nbWebsockets[http_string]++;
