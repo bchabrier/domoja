@@ -48,11 +48,12 @@ describe('Module proxity', function () {
         });
       });
       it('should return an error for location WRONG_LOCATION', function (done) {
+        this.timeout(10000);
         let a = new astronomy('Path', "WRONG_LOCATION");
         a.Update((err) => {
           assert.notEqual(err, null);
-          const errMsg = "Couldn't find headers in:";
-          assert.equal(err.message.substr(0, errMsg.length), errMsg)
+          const errMsg = "couldn't find headers";
+          assert.notEqual(err.message.search(errMsg), -1, `"${errMsg}" not found`);
           done();
         });
       });

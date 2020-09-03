@@ -15,7 +15,7 @@ describe('Module api', function () {
     let InternalServer = ServerContainer.get();
 
 
-    this.timeout(5000);
+    this.timeout(15000);
 
     let server: DomojaServer;
 
