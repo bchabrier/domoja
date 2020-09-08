@@ -70,7 +70,7 @@ export class Freebox extends Source {
     public startPolling() {
         let poll = (api: string, interval: number) => {
             this.requestFromFreebox(api, null, (err, res) => {
-                if (err) logger.error(err, res);
+                if (err) logger.error(`Error in freebox '${this.path}'`, err, res);
                 else if (!res) logger.error('res is null', res);
                 else if (typeof res != 'object') logger.error(`res is not an object: ${res}`, res);
                 else if (res.success != true) logger.error('Success is not true', res);
