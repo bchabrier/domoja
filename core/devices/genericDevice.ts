@@ -66,7 +66,7 @@ function transformFunction(callback: any, transform?: (value: string) => string)
 }
 
 function mappingFunction(mapping: string): TransformFunction {
-    let transformRE = /(.*?)=>([^,]+)(,.*?=>[^,]+)*/
+    let transformRE = /^([^,]+)((,[^,]+)*)$/; // find expression separated by , firt
     if (!transformRE.test(mapping)) return undefined;
 
     let mappings: Map<string, string> = new Map();
@@ -75,8 +75,14 @@ function mappingFunction(mapping: string): TransformFunction {
     do {
         match = transformRE.exec(input);
         if (match) {
-            mappings.set(match[1], match[2]);
-            input = match[3] && match[3].substr(1);
+            let subRE = /^(.+)=>(.+)$/; // find 2 operands around =>
+
+            if (!subRE.test(match[1])) return undefined;
+
+            let subMatch = subRE.exec(match[1]);
+            mappings.set(subMatch[1], subMatch[2]);
+
+            input = match[2] && match[2].substr(1);
         }
     }
     while (input);
