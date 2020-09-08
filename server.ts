@@ -252,7 +252,8 @@ export class DomojaServer {
       core.token,
       loginPath,
       serve,
-      store
+      store,
+      env == 'development'
     );
 
     // � partir de ce point les services doivent etre autoris�s

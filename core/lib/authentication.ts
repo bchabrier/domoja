@@ -30,16 +30,19 @@ class User {
 var _tokenMgr: typeof tokenMgr;
 var _loginPath: string;
 var _store: any;
+var _dev: boolean;
 
 export function configure(app: express.Application,
   check: (user: string, pwd: string, done: (error: any, user?: any, options?: IVerifyOptions) => void) => void,
   findById: (user: string, cb: (err: Error, user: User) => void) => void,
   tokenMgr: typeof _tokenMgr, loginPath: string,
   loginContent: (req: express.Request, resp: express.Response) => void,
-  store: typeof session.Store) {
+  store: typeof session.Store,
+  devMode: boolean) {
   _tokenMgr = tokenMgr;
   _loginPath = loginPath;
   _store = store;
+  _dev = devMode
 
   // Local Authentication strategy
   passport.use(new LocalStrategy(function (user: string, pwd: string, done: (error: any, user?: any, options?: IVerifyOptions) => void) {
@@ -141,7 +144,13 @@ export function configure(app: express.Application,
 
   app.use(cookieParser());
   app.use(bodyParser.urlencoded({ extended: true }));
-  app.use(session({ secret: getSecret(), store: _store, resave: false, saveUninitialized: false }));
+  app.use(session({
+    secret: getSecret(),
+    store: _store,
+    resave: false,
+    saveUninitialized: false,
+    cookie: _dev ? { secure: true, sameSite: "none" } : undefined
+  }));
 
   // Initialize Passport and restore authentication state, if any, from the
   // session.
@@ -190,7 +199,7 @@ export function configure(app: express.Application,
       logger.debug('remember_me option was checked, issuing token');
       issueToken(req.user as User, function (err: Error, token: string) {
         if (err) { return next(err); }
-        res.cookie('remember_me', token, { path: '/', httpOnly: true, maxAge: 604800000 }); // 7 days
+        res.cookie('remember_me', token, { path: '/', httpOnly: true, maxAge: 604800000, sameSite: _dev ? "none" : undefined, secure: _dev ? true : undefined }); // 7 days
         return successReturnToOrRedirect();
       });
     },
