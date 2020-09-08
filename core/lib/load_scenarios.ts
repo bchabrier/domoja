@@ -109,6 +109,10 @@ function binaryCondition(c: Parser.Parse): ConditionFunction {
     let operator = removeQuotes(c.oneOf(
         Parser.token(/^(["']?)=\1/, '"="'),
         Parser.token(/^(["']?)!=\1/, '"!="'),
+        Parser.token(/^(["']?)<\1/, '"<"'),
+        Parser.token(/^(["']?)<=\1/, '"<="'),
+        Parser.token(/^(["']?)>\1/, '">"'),
+        Parser.token(/^(["']?)>=\1/, '">="'),
     ));
     logger.debug("found operator:", operator);
 
@@ -128,6 +132,14 @@ function binaryCondition(c: Parser.Parse): ConditionFunction {
         case '=': binaryExpression = (left: string, right: string) => { return left == right };
             break;
         case '!=': binaryExpression = (left: string, right: string) => { return left != right };
+            break;
+        case '>': binaryExpression = (left: string, right: string) => { return left > right };
+            break;
+        case '>=': binaryExpression = (left: string, right: string) => { return left >= right };
+            break;
+        case '<': binaryExpression = (left: string, right: string) => { return left < right };
+            break;
+        case '<=': binaryExpression = (left: string, right: string) => { return left <= right };
             break;
         default: logger.error('Binary operator "%s" not yet supported!', operator);
     }
