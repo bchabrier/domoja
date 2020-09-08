@@ -28,6 +28,13 @@ var module_dir = __dirname;
 // remove trailing /dist if any
 module_dir = module_dir.replace(/\/dist$/, '');
 
+// capture dev mode
+let devMode: boolean = undefined;
+if (process.argv.includes('--dev')) {
+  devMode = true;
+  process.argv = process.argv.filter(s => s != '--dev');
+}
+
 // process.argv is in the following form if run with mocha:
 //[ '/usr/bin/node',
 //  '/home/pi/domoja/node_modules/mocha/bin/mocha',
@@ -61,7 +68,8 @@ if (!fs.existsSync(CONFIG_FILE)) {
   //var app = createApp(3001, false);
   //DmjServer = new DomojaServer(4001, false, false);
   let port = process.env.PORT && parseInt(process.env.PORT) || 4001;
-  let server = new DomojaServer(port, port == 443, port == 443);
+  if (devMode == undefined) devMode = port != 443; 
+  let server = new DomojaServer(port, !devMode, port == 443);
   logger.error(__dirname);
   server.loadConfig(CONFIG_FILE, () => {
     server.start(() => {
