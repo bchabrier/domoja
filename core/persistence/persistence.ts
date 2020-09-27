@@ -104,7 +104,7 @@ export class mongoDB extends persistence {
                 }
                 mongoDB.mongoClient = client;
                 mongoDB.connecting = false;
-                if (!mongoDB.mongoClient.isConnected()) logger.error('Strange, juste (re)connected mongo client is not connected!!!');
+                if (!mongoDB.mongoClient.isConnected()) logger.error('Strange, just (re)connected mongo client is not connected!!!');
                 callback(null, client);
             });
         }
