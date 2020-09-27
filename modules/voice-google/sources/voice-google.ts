@@ -27,7 +27,7 @@ export class VoiceByGoogle extends Source {
 	doSetAttribute(id: string, attribute: string, value: string, callback: (err: Error) => void): void {
 		if (attribute == 'state') {
 			this.say(value, callback);
-			return ;
+			return;
 		}
 		return callback(new Error('Unsupported attribute/value: ' + attribute + '/' + value))
 	}
@@ -44,25 +44,53 @@ export class VoiceByGoogle extends Source {
 	}
 
 	private SayNow(msg: string, callback: (err: Error) => void) {
-		var encodedMsg = encodeURIComponent(msg);
+		const MAX = 200; // max message length supported by Google translate
+
+		// Note: we do not use the multi file capability of mpg321 because it does a
+		// segmentation fault after the first URL played. Hence we call mpg321 multiple times
+
+		let end = msg.length;
+		let spcl = 0;
+		// look for last punctuation
+		if (msg.length > MAX) {
+			end = msg.substr(0, MAX).lastIndexOf('. ');
+			spcl = 2;
+		}
+		// if none, look for last blank
+		if (end < 0) {
+			end = msg.substr(0, MAX).lastIndexOf(' ');
+			spcl = 1;
+		}
+
+		let encodedMsg = encodeURIComponent(msg.substr(0, end + spcl));
+
 		mpg321().outputdevice('alsa').audiodevice('hw:0,0')
 			.file('http://translate.google.com/translate_tts?tl=' +
 				this.language +
-				'&ie=utf-8&client=tw-ob&q=' +
-				encodedMsg).stereo().gain(this.volume).exec(callback);
-		logger.info(msg);
-	};
+				'&ie=utf-8&client=tw-ob&q=' + encodedMsg).stereo().gain(this.volume).exec((err: Error) => {
+					// skip known harmess error
+					if (err && !err.message.match(/tcgetattr\(\): Inappropriate ioctl for device/)) {
+						return callback(err);
+					}
+					if (end + spcl == msg.length) return callback(null)
 
-	private sayQueue = async.queue( (task: { message: string }, callback: (err: Error) => void) => {
+					this.SayNow(msg.substr(end + spcl), callback);
+				});
+
+	}
+
+	private sayQueue = async.queue((task: { message: string }, callback: (err: Error) => void) => {
+		logger.info(task.message);
 		this.SayNow(task.message, callback);
 	}, 1);
-	
+
 	say(msg: string, callback?: (err: Error) => void) {
 		this.sayQueue.push({
 			message: msg
-		}, callback);
+		}, err => {
+			callback(err);
+		});
 	};
-	
 }
 
 
