@@ -1,0 +1,20 @@
+// tsconfig.json
+{
+  "compilerOptions": {
+    "noImplicitAny": true,
+    "target": "es2017",
+    "module": "commonjs",
+    //"allowJs": true,
+    "rootDir": ".",
+    "outDir": "./dist",
+    "types": [
+      // add node as an option
+      "node"
+    ],
+  },
+  "exclude": [
+    "./test",
+    "./dist",
+    "./node_modules"
+  ]
+}
