@@ -21,14 +21,16 @@ export class IPX800 extends Source {
 	port: number;
 	input: ('0' | '1')[];
 	client: Socket;
+	timeout: number;
 
-	constructor(path: string, macaddress: string, ip: string, port?: number) {
+	constructor(path: string, macaddress: string, ip: string, port?: number, timeout?: number) {
 		super(path);
 		this.macAddress = macaddress;
 		this.ip = ip;
 		this.port = port || 80;
 		IPX800.ipxTab.push(this);
 		this.input = [];
+		this.timeout = timeout;
 
 		let self = this;
 		this.client = new Socket;
@@ -58,11 +60,11 @@ export class IPX800 extends Source {
 		this.client.on('close', () => {
 			//self.connect();
 			// if the socket is still here, let's try to reconnect
-			if (self.client) {
-				logger.info('Disconnected from IPX, trying to reconnect in 5 secs...');
+			if (self.client && self.timeout) {
+				logger.info('Disconnected from IPX, trying to reconnect in %d secs...', self.timeout);
 				setTimeout(() => {
-					self.client.connect(8124);
-				}, 5000);
+					if (self.client) self.client.connect(8124);
+				}, self.timeout * 1000);
 			} else {
 				logger.info('Disconnected from IPX');
 			}
@@ -122,14 +124,22 @@ export class IPX800 extends Source {
 	}
 
 	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-		return new IPX800(path, initObject.macaddress, initObject.ip, initObject.port);
+		let timeout: number = undefined;
+		if (initObject.timeout) {
+			timeout = +initObject.timeout;
+		}
+		if (isNaN(timeout)) {
+			logger.warning(`Source "${path}" of type "IPX800": timeout "${initObject.timeout}" is not a number.`);
+		}
+		return new IPX800(path, initObject.macaddress, initObject.ip, initObject.port, timeout);
 	}
 
 	getParameters(): Parameters {
 		return {
 			ip: 'REQUIRED',
 			macaddress: 'REQUIRED',
-			update_url: 'REQUIRED'
+			update_url: 'REQUIRED',
+			timeout: 'OPTIONAL'
 		}
 	}
 
