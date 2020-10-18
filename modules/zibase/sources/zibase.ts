@@ -12,14 +12,15 @@ var logger = require("tracer").colorConsole({
 export class Zibase extends Source {
 	zibase: ZiBase;
 	private initialEmitEvent: (event: string, arg1: any, arg2: any) => void;
-	
-	constructor(path: string, ipAddr: string, deviceId: string, token: string, callback?: (err: Error) => void) {
+
+	constructor(path: string, ipAddr: string, deviceId: string, token: string, timeout: number, callback?: (err: Error) => void) {
 		super(path);
 		this.zibase = new ZiBase(ipAddr, deviceId, token, callback);
+		this.to = timeout;
 
 		// let's intercept the ZiBase's emitEvent to catch all change events
 		this.initialEmitEvent = (this.zibase as any).emitEvent;
-		(this.zibase as any).emitEvent =  (event: string, arg1: any, arg2: any) => {
+		(this.zibase as any).emitEvent = (event: string, arg1: any, arg2: any) => {
 			if (arg2) {
 				var id = arg1;
 				var arg = arg2;
@@ -39,11 +40,13 @@ export class Zibase extends Source {
 			}
 		};
 
-		this.armTimeout();
-		this.zibase.on("message", () => {
-			this.timeout && clearInterval(this.timeout);
+		if (this.to) {
 			this.armTimeout();
-		});
+			this.zibase.on("message", () => {
+				this.timeout && clearInterval(this.timeout);
+				this.armTimeout();
+			});
+		}
 	}
 
 	private timeout: NodeJS.Timer = undefined;
@@ -55,7 +58,7 @@ export class Zibase extends Source {
 		this.zibase.processZiBaseData(response);
 	}
 
-	private to = 120; // in seconds
+	private to: number; // in seconds
 	private armTimeout() {
 		this.timeout = setInterval(() => {
 			logger.error("No message received after " + this.to + "s, restarting Zibase connection.");
@@ -95,13 +98,21 @@ export class Zibase extends Source {
 
 
 	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-		return new Zibase(path, initObject.ip, initObject.device_id, initObject.token);
+		let timeout: number = undefined;
+		if (initObject.timeout) {
+			timeout = +initObject.timeout;
+		}
+		if (isNaN(timeout)) {
+			logger.warning(`Source "${path}" of type "zibase": timeout "${initObject.timeout}" is not a number.`);
+		}
+		return new Zibase(path, initObject.ip, initObject.device_id, initObject.token, timeout);
 	}
 
 	getParameters(): Parameters {
 		return {
 			ip: 'REQUIRED',
 			device_id: 'REQUIRED',
+			timeout: 'OPTIONAL',
 			token: 'REQUIRED'
 		}
 	}
