@@ -105,6 +105,12 @@ export class mongoDB extends persistence {
                 mongoDB.mongoClient = client;
                 mongoDB.connecting = false;
                 if (!mongoDB.mongoClient.isConnected()) logger.error('Strange, just (re)connected mongo client is not connected!!!');
+
+                false && this.devRebuildData("day", "minute", err => {
+                    if (err) logger.error(`Could not rebuild week data for persistence "${this.id}":`, err);
+                    else logger.info(`Successfully rebuilt week data for persistence "${this.id}".`);
+                });
+
                 callback(null, client);
             });
         }
@@ -261,6 +267,91 @@ export class mongoDB extends persistence {
                     callback(err);
                 }
             );
+        });
+    }
+
+    devRebuildData(target: AggregationType, from: AggregationType, callback: (err: Error) => void) {
+        this.getMongoClient((err, client) => {
+            if (err != null) {
+                logger.error("Cannot connect to Mongo:", err);
+                logger.error(err.stack);
+                callback(err);
+                return;
+            }
+            var db = client.db();
+            var collection = this.id;
+            let fromCollectionStore = db.collection(collection + " by " + from);
+            let targetCollectionStore = db.collection(collection + " by " + target);
+            fromCollectionStore.find(
+                {
+                },
+                {
+                    'projection': { '_id': 0, 'date': 1, 'count': 1, 'sum': 1 }
+                }
+            ).toArray((err, results) => {
+                if (err) logger.error(err);
+                else {
+                    targetCollectionStore.deleteMany(
+                        {
+                        },
+                        (err, result) => {
+                            if (err) {
+                                logger.error('Could not remove data!');
+                                callback(err);
+                            } else {
+                                logger.info('Removed %d old data in collection "%s".', result.deletedCount, targetCollectionStore.collectionName);
+
+                                results.map(r => {
+                                    if (target == "none") return;
+                                    let d = r.date as Date;
+                                    switch (target) {
+                                        case "year":
+                                            d.setMonth(0);
+                                        case "month":
+                                            d.setDate(1);
+                                        case "day":
+                                            d.setHours(0);
+                                        case "hour":
+                                            d.setMinutes(0);
+                                        case "minute":
+                                            d.setSeconds(0);
+                                            d.setMilliseconds(0);
+                                            break;
+                                        case "week":
+                                            let day = d.getDay(); // Sunday - Saturday : 0 - 6
+                                            if (day == 0) day = 7;
+                                            d.setDate(d.getDate() - day + 1); //Monday of the week
+                                            d.setHours(0);
+                                            d.setMinutes(0);
+                                            d.setSeconds(0);
+                                            d.setMilliseconds(0);
+                                            break;
+                                        default:
+                                            let n: never = target;
+                                    }
+                                    targetCollectionStore.updateOne(
+                                        {
+                                            date: d
+                                        },
+                                        {
+                                            $inc: { sum: r.sum, count: r.count }
+                                        },
+                                        {
+                                            upsert: true
+                                        },
+                                        (err, result) => {
+                                            if (err != null) {
+                                                logger.error("Error while storing in Mongo:", err)
+                                            }
+                                            logger.warn('Inserted %d new data into collection "%s".', results.length, targetCollectionStore.collectionName);
+                                            callback(err);
+                                        });
+                                });
+                            }
+                        }
+                    );
+                }
+            });
         });
     }
 
