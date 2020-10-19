@@ -1,5 +1,5 @@
 
-import { GenericDevice, ConfigLoader, message } from '..';
+import { GenericDevice, ConfigLoader, message, CRONPATTERN } from '..';
 import { Scenario } from './scenario';
 
 import { CronJob } from 'cron';
@@ -55,8 +55,6 @@ export abstract class Trigger {
 
 }
 
-var cronRE = /([*\d-,]+ *){6}/;
-
 export class TimeTrigger extends Trigger {
     when: string;
     cronJob: CronJob;
@@ -100,7 +98,7 @@ export class TimeTrigger extends Trigger {
                 }
             }
             this.doc.devices[this.when].device.on('change', this.atHandler);
-        } else if (this.when.match(cronRE)) {
+        } else if (this.when.match(CRONPATTERN)) {
             // cronjob
             this.cronJob = new CronJob(this.when, () => {
                 this.handler();
@@ -132,7 +130,7 @@ export class TimeTrigger extends Trigger {
             this.doc.devices[this.when].device && this.doc.devices[this.when].device.removeListener('change', this.atHandler);
             this.cronJob && this.cronJob.stop();
             this.cronJob = null;
-        } else if (this.when.match(cronRE)) {
+        } else if (this.when.match(CRONPATTERN)) {
             this.cronJob && this.cronJob.stop();
             this.cronJob = null;
         }

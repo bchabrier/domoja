@@ -8,4 +8,6 @@ export * from './devices/sensor';
 export * from './devices/camera';
 export * from './devices/httpcamera';
 export * as token from './lib/token';
+export let CRONPATTERN = /^(((\*(\/\d+)?)|(\d+(-\d+)?)(,\d+(-\d+)?)*) *){6}/;
+
 

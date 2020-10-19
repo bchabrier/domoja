@@ -10,7 +10,7 @@ import Module = require('module');
 import * as userMgr from '../managers/userMgr'
 type User = userMgr.User;
 import * as events from 'events';
-import { ConfigLoader as importedConfigLoader } from '..'
+import { ConfigLoader as importedConfigLoader, CRONPATTERN } from '..'
 import { Console } from 'console';
 import { WriteStream } from 'tty';
 
@@ -1139,7 +1139,7 @@ function trigger(c: Parser.Parse): Scenario {
                 (c: Parser.Parse) => {
                     c.skip(Parser.token(/^cron: */, '"cron:"')); eatComments(c);
                     //let pattern = Parser.token(/^((\*(\/\d+)?)|((\d+(-\d+)?)(,\d+(-\d+)?)*) [*] [*])/, 'a cron pattern, i.e. "*" or "1-3,5" or "*/2"');
-                    let pattern = Parser.token(/^(((\*(\/\d+)?)|(\d+(-\d+)?)(,\d+(-\d+)?)*) *){6}/, 'a cron pattern, i.e. 6 times a "*" or "1-3,5" or "*/2" as in https://www.npmjs.com/package/cron');
+                    let pattern = Parser.token(CRONPATTERN, 'a cron pattern, i.e. 5 or 6 times a "*" or "1-3,5" or "*/2" as in https://www.npmjs.com/package/cron');
                     let when = removeQuotes(c.one(pattern));
                     let err = true;
                     if (when == 'startup') {
