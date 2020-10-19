@@ -18,7 +18,7 @@ export function setDemoMode(mode: boolean) {
 
 type Strategy = "raw" | "aggregate";
 
-const ALL_AGGREGATION_TYPES = ["year", "month", "day", "hour", "minute", "none"] as const;
+const ALL_AGGREGATION_TYPES = ["year", "month", "week", "day", "hour", "minute", "none"] as const;
 type AggregationType = (typeof ALL_AGGREGATION_TYPES)[number];
 
 export abstract class persistence {
@@ -138,6 +138,15 @@ export class mongoDB extends persistence {
                             case "hour":
                                 d.setMinutes(0);
                             case "minute":
+                                d.setSeconds(0);
+                                d.setMilliseconds(0);
+                                break;
+                            case "week":
+                                let day = d.getDay(); // Sunday - Saturday : 0 - 6
+                                if (day == 0) day = 7;
+                                d.setDate(d.getDate() - day + 1); //Monday of the week
+                                d.setHours(0);
+                                d.setMinutes(0);
                                 d.setSeconds(0);
                                 d.setMilliseconds(0);
                                 break;
