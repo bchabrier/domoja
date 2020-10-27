@@ -48,6 +48,7 @@ export class Freebox extends Source {
             timeout: NodeJS.Timeout
         }
     } = {};
+    private polling = false;
 
     constructor(path: string, private URL: string, private app_token: string, callback?: (err: Error) => void) {
         super(path);
@@ -86,6 +87,9 @@ export class Freebox extends Source {
     }
 
     public startPolling() {
+        if (this.polling) return;
+        
+        this.polling = true;
         let poll = (api: string, interval: number) => {
             this.requestFromFreebox(api, null, (err, res) => {
                 if (err) logger.error(`Error in freebox '${this.path}' while requesting '${api}':`, err, res);
@@ -115,6 +119,7 @@ export class Freebox extends Source {
             this.pollIntervals[api].timeout && clearTimeout(this.pollIntervals[api].timeout);
             this.pollIntervals[api].timeout = null;
         });
+        this.polling = false;
     }
 
     public requestAuthorization(callback: (err: Error, response: JSONobject) => void) {
