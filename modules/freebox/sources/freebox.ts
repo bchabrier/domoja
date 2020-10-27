@@ -9,6 +9,24 @@ var logger = require("tracer").colorConsole({
 
 type JSONobject = { [x: string]: string | boolean | number | JSONobject | Array<string | boolean | number | JSONobject> };
 
+function shortString(o: any): string {
+    const max = 256;
+    let s: string = require('util').inspect(o);
+    if (s.length <= max) return s;
+
+    if (s.indexOf('\n') >= 0) {
+        let mid = (max - 11) / 2;
+        let f = s.indexOf('\n', mid);
+        let l = s.lastIndexOf('\n', s.length - mid);
+        //console.log("mid=", mid, "f=", f, "l=", l, "length=", s.length)
+        //console.log("mid-f=>", s.substring(mid,f))
+        //console.log("l-=>", s.substr(l))
+        if (f >= l) return s;
+        return s.substr(0, f) + '\n...\n' + s.substr(l + 1);
+    }
+    return s.substr(0, (max - 7) / 2) + '... ...' + s.substr(s.length - (max - 7) / 2);
+}
+
 export class Freebox extends Source {
 
     private readonly app_id = "domoja";
@@ -70,7 +88,7 @@ export class Freebox extends Source {
     public startPolling() {
         let poll = (api: string, interval: number) => {
             this.requestFromFreebox(api, null, (err, res) => {
-                if (err) logger.error(`Error in freebox '${this.path}'`, err, res);
+                if (err) logger.error(`Error in freebox '${this.path}' while requesting '${api}':`, err, res);
                 else if (!res) logger.error('res is null', res);
                 else if (typeof res != 'object') logger.error(`res is not an object: ${res}`, res);
                 else if (res.success != true) logger.error('Success is not true', res);
@@ -192,7 +210,9 @@ export class Freebox extends Source {
 
     public requestFromFreebox(api: string, postData: JSONobject, callback: (err: Error, response: JSONobject) => void) {
         if (!this.api_version) {
+            logger.debug(`In freebox '${this.path}' while requesting '${api}':`, 'No api_version, requesting it...');
             return this._requestFromFreebox('/api_version', null, (err, res) => {
+                logger.debug(`In freebox '${this.path}' while requesting '${api}':`, 'Requested api_version, checking errors...');
                 if (err) return callback(err, res);
                 if (!res) return callback(new Error('res is null'), res);
                 if (typeof res != 'object') return callback(new Error(`res is not an object: ${res}`), res);
@@ -201,29 +221,39 @@ export class Freebox extends Source {
                 if (typeof res.api_base_url != 'string') return callback(new Error(`res.api_base_url is not a string: ${res.api_base_url}`), res);
                 this.api_base_url = res.api_base_url;
 
+                logger.debug(`In freebox '${this.path}' while requesting '${api}':`, 'Got api_version:', this.api_version);
+                logger.debug(`In freebox '${this.path}' while requesting '${api}':`, 'Continuing with payload request...');
                 this.requestFromFreebox(api, postData, callback);
             });
         }
-
         let version = parseInt(this.api_version);
-        api = this.api_base_url + '/v' + version + '/' + api;
-        api = api.replace(/\/+/g, '/');
-        this._requestFromFreebox(api, postData, (err, res) => {
+        let versioned_api = this.api_base_url + '/v' + version + '/' + api;
+        versioned_api = versioned_api.replace(/\/+/g, '/');
+        logger.debug(`In freebox '${this.path}' while requesting '${api}':`, 'requesting', versioned_api);
+        this._requestFromFreebox(versioned_api, postData, (err, res) => {
+            logger.debug(`In freebox '${this.path}' while requesting '${api}':`, 'requested', versioned_api, 'checking for errors...');
             if (err) return callback(err, res);
             if (!res) return callback(new Error('res is null'), res);
             if (typeof res != 'object') return callback(new Error(`res is not an object: ${res}`), res);
             if (typeof res.result != 'object') return callback(new Error(`res.result is not an object: ${res.result}`), res);
 
+            logger.debug(`In freebox '${this.path}' while requesting '${api}':`, 'no error, res:', shortString(res));
+
             if (res.success == false && res.error_code == 'auth_required') {
+                logger.debug(`In freebox '${this.path}' while requesting '${api}':`, 'authentication is needed, checking challenge for errors');
                 // authentication is needed
                 if (Array.isArray(res.result)) return callback(new Error(`res.result is an array: ${res.result}`), res);
                 if (typeof res.result.challenge != 'string') return callback(new Error(`res.result.challenge is not a string: ${res.result.challenge}`), res);
                 this.challenge = res.result.challenge;
 
+                logger.debug(`In freebox '${this.path}' while requesting '${api}':`, 'authentication is needed, no error, doing login');
+
                 this.login((err, res) => {
-                    return this._requestFromFreebox(api, postData, callback);
+                    logger.debug(`In freebox '${this.path}' while requesting '${api}':`, 'login done, processing with request...');
+                    return this._requestFromFreebox(versioned_api, postData, callback);
                 });
             } else {
+                logger.debug(`In freebox '${this.path}' while requesting '${api}':`, 'no error, got success, calling callback');
                 callback(null, res);
             }
         });
@@ -310,7 +340,7 @@ S27oDfFq04XSox7JM9HdTt2hLK96x1T7FpFrBTnALzb7vHv9MhXqAT90fPR/8A==
         let req = https.request(this.URL + '/' + api, options, (res) => {
             res.on('data', (chunk) => { response += chunk });
             res.on('end', () => {
-                logger.debug('Got response from Freebox "%s":\nRequest: %s %s\nResponse:', this.path, this.URL + '/' + api, postData ? require('util').inspect(postData) : "", response);
+                logger.debug('Got response from Freebox "%s":\nRequest: %s %s\nResponse:', this.path, this.URL + '/' + api, postData ? require('util').inspect(postData) : "", shortString(response));
 
                 let jsonResponse: JSONobject;
                 try {
