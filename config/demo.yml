@@ -23,6 +23,9 @@ sources:
   - freeboxSemeria: {
       type: demo
   }
+  - robonect: {
+      type: demo
+  }
   - myZibase: {
       type: demo
   }
@@ -116,7 +119,7 @@ devices:
 
 
   - semeria:
-    - voix : { type: variable, widget: toggle, tags: semeria, name: "Voix Séméria" }
+    - voix : { type: variable, widget: toggle, tags: "semeria voix", name: "Voix Séméria" }
     - nb_connected: { type: variable, widget: text, tags: 'semeria', name: "nb Connectés Séméria" }
     - hosts-connected: { type: sensor, widget: text, tags: 'semeria', source: freeboxSemeria, id: '/lan/browser/pub/', transform: !!js/function 'function (value) { 
       if (!value) return value; 
@@ -126,11 +129,12 @@ devices:
       return tab.map(lh => lh.primary_name).join(", ");
     }', name: "Connectés Séméria" }
     - presence : { type: variable, widget: text, tags: 'semeria', name: "Présence au Séméria"} 
-    - presence-couleur : { type: variable, widget: text, tags: 'semeria', name: "Couleur icon"} 
+    - presence-couleur : { type: variable, widget: color, tags: 'semeria', name: "Couleur icon"} 
     - presence-message : { type: variable, widget: text, tags: 'semeria', name: "Message présence"} 
     - presence-last-changed-date : { type: variable, widget: text, tags: 'semeria', name: "Date de changement de présence"} 
+    - connected-last-changed-date : { type: variable, widget: text, tags: 'semeria', name: "Date de changement d'objets connectés"} 
   - home:
-    - dernier-appel: { type: sensor, widget: text, tags: 'appels', source: freebox, id: '/call/log/', transform: !!js/function 'function (value) { 
+    - dernier-appel: { type: sensor, widget: text, tags: 'téléphone-page', source: freebox, id: '/call/log/', transform: !!js/function 'function (value) { 
       if (!value) return value; 
       //console.log("<<<<<",JSON.parse(value).length,JSON.parse(value)[0],">>>>>"); 
       let tab = JSON.parse(value);
@@ -140,7 +144,18 @@ devices:
       else
         return "";
     }', name: "Dernier appel" }
-    - appel-en-cours: { type: sensor, widget: text, tags: 'appels', source: freebox, id: '/call/log/', transform: !!js/function 'function (value) { 
+    - date-dernier-appel: { type: sensor, widget: text, tags: 'téléphone-page', source: freebox, id: '/call/log/', transform: !!js/function 'function (value) { 
+      if (!value) return value; 
+      //console.log("<<<<<",JSON.parse(value).length,JSON.parse(value)[0],">>>>>"); 
+      let tab = JSON.parse(value);
+      //console.log("<<<<<",tab.length,tab.length && tab[0],">>>>>"); 
+      if (tab.length>0)
+        return new Date(tab[0].datetime * 1000);
+      else
+        return "";
+    }', name: "Date dernier appel" }
+    - message-dernier-appel : { type: variable, widget: text, tags: 'téléphone', name: "Message dernier appel"} 
+    - appel-en-cours: { type: sensor, widget: text, tags: 'téléphone-page', source: freebox, id: '/call/log/', transform: !!js/function 'function (value) { 
       if (!value) return value; 
       //console.log("<<<<<",JSON.parse(value).length,JSON.parse(value)[0],">>>>>"); 
       let tab = JSON.parse(value);
@@ -154,6 +169,7 @@ devices:
       } else
         return "";
     }', name: "Appel en cours" }
+    - couleur-telephone: { type: variable, widget: color, tags: 'téléphone', name: "Couleur du téléphone" }
 
   - lampes:
     - lampe_chambre_parents: { type: device, widget: toggle, tags: 'lampes-presence', source: myZibase, id: "ZA4", name: "Lampe Chambre parents" }
@@ -192,7 +208,6 @@ devices:
      - filtration-duration : { type: variable, widget: text, tags: 'piscine', name: "Durée de la filtration (heures)"} 
      - durees-filtration : { type: variable, widget: text, tags: 'piscine', name: "Tableau des durées de filtration [°C, h]"} 
      - durees-filtration-graph : { type: variable, widget: graph, tags: 'piscine-page', name: "Durées de filtration"} 
-     - planning-filtration-graph : { type: variable, widget: graph, tags: 'piscine-page', name: "Planning de filtration"} 
 
   - petit_portail:
     - controle : { type: variable, widget: "confirm:Actionner:primary:Petit portail:Actionner le petit portail?:Partiel,Grand,Non", tags: 'portails-page, entrée', name: "Actionner le petit portail"} 
@@ -204,6 +219,33 @@ devices:
     - senseur_fermeture: { type: sensor, widget: text, tags: 'détecteurs, portails', source: myZibase, id: "ZB9", name: "Universal sensor Grand Portail", transform: !!js/function 'function (newValue) {
         return newValue == "1" ? "OFF" : "ON";
       }' }
+
+  - tondeuse:
+    - stopped : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/stopped", tags: tondeuse, name: "Arrêté" }
+    - stopped-plain : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/stopped", tags: tondeuse-page, transform: "true=>Arrêté,false=>Marche", name: "Marche/Arrêt" }
+    - mode : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/mode", tags: tondeuse, name: "Mode (code)" }
+    - mode-plain : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/mode", tags: tondeuse-page, name: "Mode", transform: "0=>Auto,1=>Manuel,2=>Retour à la base" }
+    - status-code : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/status", tags: tondeuse, name: "Status (code)" }
+    - status-simple : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/status", tags: tondeuse-page, name: "Status simple", transform: "0=>En cours de détermination,1=>En stationnement,2=>En tonte,3=>En recherche de station,4=>En charge,5=>En recherche,7=>En erreur,8=>Signal boucle perdu,16=>Eteint,17=>En veille" }
+    - status-plain : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/status/plain", tags: tondeuse-page, name: "Status" }
+    - status-since-raw : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/status/duration", tags: tondeuse-page, name: "Status depuis (min)" }
+    - status-since : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/status/duration", tags: tondeuse-page, name: "Status depuis", transform: !!js/function 'function (value) { 
+            function displayAsDuration(duration) {
+              var h = Math.floor(duration/60);
+              var mn = Math.round(duration - 60*h);
+
+              var str = "";
+              if (h>0 && mn===0) str = h + "h";
+              if (h>0 && mn>0) str = h + "h " + mn + "mn";
+              if (h===0 && mn>0) str = mn + "mn";
+              if (h===0 && mn===0) str = "0mn";
+              return str;
+            }
+            return displayAsDuration(parseInt(value));
+      }' }
+    - charge : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/battery/charge", tags: tondeuse-page, name: "Charge batterie" }
+    - tension-batterie : { type: sensor, source: robonect, widget: text, id: "/Robonect/health/voltage/batt", tags: tondeuse-page, name: "Tension batterie" }
+    - next-start : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/timer/next/unix", tags: tondeuse-page, name: "Prochaine tonte", transform: !!js/function 'function (value) { let v = parseInt(value); console.log(value, v); return v>0?new Date(v*1000 + (new Date()).getTimezoneOffset() * 60 * 1000 /* for some reason the unix date returned by the robonect is not correct */):"Non défini"; }' }
 
   - tempo:
     - couleur_du_jour : { type: device, widget: tempo-color, tags: 'tempo', source: tempo, id: couleurDuJour, name: "Couleur du jour" }
@@ -224,7 +266,13 @@ devices:
     - extinction : { type: variable, widget: text, tags: '', name: "Heure d'extinction cuisine"} 
 
 
-  - say : { type: device, widget: text, source: voice, id: unused, name: "Message parlé"} 
+  - say : { type: variable, widget: text, tags: voix, name: "Message parlé"} 
+  - say-volatile : { type: device, widget: text, source: voice, id: unused, tags: voix, name: "Message parlé par Google"} 
+  - messages-of-the-day : { type: variable, widget: text, tags: voix, name: "Messages de la journée"} 
+  - repeat : { type: variable, widget: "multistate:Répéter:primary", tags: 'voix', name: "Répéter le dernier message"} 
+  - say-messages-of-the-day : { type: variable, widget: "multistate:Messages du jour:primary", tags: 'voix', name: "Dire les messages du jour"} 
+  - text-to-say : { type: variable, widget: "input", tags: 'voix', name: "Message à dire"} 
+
 
 scenarios:
   - demo:
@@ -465,7 +513,14 @@ scenarios:
               if (n == 0) {
                 this.setDeviceState("say", "Il n" + String.fromCharCode(39) + "y a maintenant plus personne au Séméria");
               } else {
-                this.setDeviceState("say", "Il y a maintenant " + n + " personnes au Séméria");
+                let nstr = "";
+                if (n==1) nstr = "une";
+                else if (n==2) nstr = "deux";
+                else if (n==3) nstr = "trois";
+                else if (n==4) nstr = "quatre";
+                else if (n==5) nstr = "cinq";
+                else nstr = n;
+                this.setDeviceState("say", "Il y a maintenant " + nstr + " personne" + (n>1?"s":"") + " au Séméria");
               }
 
               callback(null);
@@ -478,13 +533,21 @@ scenarios:
         actions:
             - { device: semeria.presence, state: this.getDeviceState("semeria.nb_connected")>0?"ON":"OFF"}
             - { device: semeria.presence-couleur, state: this.getDeviceState("semeria.nb_connected")>0?"#33cd5f":"lightgrey"}
+            - { device: semeria.connected-last-changed-date, state: new Date }
+    - presence-changed:
+        triggers:
+          - state: semeria.presence
+        conditions:
+          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
+        actions:
             - { device: semeria.presence-last-changed-date, state: new Date }
-    - presence-last-changed-date:
+    - connected-last-changed-date:
         triggers:
           - state: semeria.nb_connected
-          - state: semeria.presence-last-changed-date
+          - state: semeria.connected-last-changed-date
+          - cron: 00 00 00 * * * # to force recomputation of friendly date
         actions:
-            - !!js/function 'function setFiltrationMessage (callback) {
+            - !!js/function 'function setSemeriaPresenceMessage (callback) {
               function displayAsTime(dateVal) {
                 let now = new Date();
                 let hh = dateVal.getHours();
@@ -506,7 +569,7 @@ scenarios:
                 return str;
               }            
 
-              let lastDateChanged = this.getDeviceState("semeria.presence-last-changed-date");
+              let lastDateChanged = this.getDeviceState("semeria.connected-last-changed-date");
               let _lastDateChanged = lastDateChanged && new Date(lastDateChanged);
 
               let nb = this.getDeviceState("semeria.nb_connected");
@@ -518,6 +581,12 @@ scenarios:
               this.setDeviceState("semeria.presence-message", msg, callback);
             }'
   - home:
+    - couleur-telephone:
+        triggers:
+          - at: startup
+          - state: home.appel-en-cours
+        actions:
+          - { device: home.couleur-telephone, state: this.getDeviceState("home.appel-en-cours")==""?"lightgrey":"#ef473a"}
     - appel-en-cours:
         triggers:
           - state: home.appel-en-cours
@@ -525,25 +594,71 @@ scenarios:
           - !!js/function 'function f(callback) {
             let appel_en_cours = this.getDeviceState("home.appel-en-cours");
             if (appel_en_cours) {
+              let known_nums = {
+                "0607186716": "Bruno",
+                "0615457163": "Marie-Pierre",
+                "0477506276": "Grand-mère de Fontaneilles",
+                "0492182000": "Alerte mairie",
+              }
               let num = appel_en_cours;
-              if (num == "0607186716") {
-                num = "Bruno";
-              } else if (num == "0615457163") {
-                num = "Marie-Pierre";
-              } else if (num == "0477506276") {
-                num = "Grand-mère de Fontaneilles";
+              if (known_nums[num]) {
+                num = known_nums[num]
               } else if (appel_en_cours.match(/^[0-9]{10}$/)) {
                 num = "";
                 for (i = 0; i < 10; i+=2) {
                     num += appel_en_cours[i] + appel_en_cours[i+1] + " ";
                 }
+                num = num.substr(0, num.length - " ".length);
               }
               //console.log(num);
               this.setDeviceState("say", "Appel de " + num);
             }
             callback(null);
           }'
+    - message-dernier-appel:
+        triggers:
+          - cron: 00 00 00 * * *  # every midnight, to update the friendly time
+          - state: home.dernier-appel
+          - state: home.date-dernier-appel
+        actions:
+          - !!js/function 'function message_dernier_appel(callback) {
 
+              function displayAsTime(dateVal) {
+                let now = new Date();
+                let hh = dateVal.getHours();
+                let mm = dateVal.getMinutes();
+                let ss = dateVal.getSeconds();
+                let yyyy = dateVal.getFullYear();
+                let MM = dateVal.getMonth() + 1;
+                let dd = dateVal.getDate();
+
+                if (dateVal.getFullYear() === now.getFullYear()) {
+                    if (dateVal.getMonth() === now.getMonth()) {
+                        if (dateVal.getDate() === now.getDate()) return (hh<10?"0":"")+hh+":"+(mm<10?"0":"")+mm;
+                        else if (dateVal.getDate() === now.getDate()-1) str = "hier";
+                        else if (dateVal.getDate() === now.getDate()+1) str = "demain";
+                        else str = (dd<10?"0":"")+dd+"/"+(MM<10?"0":"")+MM+"/"+yyyy;
+                    } else str = (dd<10?"0":"")+dd+"/"+(MM<10?"0":"")+MM+"/"+yyyy;
+                } else str = (dd<10?"0":"")+dd+"/"+(MM<10?"0":"")+MM+"/"+yyyy;
+                str += " " + (hh<10?"0":"")+hh+":"+(mm<10?"0":"")+mm;
+                return str;
+              }            
+              
+              let dernier_appel = this.getDeviceState("home.dernier-appel");
+              let date_dernier_appel = this.getDeviceState("home.date-dernier-appel");
+
+              if (!dernier_appel || !date_dernier_appel) return this.setDeviceState("home.message-dernier-appel", "", callback);
+
+              if (dernier_appel.match(/^[0-9]{10}$/)) {
+                num = "";
+                for (i = 0; i < 10; i+=2) {
+                    num += dernier_appel[i] + dernier_appel[i+1] + "&nbsp;";
+                }
+                num = num.substr(0, num.length - "&nbsp;".length);
+              } else num = dernier_appel;
+
+              this.setDeviceState("home.message-dernier-appel", num + "<BR/>" + displayAsTime(date_dernier_appel), callback);
+            }'
 
 
 
@@ -1412,6 +1527,54 @@ scenarios:
         actions:
             - { device: grand_portail.grand, state: "ON" }
             - { device: grand_portail.controle, state: "OFF" }  
+    - tondeuse-injoignable:
+        triggers:
+          - cron: 0 */15 * * * * # check and notify every 15 mn
+        conditions:
+          - {operator: "<", left: this.getDeviceLastUpdateDate("tondeuse.status-since-raw").getTime(), right: Date.now() - 15 * 60 * 1000 } # pas mis à jour depuis 15mn
+        actions:
+          - { device: say, state: "Attention, la tondeuse n'est pas joignable! Elle est peut-être coincée." }
+    - tondeuse-erreur:
+        triggers:
+          - state: tondeuse.status-code
+        conditions:
+          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
+          #- {operator: "=", left: this.msg.newValue, right: 7} # erreur
+          - {operator: "or", 
+            left: {operator: "=", left: this.msg.newValue, right: 7}, # erreur
+            right: {operator: "=", left: this.msg.newValue, right: 8} # signal boucle perdu
+          } 
+        actions:
+          - { device: say, state: "Attention, la tondeuse est en erreur !" }
+    - tondeuse-probleme-charge:
+        triggers:
+          - state: tondeuse.charge
+        conditions:
+          - {operator: "=", left: this.getDeviceState("tondeuse.status-code"), right: 4} # en charge
+          - {operator: "<", left: parseInt(this.msg.newValue), right: 99} # avoids false alerts close to 100%
+          - {operator: "<", left: parseInt(this.msg.newValue), right: parseInt(this.msg.oldValue)}
+        actions:
+          - { device: say, state: "Attention, la tondeuse ne charge pas bien. Essayez de la ré-enclencher dans sa station !" }
+    - tondeuse-erreur-rappel:
+        triggers:
+          - cron: 00 */15 * * * * # every 15 mn
+        conditions:
+          - {operator: "=", left: tondeuse.status-code, right: 7} # erreur
+        actions:
+          - { device: say-volatile, state: "Attention, la tondeuse est toujours en erreur !" }
+    - charge-manu:
+        triggers:
+          - state: tondeuse.charge
+          - state: tondeuse.mode
+          - state: tondeuse.status-code
+        conditions:
+          - {operator: "=", left: tondeuse.mode, right: 1} # manuel
+          - {operator: "=", left: tondeuse.status-code, right: 1} # stationnement
+          - {operator: "<=", left: parseInt(this.getDeviceState("tondeuse.charge")), right: 15 }
+        actions:
+          - { device: say, state: "Attention, la tondeuse nécessite une charge manuelle !" }
+
+          
   - minuteries:
     - controle:
       - init:
@@ -1502,6 +1665,100 @@ scenarios:
         actions:
           - {device: lampes.lampe_escalier, state: "OFF"}
           - {device: lampes.lampe_hall, state: "OFF"}
+  - say:
+    triggers:
+      - state: say
+    actions:
+      - { device: say-volatile, state: this.msg.newValue }    
+      - !!js/function 'function add_to_messages_of_the_day(callback) {
+          // update messages-of-the-day
+          let motd = this.getDeviceState("messages-of-the-day");  
+          // motd is in the form [ {date: Date, message: string }]
+
+          if (!motd || motd=="") {
+            motd = [];
+          } else {
+            motd = JSON.parse(motd);
+          }
+
+          // push new message
+          motd.push({
+            date: (new Date()).toUTCString(),
+            message: this.getDeviceState("say")
+          });
+
+          this.setDeviceState("messages-of-the-day", JSON.stringify(motd), callback);
+      }'
+  - clean-messages-of-the-day:
+    triggers:
+      - at: startup
+      - state: messages-of-the-day
+      - cron: 00 00 00 * * * # midnight
+    actions:
+      - !!js/function 'function clean_messages_of_the_day(callback) {
+          // remove oldest messages
+
+          let motd = this.getDeviceState("messages-of-the-day");  
+          // motd is in the form [ {date: Date, message: string }]
+
+          if (!motd || motd=="") {
+            motd = [];
+          } else {
+            motd = JSON.parse(motd);
+          }
+
+          let now = Date.now();
+          let today = new Date(now);
+          today.setMilliseconds(0);
+          today.setSeconds(0);
+          today.setMinutes(0);
+          today.setHours(0);
+          let newmotd = motd.filter(e => (new Date(e.date)).getTime() >= today.getTime());
+
+          if (JSON.stringify(newmotd) != JSON.stringify(motd)) {
+            this.setDeviceState("messages-of-the-day", JSON.stringify(newmotd), callback);
+          } else {
+            callback(null);
+          }
+      }'
+  - repeat:
+    triggers:
+      - state: repeat
+    actions:
+      - { device: say-volatile, state: new String("Dernier message: ") + this.getDeviceState("say") } 
+  - messages-of-the-day:
+    triggers:
+      - state: say-messages-of-the-day   
+    actions:
+      - !!js/function 'function say_messages_of_the_day(callback) {
+          let motd = this.getDeviceState("messages-of-the-day");  
+
+          if (!motd || motd == "" || motd == "[]") {
+            return this.setDeviceState("say-volatile", "Aucun message aujourd" + String.fromCharCode(39) + "hui", callback);
+          }
+          motd = JSON.parse(motd); 
+
+          let message = "J" + String.fromCharCode(39) + "ai émis " + motd.length + " messages aujourd" + String.fromCharCode(39) + "hui. ";
+
+          motd.forEach(e => {
+            let d = new Date(e.date);
+            message += "A " + d.getHours() + " heures " + d.getMinutes() + ", " + e.message + ". ";
+          });
+          this.setDeviceState("say-volatile", message, callback);
+      }'
+  - say-text-to-say:
+    triggers:
+      - state: text-to-say   
+    actions:
+      - !!js/function 'function say_text_to_say(callback) {
+          let text = this.getDeviceState("text-to-say");  
+
+          if (!text || text == "") {
+            return callback(null);
+          }
+
+          this.setDeviceState("say-volatile", text, callback);
+      }'
 
 pages:
   - Home:
@@ -1511,14 +1768,14 @@ pages:
         - widgets: 
           - pool-temp:
             widget: dashboard-icon
-            icon: "thermometer" # a valid ionic icon name
+            icon: "thermometer" # a valid ionic icon name https://ionicframework.com/docs/v3/ionicons/
             linkPage: PiscineTemp
             label: "Piscine"
             color: "${piscine.couleur}"
             text: "<h1><BR/><strong>${piscine.temperature}</strong><BR/>°C</h1>"
           - pool-filtration:
             widget: dashboard-icon
-            icon: "${piscine.filtration-icon}" # a valid ionic icon name
+            icon: "${piscine.filtration-icon}" # a valid ionic icon name https://ionicframework.com/docs/v3/ionicons/
             linkPage: Piscine
             label: "Filtration ${piscine.filtration}"
             color: "${piscine.filtration-couleur}"
@@ -1543,14 +1800,14 @@ pages:
             label: Piscine
           - lights:
             widget: dashboard-icon
-            icon: "bulb" # a valid ionic icon name
+            icon: "bulb" # a valid ionic icon name https://ionicframework.com/docs/v3/ionicons/
             color: "${lampes.couleur}"
             linkPage: Lampes
             label: "Lampes"
             text: "<h1>${lampes.nb_lampes_ON}/${lampes.nb_lampes}</br></h1>"
           - portails:
             widget: dashboard-icon
-            icon: ios-barcode # a valid ionic icon name
+            icon: ios-barcode # a valid ionic icon name https://ionicframework.com/docs/v3/ionicons/
             linkPage: Portails
             label: Portails
           - tempo:
@@ -1558,20 +1815,38 @@ pages:
             couleurDuJour: "${tempo.couleur_du_jour}"
             couleurDeDemain: "${tempo.couleur_de_demain}"
             label: "Tempo"           
+          - tondeuse:
+            widget: dashboard-icon
+            icon: "https://hqvcdn3.azureedge.net/qs_ver=20200901T111258&hcsh=521DD67B7F6A78F2B9520C4778134371/_$$_/media/aprimo/gardena/robotic%20lawnmowers/photos/studio/ga310-05xxxx/ga310-0592.png"
+            linkPage: Tondeuse
+            label: "${tondeuse.status-plain}"
+            text: "<div style=position:relative;bottom:-45px;width:100%;>${tondeuse.mode-plain}</div>"
           - presence-semeria:
             widget: dashboard-icon
-            icon: home # a valid ionic icon name
+            icon: home # a valid ionic icon name https://ionicframework.com/docs/v3/ionicons/
             linkPage: Séméria
             label: "Séméria"
             color: "${semeria.presence-couleur}"
             text: "${semeria.presence-message}"
+          - voix:
+            widget: dashboard-icon
+            icon: volume-up # a valid ionic icon name https://ionicframework.com/docs/v3/ionicons/
+            label: "Voix"
+            linkPage: Voix
+          - telephone:
+            widget: dashboard-icon
+            icon: call # a valid ionic icon name https://ionicframework.com/docs/v3/ionicons/
+            linkPage: Téléphone
+            label: "Téléphone"
+            text: "${home.message-dernier-appel}"
+            color: "${home.couleur-telephone}"
           - users:
             widget: dashboard-icon
-            icon: people # a valid ionic icon name
+            icon: people # a valid ionic icon name https://ionicframework.com/docs/v3/ionicons/
             label: "Utilisateurs"
           - debug:
             widget: dashboard-icon
-            icon: ios-bug # a valid ionic icon name
+            icon: ios-bug # a valid ionic icon name https://ionicframework.com/docs/v3/ionicons/
             linkPage: Devices
             label: "Debug"
   - Aquarium:
@@ -1610,16 +1885,36 @@ pages:
       page: list.html
       args: 
         - tag-list: 'lampes*:lampes'
+        - headers: false
   - Séméria:
       title: 'Séméria'
       page: list.html
       args: 
         - tag-list: 'semeria*:Séméria'
+        - headers: false
+  - Tondeuse:
+      title: 'Tondeuse'
+      page: list.html
+      args: 
+        - tag-list: 'tondeuse-page'
+        - headers: false
+  - Téléphone:
+      title: 'Téléphone'
+      page: list.html
+      args: 
+        - tag-list: 'téléphone-page'
+        - headers: false
+  - Voix:
+      title: 'Voix'
+      page: list.html
+      args: 
+        - tag-list: 'voix'
+        - headers: false
   - Devices:
       title: 'Tous les devices'
       page: list.html
       args: 
-        - tag-list: 'alarme, lampes*:lampes, détecteurs, websockets, piscine*:piscine, aquarium*:aquarium, portails*:portails, astronomy, tempo, semeria:Séméria, *:autres'
+        - tag-list: 'alarme, lampes*:lampes, détecteurs, websockets, piscine*:piscine, aquarium*:aquarium, portails*:portails, astronomy, tempo, semeria:séméria, tondeuse*:tondeuse, voix*:voix, téléphone*:téléphone, *:autres'
         - image-size: tiny
   - About:
       menu-item: 'A propos'
