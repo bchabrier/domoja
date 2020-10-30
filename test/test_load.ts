@@ -358,6 +358,14 @@ describe('Module load', function () {
             });
 
         });
+        it('should support boolean binary conditions', function (done) {
+            grammar.reloadConfig('./test/load/scenarios/boolean_binary_condition.yml', err => {
+                grammar.__set__('sandbox.actionDone', done);
+
+                grammar.getSource('testSource').emitEvent('change', 'the_device', { oldValue: -1, newValue: 1 });
+            });
+
+        });
         it('should support binary conditions with this.', function (done) {
             grammar.reloadConfig('./test/load/scenarios/binary_this_condition.yml', err => {
                 grammar.__set__('sandbox.actionDone', done);

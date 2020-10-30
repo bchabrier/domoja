@@ -66,7 +66,8 @@ function unnamedCondition(c: Parser.Parse): NamedCondition {
             logger.debug('Got ext function, continuing with', currentSource(c));
             return f;
         },
-        binaryCondition
+        binaryCondition,
+        booleanBinaryCondition
     );
     eatComments(c);
     logger.debug('Got unnamedCondition, continuing with', currentSource(c));
@@ -152,6 +153,61 @@ function binaryCondition(c: Parser.Parse): ConditionFunction {
         }, function (err, results) {
             let res = binaryExpression(results.left, results.right);
             logger.debug("Computing binaryExpression '%s' '%s' '%s' => %s...", results.left, operator, results.right, res)
+            cb(null, res);
+        });
+    }
+}
+
+function booleanBinaryCondition(c: Parser.Parse): ConditionFunction {
+    let document = <ConfigLoader>c.context().doc;
+
+    logger.debug("trying booleanBinaryCondition with", currentSource(c));
+
+    c.skip(/^{ */)
+    c.skip(/^operator: */)
+    logger.debug("trying operator with", currentSource(c));
+    let operator = removeQuotes(c.oneOf(
+        Parser.token(/^(["']?)or\1/, '"or"'),
+        Parser.token(/^(["']?)and\1/, '"and"'),
+    ));
+    logger.debug("found operator:", operator);
+
+    c.skip(/^, */)
+    eatComments(c);
+    let indent = c.isNext('\n');
+    if (indent) c.indent();
+    c.skip(/^left: */)
+    let left = c.one(unnamedCondition);
+    logger.debug("found left:", left);
+    c.skip(/^, */)
+    eatComments(c);
+    if (c.isNext('\n')) c.newline();
+    c.skip(/^right: */)
+    let right = c.one(unnamedCondition);
+    logger.debug("found right:", right);
+    eatComments(c);
+    if (indent) c.dedent();
+    if (c.isNext('\n')) c.newline();
+    c.skip(/^ *} */)
+
+    let booleanBinaryExpression: (left: boolean, right: boolean) => boolean;
+
+    switch (operator) {
+        case 'or': booleanBinaryExpression = (left: boolean, right: boolean) => { return left || right };
+            break;
+        case 'and': booleanBinaryExpression = (left: boolean, right: boolean) => { return left && right };
+            break;
+        default: logger.error('Binary operator "%s" not yet supported!', operator);
+    }
+
+    return (cb: (err: Error, cond: boolean) => void) => {
+        logger.debug("Retrieving args of booleanBinaryExpression '%s'", operator)
+        async.series({
+            left: left.fct,
+            right: right.fct
+        }, function (err, results) {
+            let res = booleanBinaryExpression(results.left, results.right);
+            logger.debug("Computing booleanBinaryExpression '%s' '%s' '%s' => %s...", results.left, operator, results.right, res)
             cb(null, res);
         });
     }

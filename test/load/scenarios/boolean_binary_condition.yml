@@ -1,0 +1,36 @@
+imports:
+  - module: ./test/load/sources/fake_source
+    source: fakeSource 
+  - module: ./core/devices/device
+    device: device
+
+sources:
+  - testSource: {
+      type: fakeSource,
+      required-parameter: somevalue
+  }
+
+# A fake device using the fake source
+devices:
+  - the_device: {
+     type: device,
+     source: testSource,
+     name: the_device
+  }
+
+scenarios:
+  - scenario:
+      triggers: 
+        - state: the_device   
+      conditions:
+        - boolean_binary-condition: { operator: or, 
+          left: {operator: =, left: 1, right: 0 }, 
+          right: {operator: "!=", left: 1, right: 0 }
+        }
+        - boolean_binary-condition-flat: { operator: or, left: {operator: =, left: 1, right: 0 }, right: {operator: "!=", left: 1, right: 0 } }
+      actions:
+        - !!js/function 'function(callback) {
+            this.actionDone();
+            callback(null);
+          }'
+
