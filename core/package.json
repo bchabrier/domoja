@@ -34,6 +34,7 @@
     "request": "^2.87.0",
     "shitty-peg": "0.0.5",
     "tracer": "^1.1.2",
+    "tree-kill": "^1.2.2",
     "vm2": "^3.6.2"
   },
   "devDependencies": {
