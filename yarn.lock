@@ -3613,6 +3613,15 @@ typedarray@^0.0.6:
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
   integrity sha1-hnrHTjhkGHsdPUfZlqeOxciDB3c=
 
+typescript-cached-transpile@^0.0.6:
+  version "0.0.6"
+  resolved "https://registry.yarnpkg.com/typescript-cached-transpile/-/typescript-cached-transpile-0.0.6.tgz#1d1f0620ebb29cf8d8c11e5353c2b4f43dfafc01"
+  integrity sha512-bfPc7YUW0PrVkQHU0xN0ANRuxdPgoYYXtZEW6PNkH5a97/AOM+kPPxSTMZbpWA3BG1do22JUkfC60KoCKJ9VZQ==
+  dependencies:
+    "@types/node" "^12.12.7"
+    fs-extra "^8.1.0"
+    tslib "^1.10.0"
+
 typescript-rest@^3.0.1:
   version "3.0.2"
   resolved "https://registry.yarnpkg.com/typescript-rest/-/typescript-rest-3.0.2.tgz#e19100cee76199bc903430bef41fa34b095942b5"
