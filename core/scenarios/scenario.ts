@@ -16,6 +16,7 @@ export class Scenario {
     triggers: Trigger[] = [];
     condition: ConditionFunction;
     action: ActionFunction;
+    else: ActionFunction;
     doc: ConfigLoader;
     path: string;
     stopped: boolean;
@@ -50,6 +51,10 @@ export class Scenario {
         this.action = action;
     }
 
+    setElseAction(action: ActionFunction): void {
+        this.else = action;
+    }
+
     checkConditions(callback: (err: Error, success: boolean) => void): void {
         if (this.condition) {
             logger.debug('Checking condition...')
@@ -68,6 +73,18 @@ export class Scenario {
         }
         this.action.call(this.doc["sandbox"], function endActions(err: Error) {
             logger.debug("Actions have been run.");
+            cb && cb(err);
+        });
+    }
+
+    runElseActions(cb?: (err: Error) => void): void {
+        logger.debug("Calling else actions...");
+        if (this.stopped) {
+            logger.debug("Scenario stopped, else actions have not been run.");
+            return cb && cb(null);
+        }
+        this.else.call(this.doc["sandbox"], function endElseActions(err: Error) {
+            logger.debug("Else actions have been run.");
             cb && cb(err);
         });
     }
@@ -92,6 +109,21 @@ export class Scenario {
                     }
                     cb(err);
                 });
+            } else {
+                // run else actions
+                if (this.else) {
+                    this.runElseActions((err: Error) => {
+                        if (err) {
+                            logger.debug('Got error %s while running else actions.', err);
+                            logger.debug(err.stack);
+                        } else {
+                            logger.debug('Successfully run all else actions.');
+                        }
+                        cb(err);
+                    });
+                } else {
+                    cb(null);
+                }
             }
         });
     }

@@ -336,6 +336,14 @@ describe('Module load', function () {
             });
 
         });
+        it('should execute else action if condition returns false', function (done) {
+            grammar.reloadConfig('./test/load/scenarios/action_else.yml', err => {
+                grammar.__set__('sandbox.actionDone', done);
+
+                grammar.getSource('testSource').emitEvent('change', 'the_device', { oldValue: -1, newValue: 2 });
+            });
+
+        });
         it('should fire a named action', function (done) {
             grammar.reloadConfig('./test/load/scenarios/named_action.yml', err => {
                 passToSandbox(done);

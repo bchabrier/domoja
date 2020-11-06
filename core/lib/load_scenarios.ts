@@ -13,6 +13,7 @@ var logger = require('tracer').colorConsole({
 
 let CONDITIONS = Parser.token(/^conditions: */, '"conditions:"');
 let ACTIONS = Parser.token(/^actions: */, '"actions:"');
+let ELSE = Parser.token(/^else: */, '"else:"');
 
 export function condition(c: Parser.Parse): ConditionFunction {
     c.skip(CONDITIONS);
@@ -222,7 +223,26 @@ export function actions(c: Parser.Parse): ActionFunction {
     return a;
 }
 
-type NamedAction = { name: string, fct: ActionFunction };
+export function elseActions(c: Parser.Parse): ActionFunction {
+    logger.debug('trying elseActions with:', currentSource(c));
+    c.skip(ELSE);
+    logger.debug('trying actionsArray with:', currentSource(c));
+    let a = c.one(actionArray);
+    logger.debug('found elseActions:')
+    return a;
+}
+
+class NamedAction {
+    public name: string;
+
+    constructor(private scenario: Scenario, private fct: ActionFunction) { this.name = "<unnamed>"}
+    
+    call(sandbox: Sandbox, cb: (err: Error) => void) {
+        if (this.scenario.stopped) return cb(null);
+
+        this.fct.call(sandbox, cb);
+    }
+}
 
 function actionArray(c: Parser.Parse): ActionFunction {
     c.indent();
@@ -235,13 +255,13 @@ function actionArray(c: Parser.Parse): ActionFunction {
         (c: Parser.Parse) => { c.newline() });
 
     let actionArrayFunction = function (cb: (err: Error) => void) {
-        let self = this;
+        let self: Sandbox = this;
         let n = 1;
         let N = actions.length;
         async.eachSeries(actions, function (action, callback) {
             logger.debug("Calling action '%s' (%d/%d)...", action.name, n, N);
             n++;
-            action.fct.call(self, callback);
+            action.call(self, callback);
         }, function (err: Error) {
             if (err) {
                 logger.debug('Got error %s when calling %s actions in series.', err, N)
@@ -257,7 +277,7 @@ function actionArray(c: Parser.Parse): ActionFunction {
 
 function singleAction(c: Parser.Parse): NamedAction {
     logger.debug("trying singleAction with", currentSource(c));
-    let res: { name: string, fct: ActionFunction } = <any>c.oneOf(
+    let res: NamedAction = <any>c.oneOf(
         namedAction,
         unnamedAction
     )
@@ -277,7 +297,7 @@ function unnamedAction(c: Parser.Parse): NamedAction {
     );
     eatComments(c);
     logger.debug("found unnamedAction")
-    return { name: "<noname>", fct: fct };
+    return new NamedAction(c.context().scenarioUnderConstruction as Scenario, fct );
 
 }
 
@@ -286,10 +306,11 @@ function namedAction(c: Parser.Parse): NamedAction {
     let name = trim(c.one(IDENTIFIER));
     c.skip(Parser.token(/^ *: */, '":"'));
 
-    let f = c.one(unnamedAction).fct;
-    logger.debug("found namedAction")
+    let f = c.one(unnamedAction);
+    logger.debug("found namedAction");
+    f.name = name;
 
-    return { name: name, fct: f };
+    return f;
 }
 
 function stateAction(c: Parser.Parse): ActionFunction {

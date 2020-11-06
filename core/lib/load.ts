@@ -23,7 +23,7 @@ import { VM, VMScript } from 'vm2';
 import * as Parser from "shitty-peg/dist/Parser";
 
 import { currentSource, removeQuotes, eatCommentsBlock, eatComments, trim, sortedDeviceList } from './load_helpers';
-import { condition, actions } from './load_scenarios';
+import { condition, actions, elseActions } from './load_scenarios';
 import * as  colors from 'colors/safe';
 
 var logger = require('tracer').colorConsole({
@@ -1081,6 +1081,7 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
 
     eatCommentsBlock(c);
     let scenario = c.optional(trigger);
+    c.context().scenarioUnderConstruction = scenario;
     eatCommentsBlock(c);
     let cond = c.optional(condition);
     logger.debug('condition = ', cond)
@@ -1088,7 +1089,14 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
     eatCommentsBlock(c);
     let act = c.one(actions);
     scenario.setAction(act);
-    c.dedent()
+    logger.debug('Got actions, continuing with ', currentSource(c));
+    if (c.isNext(/^\n *else *:/)) {
+        c.newline();
+        let elseact = c.optional(elseActions);
+        scenario.setElseAction(elseact);
+    }
+    c.dedent();
+    c.context().scenarioUnderConstruction = null;
 
     return { name: i, scenario: scenario }
 }
