@@ -293,7 +293,8 @@ function unnamedAction(c: Parser.Parse): NamedAction {
         (c: Parser.Parse) => {
             return document.sandboxedExtFunction(c.one(FUNCTION_EXT));
         },
-        stateAction
+        stateAction,
+        waitAction
     );
     eatComments(c);
     logger.debug("found unnamedAction")
@@ -377,3 +378,59 @@ function stateAction(c: Parser.Parse): ActionFunction {
     */
 }
 
+function waitAction(c: Parser.Parse): ActionFunction {
+    logger.debug("trying waitAction")
+    c.skip(Parser.token(/^ *{ */, '"{"'));
+    c.skip(Parser.token(/^wait: */, '"wait:"'));
+
+    let document = <ConfigLoader>c.context().doc;
+
+    const supportedDurationUnits = ['h', 'hours', 'mn', 'minutes', 's', 'seconds', 'ms', 'd', 'days', ''] as const;
+    type supportedDurationUnits = (typeof supportedDurationUnits)[number];
+    let nonEmptySupportedDurationUnits = supportedDurationUnits.filter(v => v != '').join('|');
+
+    let regex = new RegExp(`^([0-9]+) *(${nonEmptySupportedDurationUnits})?`)
+    let duration = c.one(Parser.token(regex, `<duration (${nonEmptySupportedDurationUnits})>`));
+    c.skip(/^ *} */);
+
+    logger.debug("found waitAction");
+
+    return function (cb: (err: Error) => void) {
+
+        let match = duration.match(regex);
+
+        if (!match) return cb(new Error(`'${duration}' is not a duration. Should be in the form <number> ${nonEmptySupportedDurationUnits}`));
+
+        let unit: supportedDurationUnits = (match[2] || '') as supportedDurationUnits;
+        let d = parseInt(match[1]);
+
+        let now = Date.now();
+        let target = now;
+        switch (unit) {
+            case 'h':
+            case 'hours':
+                target += d * 60 * 60 * 1000;
+                break;
+            case 'mn':
+            case 'minutes':
+                target += d * 60 * 1000;
+                break;
+            case 's':
+            case 'seconds':
+                target += d * 1000;
+                break;
+            case 'ms':
+            case '':
+                target += d;
+                break;
+            case 'd':
+            case 'days':
+                let n = new Date(now);
+                target = (new Date(n.getFullYear(), n.getMonth(), n.getDate() + d, n.getHours(), n.getMinutes(), n.getSeconds(), n.getMilliseconds())).getTime();
+                break;
+            default:
+                let s: never = unit;
+        }
+        setTimeout(() => cb(null), target - now);
+    }
+}
