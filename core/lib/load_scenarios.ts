@@ -294,6 +294,7 @@ function unnamedAction(c: Parser.Parse): NamedAction {
             return document.sandboxedExtFunction(c.one(FUNCTION_EXT));
         },
         stateAction,
+        scenarioActionAction,
         waitAction
     );
     eatComments(c);
@@ -376,6 +377,42 @@ function stateAction(c: Parser.Parse): ActionFunction {
         logger.error('Unsupported state expression "%s".', value);
     }
     */
+}
+
+function scenarioActionAction(c: Parser.Parse): ActionFunction {
+    logger.debug("trying scenarioActionAction")
+    c.skip(Parser.token(/^ *{ */, '"{"'));
+    c.skip(Parser.token(/^scenario: */, '"scenario:"'));
+
+    let document = <ConfigLoader>c.context().doc;
+
+    let scenarioPath = c.one(Parser.token(/^[a-zA-Z][a-zA-Z0-9\-]*(\.[a-zA-Z][a-zA-Z0-9\-]*)*/, '<scenario path>'));
+    c.skip(Parser.token(/^, */, '","'));
+    c.skip(Parser.token(/^action: */, '"action:"'));
+
+    const supportedScenarioActions = ['start', 'stop'] as const;
+    type supportedScenarioActions = (typeof supportedScenarioActions)[number];
+
+    let value = c.oneOf(...supportedScenarioActions) as supportedScenarioActions;
+    c.skip(/^ *} */);
+
+    logger.debug("found scenarioActionAction");
+
+    return function (cb: (err: Error) => void) {
+
+        let scenario = document.scenarios[scenarioPath];
+        if (!scenario) {
+            return cb(new Error(`Unknown scenario '${scenarioPath}'.`));
+        }
+        switch (value) {
+            case 'start':
+                scenario.start(cb);
+                break;
+            case 'stop':
+                scenario.stop();
+                break;
+        }
+    }
 }
 
 function waitAction(c: Parser.Parse): ActionFunction {
