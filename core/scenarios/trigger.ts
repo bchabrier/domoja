@@ -24,28 +24,10 @@ export abstract class Trigger {
             logger.info('Scenario "%s" triggers...', this.scenario.path);
             msg && this.doc.setSandboxMsg(msg);
 
-            // check conditions
-            this.scenario.checkConditions((err: Error, success: boolean) => {
-                if (!err && success) {
-                    // run actions
-                    this.scenario.runActions((err: Error) => {
-                        if (err) {
-                            logger.debug('Got error %s while running actions.', err);
-                            logger.debug(err.stack);
-                        } else {
-                            logger.debug('Successfully run all actions.');
-                        }
-                        logger.debug('Resetting sandbox.');
-                        this.doc.setSandboxMsg({});
-                    });
-                } else {
-                    if (err) {
-                        logger.debug('Got error %s while checking conditions.', err);
-                        logger.debug(err.stack);
-                    }
-                    logger.debug('Resetting sandbox.');
-                    this.doc.setSandboxMsg({});
-                }
+            this.scenario.start(err => {
+                err && logger.warn(`Error while executing scenario '${this.scenario.path}':`, err);
+                logger.debug('Resetting sandbox.');
+                this.doc.setSandboxMsg({});
             });
         }
     }

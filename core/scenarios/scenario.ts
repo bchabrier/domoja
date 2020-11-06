@@ -18,10 +18,12 @@ export class Scenario {
     action: ActionFunction;
     doc: ConfigLoader;
     path: string;
+    stopped: boolean;
 
     constructor(doc: ConfigLoader, path: string) {
         this.doc = doc;
         this.path = path;
+        this.stopped = false;
     }
 
     activate(callback?: (err: Error, s: Scenario) => void): void {
@@ -29,8 +31,8 @@ export class Scenario {
             trigger.activate();
         });
     }
-    
-    deactivate(callback?: (err: Error, s: Scenario) => void): void  {
+
+    deactivate(callback?: (err: Error, s: Scenario) => void): void {
         this.triggers.forEach(trigger => {
             trigger.deactivate();
         });
@@ -60,11 +62,41 @@ export class Scenario {
 
     runActions(cb?: (err: Error) => void): void {
         logger.debug("Calling actions...");
+        if (this.stopped) {
+            logger.debug("Scenario stopped, actions have not been run.");
+            return cb && cb(null);
+        }
         this.action.call(this.doc["sandbox"], function endActions(err: Error) {
             logger.debug("Actions have been run.");
             cb && cb(err);
         });
     }
+
+    start(cb: (err: Error) => void): void {
+        this.stopped = false;
+
+        // check conditions
+        this.checkConditions((err: Error, success: boolean) => {
+            if (err) {
+                logger.debug('Got error %s while checking conditions.', err);
+                logger.debug(err.stack);
+                cb(err);
+            } else if (success) {
+                // run actions
+                this.runActions((err: Error) => {
+                    if (err) {
+                        logger.debug('Got error %s while running actions.', err);
+                        logger.debug(err.stack);
+                    } else {
+                        logger.debug('Successfully run all actions.');
+                    }
+                    cb(err);
+                });
+            }
+        });
+    }
+
+    stop() {
+        this.stopped = true;
+    }
 }
-
-

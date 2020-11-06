@@ -243,6 +243,7 @@ export class ConfigLoader extends events.EventEmitter {
 
         logger.info('Releasing %d scenario(s)...', Object.keys(this.scenarios).length)
         Object.keys(this.scenarios).forEach(e => {
+            this.scenarios[e].stop();
             this.scenarios[e].deactivate();
         })
         this.scenarios = undefined;
