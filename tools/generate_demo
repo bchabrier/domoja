@@ -78,6 +78,7 @@ EOF
             where="before imports"
             acceptedSources="astronomy tempo"
             acceptedSources=" "acceptedSources" "
+            debug=0
         }
 
         where == "in '$section'" { doprint=1 }
@@ -119,6 +120,7 @@ EOF
         }
 
         where=="in sources" && /type:/ {
+            if (debug) print "type line:" $0
             nf=split($0, fields, "[ \t:,}]+")
             for (f = 1; f<=nf; f++) {
                 if (fields[f]=="type" && f < nf) type=fields[f+1]
@@ -132,11 +134,24 @@ EOF
             if (doprint) print
             next
         }
-        where=="in sources" && $0 !~ /^ *$/ && $0 !~ /[{}]/ {
+        where=="in sources" && $0 ~ /^ *- *+[a-zA-Z0-9-]+: *{/ {
+            if (debug) print "source line:" $0
+            if (doprint) print
+            next
+        }
+
+        where=="in sources" && $0 ~ /^ +[a-zA-Z0-9-]+: */ {
+            if (debug) print "attribute line:" $0
             if (accepted) if (doprint) print
             next
         }
-        where=="in sources" && $0 ~ /[{}]/ {
+
+        where=="in sources" && $0 !~ /^  } *\r?$/ && $0 !~ /^ +[a-zA-Z0-9-]+:/ {
+            if (debug) print "non attribute line:" $0
+            next
+        }
+        where=="in sources" && ( $0 ~ /^  } *\r?$/ || $0 ~ /{/ ) {
+            if (debug) print "{ or }:" $0
             if (doprint) print
             next
         }
