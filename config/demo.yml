@@ -40,7 +40,6 @@ sources:
       type: demo
   }
   - tempo: { type: tempo }
-
   - voice: {
       type: demo
   }
@@ -856,6 +855,17 @@ scenarios:
         actions:
           - {device: piscine.filtration-message, state: "" }
     - filtration-couleur:
+      - AUTO-Offline:
+        triggers:
+          - at: startup
+          - state: piscine.filtration
+          - state: piscine.controle
+        conditions:
+          - {operator: =, left: this.getDeviceState("piscine.controle"), right: "AUTO"}
+          - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "offline"}
+        actions:
+          - {device: piscine.filtration-couleur, state: "orange" } 
+          - {device: piscine.filtration-icon, state: "timer" }
       - AUTO-ON:
         triggers:
           - at: startup
@@ -878,6 +888,16 @@ scenarios:
         actions:
           - {device: piscine.filtration-couleur, state: "lightgrey" } 
           - {device: piscine.filtration-icon, state: "timer" }
+      - ON-Offline:
+        triggers:
+          - at: startup
+          - state: piscine.controle
+        conditions:
+          - {operator: =, left: this.getDeviceState("piscine.controle"), right: "ON"}
+          - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "offline"}
+        actions:
+          - {device: piscine.filtration-couleur, state: "orange" } 
+          - {device: piscine.filtration-icon, state: "flash" }
       - ON-ON:
         triggers:
           - at: startup
@@ -900,6 +920,17 @@ scenarios:
           - {device: piscine.filtration-couleur, state: "#ef473a" } # red
           - {device: piscine.filtration-icon, state: "flash" }
           - {device: piscine.controle, state: "OFF" }
+      - OFF-Offline:
+        triggers:
+          - at: startup
+          - state: piscine.controle
+          - state: piscine.filtration
+        conditions:
+          - {operator: =, left: this.getDeviceState("piscine.controle"), right: "OFF"}
+          - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "offline"}
+        actions:
+          - {device: piscine.filtration-couleur, state: "orange" } 
+          - {device: piscine.filtration-icon, state: "power" }
       - OFF-OFF:
         triggers:
           - at: startup
@@ -1111,6 +1142,24 @@ scenarios:
               setTimeout(() => { f(callback); }, delay);
             }
           }' 
+    - filtration-offline:
+        triggers:
+          - state: piscine.filtration
+        conditions:
+          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
+          - {operator: "=", left: this.msg.newValue, right: "offline"}
+        actions:
+          - { device: say, state: "Attention, la filtration de la piscine vient de passer en erreur !" }
+    - filtration-offline-at-start-or-stop:
+        triggers:
+          - at: piscine.filtration-start1
+          - at: piscine.filtration-start2
+          - at: piscine.filtration-stop1
+          - at: piscine.filtration-stop2
+        conditions:
+          - {operator: "=", left: this.getDeviceState("piscine.filtration"), right: "offline"}
+        actions:
+          - { device: say, state: "Attention, la filtration de la piscine est en erreur !" }
     - update-durees-filtration-graph:
       triggers:
         - state: piscine.durees-filtration
@@ -1539,13 +1588,28 @@ scenarios:
           - state: tondeuse.status-code
         conditions:
           - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
-          #- {operator: "=", left: this.msg.newValue, right: 7} # erreur
           - {operator: "or", 
             left: {operator: "=", left: this.msg.newValue, right: 7}, # erreur
             right: {operator: "=", left: this.msg.newValue, right: 8} # signal boucle perdu
           } 
         actions:
           - { device: say, state: "Attention, la tondeuse est en erreur !" }
+          - { wait: 15mn }
+          - { scenario: tondeuse-erreur-rappel, action: start}
+        else:
+          - { scenario: tondeuse-erreur-rappel, action: stop}
+    - tondeuse-erreur-rappel:
+        triggers:
+          - at: startup
+        conditions:
+          - {operator: "or", 
+            left: {operator: "=", left: getDeviceState("tondeuse.status-code"), right: 7}, # erreur
+            right: {operator: "=", left: getDeviceState("tondeuse.status-code"), right: 8} # signal boucle perdu
+          } 
+        actions:
+          - { device: say-volatile, state: "Attention, la tondeuse est toujours en erreur !" }
+          - { wait: 15mn }
+          - { scenario: tondeuse-erreur-rappel, action: start}
     - tondeuse-probleme-charge:
         triggers:
           - state: tondeuse.charge
@@ -1555,13 +1619,6 @@ scenarios:
           - {operator: "<", left: parseInt(this.msg.newValue), right: parseInt(this.msg.oldValue)}
         actions:
           - { device: say, state: "Attention, la tondeuse ne charge pas bien. Essayez de la ré-enclencher dans sa station !" }
-    - tondeuse-erreur-rappel:
-        triggers:
-          - cron: 00 */15 * * * * # every 15 mn
-        conditions:
-          - {operator: "=", left: tondeuse.status-code, right: 7} # erreur
-        actions:
-          - { device: say-volatile, state: "Attention, la tondeuse est toujours en erreur !" }
     - charge-manu:
         triggers:
           - state: tondeuse.charge
@@ -1573,8 +1630,6 @@ scenarios:
           - {operator: "<=", left: parseInt(this.getDeviceState("tondeuse.charge")), right: 15 }
         actions:
           - { device: say, state: "Attention, la tondeuse nécessite une charge manuelle !" }
-
-          
   - minuteries:
     - controle:
       - init:
