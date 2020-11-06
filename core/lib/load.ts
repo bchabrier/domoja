@@ -624,7 +624,7 @@ function objectToInitObject(document: ConfigLoader, object: plainObject): InitOb
     return initObject;
 }
 
-let STRING = Parser.token(/^([^ "'#},\n]+)|("[^"]*")|('[^']*')/, 'string');
+let STRING = Parser.token(/^([^ "'#},\n]+)|("([^\\"]|\\.)*")|('([^\\']|\\.)*')/, 'string');
 //let INTERPRETED_STRING = Parser.token(/^[^ "'#},\n]+/, 'string');
 //let INTERPRETED_STRING = Parser.token(/^[^ ,]+/, 'string');
 export let IDENTIFIER = Parser.token(/^[^\n:{} ]+/, 'string');

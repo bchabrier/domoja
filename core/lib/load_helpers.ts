@@ -17,7 +17,7 @@ export function currentSource(c: Parser.Parse): string {
 export function removeQuotes(s: string): string {
     if (s.length < 2) return s;
     let c = s.charAt(0);
-    if (c == s.charAt(s.length - 1) && (c == '"' || c == "'")) return s.substr(1, s.length - 2)
+    if (c == s.charAt(s.length - 1) && (c == '"' || c == "'")) return s.substr(1, s.length - 2).replace(new RegExp(`\\\\${c}`, "g"), c);
     return s
 }
 

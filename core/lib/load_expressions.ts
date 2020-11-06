@@ -10,7 +10,7 @@ var logger = require('tracer').colorConsole({
 
 type ExpressionFunction = (cb: (err: Error, result: string) => void) => void;
 
-export let QUOTED_STRING = Parser.token(/^(("[^"]*")|('[^']*'))/, '"quoted string"');
+export let QUOTED_STRING = Parser.token(/^(("([^\\"]|\\.)*")|('([^\\']|\\.)*'))/, '"quoted string"');
 
 export function expression(c: Parser.Parse): ExpressionFunction {
     logger.debug('Trying expression with', currentSource(c));
