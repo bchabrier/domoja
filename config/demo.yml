@@ -26,6 +26,9 @@ sources:
   - robonect: {
       type: demo
   }
+  - robonect-weather: {
+      type: demo
+  }
   - myZibase: {
       type: demo
   }
@@ -220,6 +223,7 @@ devices:
       }' }
 
   - tondeuse:
+    - weather : { type: sensor, source: robonect-weather, widget: text, tags: tondeuse-page, id: tmnuweather, name: "Météo" }
     - stopped : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/stopped", tags: tondeuse, name: "Arrêté" }
     - stopped-plain : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/stopped", tags: tondeuse-page, transform: "true=>Arrêté,false=>Marche", name: "Marche/Arrêt" }
     - mode : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/mode", tags: tondeuse, name: "Mode (code)" }
@@ -230,14 +234,16 @@ devices:
     - status-since-raw : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/status/duration", tags: tondeuse-page, name: "Status depuis (min)" }
     - status-since : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/status/duration", tags: tondeuse-page, name: "Status depuis", transform: !!js/function 'function (value) { 
             function displayAsDuration(duration) {
-              var h = Math.floor(duration/60);
+              var d = Math.floor(duration/60/24);
+              var h = Math.floor((duration - 24*60*d)/60);
               var mn = Math.round(duration - 60*h);
 
               var str = "";
-              if (h>0 && mn===0) str = h + "h";
-              if (h>0 && mn>0) str = h + "h " + mn + "mn";
-              if (h===0 && mn>0) str = mn + "mn";
-              if (h===0 && mn===0) str = "0mn";
+              if (d>0) str = d + "jour";
+              if (d>1) str += "s";
+              if (h>0) str += (str!=""?" ":"") + h + "h";
+              if (mn>0) str += (str!=""?" ":"") + mn + "mn";
+              if (d==0 && h===0 && mn===0) str = "0mn";
               return str;
             }
             return displayAsDuration(parseInt(value));
