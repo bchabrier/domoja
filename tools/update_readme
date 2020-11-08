@@ -1,9 +1,20 @@
 #!/bin/sh
 
-readme=`dirname $0`/../README.md
-tmpreadme=/tmp/readme.$$
+# check if only sourced 
+if [ "$(basename -a $0)" != "update_readme" ]
+then
+    sourced_only=true
+else
+    sourced_only=false
+fi
 
-cp $readme $tmpreadme.FULL
+INIT()
+{
+    readme=`dirname $0`/../README.md
+    tmpreadme=/tmp/readme.$$
+
+    cp $readme $tmpreadme.FULL
+}
 
 START ()
 {
@@ -22,50 +33,59 @@ END ()
     cat $tmpreadme
 }
 
+CLEANUP()
+{
+    mv $readme /tmp/README.md.$$
+    mv $tmpreadme.FULL $readme
+}
+
 # replacement sections
+if ! $sourced_only
+then
+    INIT
 
-START modulesList
-( 
-    # get all local modules names
-    local_modules=$(grep '"description":' /dev/null modules/*/package.json | awk -F/ '{ print $2}')
-    local_domoja_modules=$(grep '"description":' /dev/null modules/*/package.json | awk -F/ '{ print "domoja-"$2}')
+    START modulesList
+    ( 
+        # get all local modules names
+        local_modules=$(grep '"description":' /dev/null modules/*/package.json | awk -F/ '{ print $2}')
+        local_domoja_modules=$(grep '"description":' /dev/null modules/*/package.json | awk -F/ '{ print "domoja-"$2}')
 
-    # list local modules and descriptions
-    for m in $local_modules
-    do
-        desc=$(awk -F'": +' '/^ *"description":/ { 
-                # removes surrounding ""
-                gsub("^\"", "", $2); 
-                gsub("\" *,? *\r?$", "", $2); 
-                print $2
-            }' modules/$m/package.json) 
-        echo "domoja-"$m"\t"$desc
-    done
+        # list local modules and descriptions
+        for m in $local_modules
+        do
+            desc=$(awk -F'": +' '/^ *"description":/ { 
+                    # removes surrounding ""
+                    gsub("^\"", "", $2); 
+                    gsub("\" *,? *\r?$", "", $2); 
+                    print $2
+                }' modules/$m/package.json) 
+            echo "domoja-"$m"\t"$desc
+        done
 
-    # add missing modules from npm
-    npm search --parseable domoja | awk -F'\t' '$1 ~ /^domoja-/ { 
-        if (index(" '"$(echo $local_domoja_modules)"' ", " "$1" ") == 0) {
-            # not a local module
-            print 
-        } 
-    }'
-) | sort | awk -F'\t' ' { printf "- [%s](https://www.npmjs.com/package/%s): %s\n", $1, $1, $2 }
-' > $tmpreadme
-END
+        # add missing modules from npm
+        npm search --parseable domoja | awk -F'\t' '$1 ~ /^domoja-/ { 
+            if (index(" '"$(echo $local_domoja_modules)"' ", " "$1" ") == 0) {
+                # not a local module
+                print 
+            } 
+        }'
+    ) | sort | awk -F'\t' ' { printf "- [%s](https://www.npmjs.com/package/%s): %s\n", $1, $1, $2 }
+    ' > $tmpreadme
+    END
 
-START apiList
-awk -F\" '
-/	"paths": {/ { inPaths=1 }
-/^	},/ { inPaths=0 }
+    START apiList
+    awk -F\" '
+    /	"paths": {/ { inPaths=1 }
+    /^	},/ { inPaths=0 }
 
-inPaths==1 && /^		"\// { path=$2 }
-inPaths==1 && /^			"/ { operation=$2 }
-inPaths==1 && /^				"description": / { description=$4;
-    print "- " toupper(operation) " " path ": " description
- }
+    inPaths==1 && /^		"\// { path=$2 }
+    inPaths==1 && /^			"/ { operation=$2 }
+    inPaths==1 && /^				"description": / { description=$4;
+        print "- " toupper(operation) " " path ": " description
+    }
 
-' `dirname $readme`/api/swagger.json > $tmpreadme
-END
+    ' `dirname $readme`/api/swagger.json > $tmpreadme
+    END
 
-mv $readme /tmp/README.md.$$
-mv $tmpreadme.FULL $readme
+    CLEANUP
+fi
