@@ -200,6 +200,7 @@ export class mongoDB extends persistence {
 
     doBackupStateToDB(state: string | Date, callback: (err: Error) => void): void {
         this.getMongoClient((err, client) => {
+            if (err) return callback(err);
             var db = client.db();
             var collection = db.collection('Backup states');
 
