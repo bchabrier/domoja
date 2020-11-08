@@ -23,6 +23,9 @@ do
     source: demo
 EOF
         ;;
+    "devices")
+        echo '  - comm: { type: variable, widget: "comm", name: "Communication"}' >> $DEMO_CONFIG
+        ;;
     "scenarios")
          cat >> $DEMO_CONFIG <<EOF
   - demo:
