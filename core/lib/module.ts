@@ -5,7 +5,7 @@ export interface InitObject {
 }
 
 export interface Parameters {
-    [parameter: string]: 'REQUIRED' | 'OPTIONAL'
+    [parameter: string]: 'REQUIRED' | 'OPTIONAL' | 'AT_LEAST_ONE'
 }
 
 export interface DomoModule {

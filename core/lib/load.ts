@@ -44,7 +44,7 @@ type importItem = {
     device?: string
 }
 
-type value = string | Function | string[];
+type value = string | Function | string[] | { [s: string]: value };
 
 type plainObject = {
     source?: string,
@@ -612,6 +612,8 @@ function objectToInitObject(document: ConfigLoader, object: plainObject): InitOb
                 } else if (typeof value === "function") {
                     initObject[k] = value
                 } else if (Array.isArray(value)) {
+                    initObject[k] = value
+                } else if (typeof (value) == 'object') {
                     initObject[k] = value
                 } else {
                     logger.warn("Unsupported type for value:", value)
@@ -1300,6 +1302,10 @@ function namedObject(c: Parser.Parse): { name: string, object: { [x: string]: va
         if (c.context().sources[name])
             c.expected('not "' + name + '" (duplicate source)')
     }
+    if (c.context().type == 'device') {
+        if (c.context().devices[c.context().path + '.' + name])
+            c.expected('not "' + name + '" (duplicate device)')
+    }
 
     c.skip(Parser.token(/^ *: */, '":"'));
     logger.debug('found :')
@@ -1360,6 +1366,9 @@ function object(c: Parser.Parse): { [x: string]: value } {
 
     let first: boolean = true;
     let second: boolean = false;
+    let need_at_least_one: boolean = false;
+    let at_least_one: string;
+    let got_at_least_one: boolean = false;
     let hasSource: boolean = false;
     c.many((c: Parser.Parse) => {
         if (c.isNext(/^ *#.*\n/)) {
@@ -1384,7 +1393,15 @@ function object(c: Parser.Parse): { [x: string]: value } {
         }
 
         logger.debug('allowedKeys:', allowedKeys)
-        var key = c.oneOf(...allowedKeys);
+        let key: string;
+        if (need_at_least_one) {
+            key = c.oneOf(...allowedKeys, IDENTIFIER);
+            if (allowedKeys.indexOf(key) == -1) {
+                got_at_least_one = true;
+            }
+        } else {
+            key = c.oneOf(...allowedKeys);
+        }
         logger.debug('found key', key)
         if (first && c.context().type != 'object' && key != 'type') {
             c.expected('"type"');
@@ -1410,7 +1427,12 @@ function object(c: Parser.Parse): { [x: string]: value } {
             val = c.one(value);
         }
         logger.debug('found val:', val)
-        obj[key] = val;
+        if (at_least_one && allowedKeys.indexOf(key) == -1) {
+            (obj[at_least_one] as { [s: string]: value })[key] = val;
+            logger.debug(`adding ${key}=${val} to at_least_one key "${at_least_one}"`);
+        } else {
+            obj[key] = val;
+        }
 
         if (second) {
             if (c.context().type == 'device') {
@@ -1445,15 +1467,26 @@ function object(c: Parser.Parse): { [x: string]: value } {
                 let module = c.context().imports[type + 's.' + val];
                 parameters = getParameters(module.class);
                 Object.keys(parameters).forEach(key => {
-                    if (allowedKeys.indexOf(key) == -1)
-                        allowedKeys.push(key)
+                    if (allowedKeys.indexOf(key) == -1) {
+                        if (parameters[key] == 'AT_LEAST_ONE') {
+                            need_at_least_one = true;
+                            at_least_one = key;
+                            obj[at_least_one] = {};
+                        } else {
+                            allowedKeys.push(key);
+                        }
+                    }
                 });
             }
             first = false;
             second = true;
         }
 
-        allowedKeys.splice(allowedKeys.indexOf(key), 1);
+        if (allowedKeys.indexOf(key) != -1) {
+            allowedKeys.splice(allowedKeys.indexOf(key), 1);
+        }
+
+
 
         if (!isJson) eatComments(c);
     }, isJson ? /^ *, *\n? */ : /^ *\n */);
@@ -1472,6 +1505,10 @@ function object(c: Parser.Parse): { [x: string]: value } {
         }
     })
     logger.debug('checked all required keys have been provided');
+    if (need_at_least_one && !got_at_least_one) {
+        logger.debug('at least one additional key should have been provided');
+        c.expected("an additional attribute");
+    }
 
     isJson && c.skip(/^ *} */);
     logger.debug('<=object')
