@@ -12,17 +12,16 @@ export class command extends Source {
 
 	stateUpdaterProcess: child_process.ChildProcessWithoutNullStreams;
 
-	constructor(path: string, public ON: string, public OFF: string, public pushUpdates: string) {
+	constructor(path: string, public VALUES: {[value: string]: string}, public pushUpdates: string) {
 		super(path);
 	}
 
 	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-		return new command(path, initObject.ON, initObject.OFF, initObject['push-updates']);
+		return new command(path, initObject.VALUES, initObject['push-updates']);
 	}
 	getParameters(): Parameters {
 		return {
-			ON: 'REQUIRED',
-			OFF: 'REQUIRED',
+			VALUES: 'AT_LEAST_ONE',
 			'push-updates': 'OPTIONAL'
 		};
 	}
@@ -62,10 +61,12 @@ export class command extends Source {
 	}
 
 	doSetAttribute(id: string, attribute: string, value: string, callback: (err: Error) => void): void {
-		if (attribute == 'state' && value == 'ON') {
-			child_process.exec(this.ON, { env: { 'ID': id } }, callback);
-		} else if (attribute == 'state' && value == 'OFF') {
-			child_process.exec(this.OFF, { env: { 'ID': id } }, callback);
+		if (attribute == 'state' && this.VALUES[value]) {
+			child_process.exec(this.VALUES[value], { env: { 'ID': id } }, (err, stdout, stderr) => {
+				stderr != "" && logger.warn(`Got stderr from command '${this.path}' ${value}:\n${stderr}`);
+				stdout != "" && logger.warn(`Got stdout from command '${this.path}' ${value}:\n${stdout}`);
+				callback(err);
+			});
 		} else
 			return callback(new Error('Device "' + id + '" does not support attribute/value "' + attribute + '/' + value + '"'));
 	}
