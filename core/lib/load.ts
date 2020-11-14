@@ -943,6 +943,7 @@ function buildTreeArray<ThingItem extends { name: string }>(
                 logger.debug('found id', id)
                 c.skip(Parser.token(/^ *: */, '":"'));
                 logger.debug('found :')
+                eatComments(c);
                 c.indent();
                 c.pushContext({
                     doc: <ConfigLoader>c.context().doc,
@@ -1070,6 +1071,7 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
     c.skip(DASH);
     let i = trim(c.one(IDENTIFIER));
     c.skip(Parser.token(/^ *: */, '":"'));
+    eatComments(c);
     c.indent()
 
     if (c.context().path) {
