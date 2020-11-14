@@ -933,6 +933,7 @@ function buildTreeArray<ThingItem extends { name: string }>(
     thingTreeArray: (c: Parser.Parse) => Map<ThingItem>,
     thingItem: (c: Parser.Parse) => ThingItem): void {
 
+    let used_ids: string[] = [];
     c.many((c: Parser.Parse) => {
         c.oneOf(
             (c: Parser.Parse) => {
@@ -941,6 +942,10 @@ function buildTreeArray<ThingItem extends { name: string }>(
                 c.skip(DASH);
                 let id = trim(c.one(IDENTIFIER));
                 logger.debug('found id', id)
+                if (used_ids.includes(id)) {
+                    c.expected("a different identifier as this one is already used");
+                }
+                used_ids.push(id);
                 c.skip(Parser.token(/^ *: */, '":"'));
                 logger.debug('found :')
                 eatComments(c);
@@ -1070,6 +1075,9 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
     eatCommentsBlock(c);
     c.skip(DASH);
     let i = trim(c.one(IDENTIFIER));
+    if (c.context().scenarios[c.context().path + '.' + i]) {
+        c.expected('not "' + i + '" (duplicate scenario)');
+    }
     c.skip(Parser.token(/^ *: */, '":"'));
     eatComments(c);
     c.indent()
