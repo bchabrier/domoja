@@ -100,6 +100,30 @@ class ExternalFunction {
             return;
         }
 
+        function overridden(console_log_function: (...args: any[]) => void): (...args: any[]) => void {
+            return (...args: any[]) => {
+                // stack in the form:
+                // Error:
+                //      at Console.self.sandbox.console.log.args [as log] (/home/pi/domoja/core/lib/load.ts:117:45)
+                //      at Object.base.apply (/home/pi/domoja/core/node_modules/vm2/lib/contextify.js:620:32)
+                //      at f (vm.js:4:21)
+                //      at vm.js:329:13
+                //      at Script.runInContext (vm.js:133:20)
+                //      at VM.run (/home/pi/domoja/core/node_modules/vm2/lib/main.js:843:53)
+                //      at Object.sandboxedFunc (/home/pi/domoja/core/lib/load.ts:136:20)
+                //      at NamedAction.call (/home/pi/domoja/core/lib/load_scenarios.ts:243:18)
+                //      at /home/pi/domoja/core/lib/load_scenarios.ts:264:20
+                //      at /home/pi/domoja/core/node_modules/async/dist/async.js:2154:44
+
+                let [atfunction, vm, lineInFunction, char] = (new Error).stack.split('\n')[3].split(/[\():]/);
+                let newargs: any[] = [];
+                newargs.push("%s" + args[0]);
+                newargs.push(file + ":" + (line + parseInt(lineInFunction) - 1) + " (" + atfunction.replace(/^ *at ([^ ]+) *$/, "$1") + ") ");
+                newargs = newargs.concat(args.slice(1));
+                console_log_function(...newargs);
+            }
+        }
+
         let self = this; // to be used inside the named function
         this.fct = function sandboxedFunc(...args: any[]): void {
 
@@ -108,6 +132,13 @@ class ExternalFunction {
             // - create in the sandbox a new console with a new WriteStream for each sandbox
             let stream = new WriteStream(1);
             self.sandbox.console = new Console(stream);     // workaround
+            self.sandbox.console.log = overridden(self.sandbox.console.log);
+            self.sandbox.console.error = overridden(self.sandbox.console.error);
+            self.sandbox.console.warn = overridden(self.sandbox.console.warn);
+            self.sandbox.console.info = overridden(self.sandbox.console.info);
+            self.sandbox.console.debug = overridden(self.sandbox.console.debug);
+            self.sandbox.console.trace = overridden(self.sandbox.console.trace);
+
             //if (true || !self.vm) {                                     // workaround
             const timeout = 2000;
             let vm = new VM({
@@ -517,13 +548,13 @@ export class ConfigLoader extends events.EventEmitter {
     private compiledScripts: { [k: string]: any } = {};
     private vm: any;
 
-    sandboxedFunction(fct: string): Function {
-        return new ExternalFunction(this.currentParsedFile, 9999, fct, this.sandbox).fct;
+    sandboxedFunction(location: Parser.Location, fct: string): Function {
+        return new ExternalFunction(this.currentParsedFile, location.line(), fct, this.sandbox).fct;
     }
 
-    sandboxedExtFunction(func: string): Function {
+    sandboxedExtFunction(location: Parser.Location, func: string): Function {
         let f = func.replace(/^!!js\/function +'([^']*)' *$/, "$1");
-        return this.sandboxedFunction(f);
+        return this.sandboxedFunction(location, f);
     }
 
     setSandboxMsg(msg: { [k: string]: any }): void {
@@ -592,13 +623,6 @@ function objectToInitObject(document: ConfigLoader, object: plainObject): InitOb
                 if (typeof value === "string") {
                     let match: RegExpExecArray;
                     if (match = (
-                        /^!!js\/function +'([^']*)' *$/.exec(value) ||
-                        /^!!js\/function +"([^"]*)" *$/.exec(value))
-                    ) {
-                        let fct: string = match[1];
-                        logger.debug('Found js function:', fct)
-                        initObject[k] = document.sandboxedFunction(fct);
-                    } else if (match = (
                         /^!secrets +"([^"]*)" *$/.exec(value) ||
                         /^!secrets +'([^']*)' *$/.exec(value) ||
                         /^!secrets +([^'"].*) *$/.exec(value))
@@ -1533,7 +1557,11 @@ function array(c: Parser.Parse): Array<string> {
 function value(c: Parser.Parse): value {
     let s = c.oneOf(
         secret,
-        FUNCTION_EXT,
+        (c: Parser.Parse) => {
+            let script = c.one(FUNCTION_EXT);
+            let document = <ConfigLoader>c.context().doc;
+            return document.sandboxedExtFunction(c.location(), script);
+        },
         array,
         stringValue,
     );

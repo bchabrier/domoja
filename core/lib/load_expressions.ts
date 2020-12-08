@@ -99,19 +99,19 @@ export function interpretedExpression(c: Parser.Parse): ExpressionFunction {
 
     if (/^this\./.test(res)) {
         // e.g. this.msg.oldValue
-        return <ExpressionFunction>document.sandboxedFunction(`function (cb) {
+        return <ExpressionFunction>document.sandboxedFunction(c.location(), `function (cb) {
             //console.log('this. expression: ${res}');
             cb(null, ${res});
         }`);
     } else if (c.context().devices[res]) {
         // e.g. aquarium.lampes_start
-        return <ExpressionFunction>document.sandboxedFunction(`function (cb) {
+        return <ExpressionFunction>document.sandboxedFunction(c.location(), `function (cb) {
             //console.log('this.getDeviceState expression: ${res}');
             cb(null, this.getDeviceState("${res}"));
             }`);
     } else {
         // e.g. new Date(Date.now() + 10)
-        return <ExpressionFunction>document.sandboxedFunction(`function (cb) {
+        return <ExpressionFunction>document.sandboxedFunction(c.location(), `function (cb) {
             //console.log('other interpreted expression: ${res}');
             cb(null, ${res});
         }`)

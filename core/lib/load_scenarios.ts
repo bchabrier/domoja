@@ -63,7 +63,7 @@ function unnamedCondition(c: Parser.Parse): NamedCondition {
     let fct: ConditionFunction = <ConditionFunction><any>c.oneOf(
         (c: Parser.Parse) => {
             logger.debug("Trying ext function with", currentSource(c))
-            let f = document.sandboxedExtFunction(c.one(FUNCTION_EXT));
+            let f = document.sandboxedExtFunction(c.location(), c.one(FUNCTION_EXT));
             logger.debug('Got ext function, continuing with', currentSource(c));
             return f;
         },
@@ -291,7 +291,7 @@ function unnamedAction(c: Parser.Parse): NamedAction {
     let document = <ConfigLoader>c.context().doc;
     let fct: ActionFunction = <ActionFunction><any>c.oneOf(
         (c: Parser.Parse) => {
-            return document.sandboxedExtFunction(c.one(FUNCTION_EXT));
+            return document.sandboxedExtFunction(c.location(), c.one(FUNCTION_EXT));
         },
         stateAction,
         scenarioActionAction,
