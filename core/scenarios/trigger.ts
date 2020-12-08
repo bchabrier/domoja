@@ -14,6 +14,7 @@ export abstract class Trigger {
     doc: ConfigLoader;
     scenario: Scenario;
     handler: (m?: message) => void;
+    reason: string = null;
 
     constructor(doc: ConfigLoader, scenario: Scenario) {
         this.doc = doc;
@@ -21,7 +22,8 @@ export abstract class Trigger {
         this.scenario = scenario;
 
         this.handler = (msg?: message) => {
-            logger.info('Scenario "%s" triggers...', this.scenario.path);
+            this.scenario.debugMode && logger.info('Scenario "%s" triggers%s...', this.scenario.path, this.reason ? " due to " + this.reason : "");
+            this.reason = null;
             msg && this.doc.setSandboxMsg(msg);
 
             this.scenario.start(err => {
@@ -63,19 +65,22 @@ export class TimeTrigger extends Trigger {
 
     activate(callback?: (err: Error, trigger: Trigger) => void): void {
         if (this.when == 'startup') {
-            this.doc.on('startup', this.handler);
+            this.doc.on('startup', () => { this.reason = "startup"; this.handler() });
         } else if (this.doc.devices[this.when]) {
             // use state as date
             this.atHandler = (msg) => {
+                if (msg.newValue == msg.oldValue) return;
+
                 let dt = TimeTrigger.dateTime(msg.newValue);
 
+                logger.info(`Scenario "${this.scenario.path}" trigger date redefined due to device "${this.when}"'s state change from "${msg.oldValue}" to "${msg.newValue}".`);
                 this.cronJob && this.cronJob.stop();
                 if (!isNaN(dt) && dt > Date.now()) {
-                    this.cronJob = new CronJob(new Date(dt), this.handler);
+                    this.cronJob = new CronJob(new Date(dt), () => { this.reason = dt + " reached"; this.handler() });
                     this.cronJob.start();
-                    logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates());
+                    this.scenario.debugMode && logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates());
                 } else {
-                    logger.info('Scenario "%s" will not trigger. "%s" is invalid or in the past.', this.scenario.path, msg.newValue);
+                    this.scenario.debugMode && logger.info('Scenario "%s" will not trigger. "%s" is invalid or in the past.', this.scenario.path, msg.newValue);
                     this.cronJob = undefined;
                 }
             }
@@ -83,20 +88,21 @@ export class TimeTrigger extends Trigger {
         } else if (this.when.match(CRONPATTERN)) {
             // cronjob
             this.cronJob = new CronJob(this.when, () => {
+                this.reason = this.when + " reached";
                 this.handler();
-                logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates())
+                this.scenario.debugMode && logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates())
             });
             this.cronJob.start();
-            logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates())
+            this.scenario.debugMode && logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates())
         } else {
             let dt = TimeTrigger.dateTime(this.when);
             if (!isNaN(dt)) {
                 if (!isNaN(dt) && dt > Date.now()) {
                     this.timeout && clearTimeout(this.timeout);
-                    setTimeout(this.handler, dt - Date.now());
-                    logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, new Date(dt));
+                    setTimeout(() => { this.reason = dt + " reached"; this.handler() }, dt - Date.now());
+                    this.scenario.debugMode && logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, new Date(dt));
                 } else {
-                    logger.info('Scenario "%s" will not trigger. "%s" is invalid or in the past.', this.scenario.path, this.when);
+                    this.scenario.debugMode && logger.info('Scenario "%s" will not trigger. "%s" is invalid or in the past.', this.scenario.path, this.when);
                     this.timeout = undefined;
                 }
             } else {
@@ -143,7 +149,7 @@ export class StateTrigger extends Trigger {
         callback && callback(null, this);
     }
     deactivate(callback?: (err: Error, trigger: Trigger) => void): void {
-        this.device && this.device.removeListener("change", this.handler)
+        this.device && this.device.removeListener("change", msg => {this.reason = this.device.id + `'s state changed from '${msg.oldValue}' to '${msg.newValue}'`; this.handler(msg)})
         callback && callback(null, this);
     }
 

@@ -22,7 +22,7 @@ import { VM, VMScript } from 'vm2';
 
 import * as Parser from "shitty-peg/dist/Parser";
 
-import { currentSource, removeQuotes, eatCommentsBlock, eatComments, trim, sortedDeviceList } from './load_helpers';
+import { currentSource, removeQuotes, eatCommentsBlock, eatComments, trim, sortedDeviceList, debugSetting } from './load_helpers';
 import { condition, actions, elseActions } from './load_scenarios';
 import * as  colors from 'colors/safe';
 
@@ -194,7 +194,7 @@ class ExternalFunction {
             stream.destroy();
             //console.groupEnd();
             if (!vm_run_didComplete) {
-                console.error('!!!!!!!!!!!!!!!!!!!!===============================================!!!!!! vm run did not complete');
+                logger.error('!!!!!!!!!!!!!!!!!!!!===============================================!!!!!! vm run did not complete');
             }
             return sandbox.args.result;
         }
@@ -971,7 +971,6 @@ function buildTreeArray<ThingItem extends { name: string }>(
                 if (used_ids.includes(id)) {
                     c.expected("a different identifier as this one is already used");
                 }
-                used_ids.push(id);
                 c.skip(Parser.token(/^ *: */, '":"'));
                 logger.debug('found :')
                 eatComments(c);
@@ -988,6 +987,7 @@ function buildTreeArray<ThingItem extends { name: string }>(
                 let subtree = c.one(thingTreeArray);
                 c.popContext();
                 c.dedent();
+                used_ids.push(id);
             },
             (c: Parser.Parse) => {
                 logger.debug('trying thingItem with', currentSource(c));
@@ -1116,7 +1116,10 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
     c.context().currentScenario = c.context().currentScenario + i;
 
     eatCommentsBlock(c);
+    let debug = c.optional(debugSetting);
+    eatCommentsBlock(c);
     let scenario = c.optional(trigger);
+    scenario.setDebugMode(debug);
     c.context().scenarioUnderConstruction = scenario;
     eatCommentsBlock(c);
     let cond = c.optional(condition);
@@ -1363,7 +1366,7 @@ function object(c: Parser.Parse): { [x: string]: value } {
     let allowedTypeValues: string[] = c.context().allowedTypeValues
 
     if (c.context().type == 'device') {
-        allowedKeys.push("type", "name", "source", "attribute", "id", "camera", "widget", "persistence", "tags", "transform");
+        allowedKeys.push("type", "name", "debug", "source", "attribute", "id", "camera", "widget", "persistence", "tags", "transform");
     }
     if (c.context().type == 'source') {
         allowedKeys.push("type");

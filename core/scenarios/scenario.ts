@@ -20,11 +20,13 @@ export class Scenario {
     doc: ConfigLoader;
     path: string;
     stopped: boolean;
+    debugMode: boolean;
 
     constructor(doc: ConfigLoader, path: string) {
         this.doc = doc;
         this.path = path;
         this.stopped = false;
+        this.debugMode = false;
     }
 
     activate(callback?: (err: Error, s: Scenario) => void): void {
@@ -37,6 +39,10 @@ export class Scenario {
         this.triggers.forEach(trigger => {
             trigger.deactivate();
         });
+    }
+
+    setDebugMode(debug: boolean) {
+        this.debugMode = debug;
     }
 
     addTrigger(trigger: Trigger) {
@@ -66,25 +72,27 @@ export class Scenario {
     }
 
     runActions(cb?: (err: Error) => void): void {
-        logger.debug("Calling actions...");
         if (this.stopped) {
-            logger.debug("Scenario stopped, actions have not been run.");
+            this.debugMode && logger.info("Scenario stopped, actions have not been run.");
             return cb && cb(null);
         }
+        this.debugMode && logger.info("Calling actions...");
+        let scenario = this;
         this.action.call(this.doc["sandbox"], function endActions(err: Error) {
-            logger.debug("Actions have been run.");
+            scenario.debugMode && logger.info("Actions have been run.");
             cb && cb(err);
         });
     }
 
     runElseActions(cb?: (err: Error) => void): void {
-        logger.debug("Calling else actions...");
         if (this.stopped) {
-            logger.debug("Scenario stopped, else actions have not been run.");
+            this.debugMode && logger.info("Scenario stopped, else actions have not been run.");
             return cb && cb(null);
         }
+        this.debugMode && logger.info("Calling else actions...");
+        let scenario = this;
         this.else.call(this.doc["sandbox"], function endElseActions(err: Error) {
-            logger.debug("Else actions have been run.");
+            scenario.debugMode && logger.info("Else actions have been run.");
             cb && cb(err);
         });
     }

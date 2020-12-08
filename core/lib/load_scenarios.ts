@@ -23,6 +23,7 @@ export function condition(c: Parser.Parse): ConditionFunction {
 type NamedCondition = { name: string, fct: ConditionFunction };
 
 function conditionArray(c: Parser.Parse): ConditionFunction {
+    let scenario = c.context().scenarioUnderConstruction as Scenario;
     c.indent();
     let conditions: NamedCondition[] = <any>c.many(
         (c: Parser.Parse) => {
@@ -37,19 +38,19 @@ function conditionArray(c: Parser.Parse): ConditionFunction {
         let n = 1;
         let N = conditions.length;
         async.everySeries(conditions, function (condition, callback) {
-            logger.debug("Calling condition '%s' (%s/%s)...", condition.name, n, N);
+            scenario.debugMode && logger.info("Evaluating condition (%s/%s) '%s'...", n, N, condition.name);
             n++;
             condition.fct.call(self, function (err: Error, cond: boolean) {
-                logger.debug("Result is", cond, ", err:", err);
+                scenario.debugMode && logger.info("Result is", cond, ", err:", err);
                 callback(err, cond);
             });
         }, function (err: Error, result: boolean) {
             if (err) {
-                logger.debug('Got error %s while running %s conditions in series', err, N);
+                scenario.debugMode && logger.info('Got error %s while running %s conditions in series', err, N);
             } else {
-                logger.debug('Done calling %s conditions in series with result', N, result);
+                scenario.debugMode && logger.info('Done evaluating %s conditions in series with result', N, result);
             }
-            cb(err, result)
+            cb(err, result);
         });
     };
     c.dedent();
@@ -245,6 +246,7 @@ class NamedAction {
 }
 
 function actionArray(c: Parser.Parse): ActionFunction {
+    let scenario = c.context().scenarioUnderConstruction as Scenario;
     c.indent();
     let actions: NamedAction[] = <any>c.many(
         (c: Parser.Parse) => {
@@ -259,14 +261,14 @@ function actionArray(c: Parser.Parse): ActionFunction {
         let n = 1;
         let N = actions.length;
         async.eachSeries(actions, function (action, callback) {
-            logger.debug("Calling action '%s' (%d/%d)...", action.name, n, N);
+            scenario.debugMode && logger.info("Executing action (%d/%d) '%s'...", n, N, action.name);
             n++;
             action.call(self, callback);
         }, function (err: Error) {
             if (err) {
-                logger.debug('Got error %s when calling %s actions in series.', err, N)
+                scenario.debugMode && logger.info('Got error %s when executing %s actions in series.', err, N)
             } else {
-                logger.debug('Done calling %d actions in series.', N)
+                scenario.debugMode && logger.info('Done executing %d actions in series.', N)
             }
             cb(err);
         });

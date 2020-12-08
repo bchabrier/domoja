@@ -111,6 +111,7 @@ export abstract class GenericDevice implements DomoModule {
     persistStates = false;
     lastUpdateDate: Date;
     tags: string;
+    debugMode: boolean;
 
     stateHasBeenSet = false;
 
@@ -124,6 +125,7 @@ export abstract class GenericDevice implements DomoModule {
         this.type = type;
         this.widget = initObject && initObject.widget;
         this.tags = initObject && initObject.tags;
+        this.debugMode = initObject && initObject.debug && initObject.debug.includes("true") || false;
 
         if (options !== undefined) {
             for (var option in options) {

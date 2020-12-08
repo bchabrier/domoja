@@ -176,7 +176,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     }
 
     emitEvent(event: Event, path: string, arg: any) {
-        logger.info('Device %s (%s) emitted %s: %s',
+        this.devicesByPath[path].debugMode && logger.info('Device %s (%s) emitted %s: %s',
             colors.yellow('"' + path + '"'),
             this.devicesByPath[path].name,
             colors.yellow('"' + event + '"'),
