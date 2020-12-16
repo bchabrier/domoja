@@ -20,7 +20,7 @@ export function condition(c: Parser.Parse): ConditionFunction {
     return c.one(conditionArray);
 }
 
-type NamedCondition = { name: string, fct: ConditionFunction };
+type NamedCondition = { name: string, fct: ConditionFunction, source?: string };
 
 function conditionArray(c: Parser.Parse): ConditionFunction {
     let scenario = c.context().scenarioUnderConstruction as Scenario;
@@ -38,7 +38,7 @@ function conditionArray(c: Parser.Parse): ConditionFunction {
         let n = 1;
         let N = conditions.length;
         async.everySeries(conditions, function (condition, callback) {
-            scenario.debugMode && logger.info("Evaluating condition (%s/%s) '%s'...", n, N, condition.name);
+            scenario.debugMode && logger.info("Evaluating condition (%s/%s) '%s' '%s'...", n, N, condition.name, condition.source);
             n++;
             condition.fct.call(self, function (err: Error, cond: boolean) {
                 scenario.debugMode && logger.info("Result is", cond, ", err:", err);
@@ -61,6 +61,9 @@ function conditionArray(c: Parser.Parse): ConditionFunction {
 function unnamedCondition(c: Parser.Parse): NamedCondition {
     logger.debug('Trying unnamedCondition with', currentSource(c));
     let document = <ConfigLoader>c.context().doc;
+
+    let start = c.location().offset;
+
     let fct: ConditionFunction = <ConditionFunction><any>c.oneOf(
         (c: Parser.Parse) => {
             logger.debug("Trying ext function with", currentSource(c))
@@ -71,9 +74,12 @@ function unnamedCondition(c: Parser.Parse): NamedCondition {
         binaryCondition,
         booleanBinaryCondition
     );
+
+    let end = c.location().offset;
+
     eatComments(c);
     logger.debug('Got unnamedCondition, continuing with', currentSource(c));
-    return { name: "<noname>", fct: fct };
+    return { name: "<noname>", fct: fct, source: c.location().source.body.substring(start, end) };
 }
 
 function singleCondition(c: Parser.Parse): NamedCondition {
@@ -236,8 +242,8 @@ export function elseActions(c: Parser.Parse): ActionFunction {
 class NamedAction {
     public name: string;
 
-    constructor(private scenario: Scenario, private fct: ActionFunction) { this.name = "<unnamed>"}
-    
+    constructor(private scenario: Scenario, private fct: ActionFunction) { this.name = "<unnamed>" }
+
     call(sandbox: Sandbox, cb: (err: Error) => void) {
         if (this.scenario.stopped) return cb(null);
 
@@ -256,7 +262,7 @@ function actionArray(c: Parser.Parse): ActionFunction {
         },
         (c: Parser.Parse) => { c.newline() });
 
-    let actionArrayFunction = function (cb: (err: Error) => void) {
+    let actionArrayFunction = (scenario: Scenario) => function (cb: (err: Error) => void) {
         let self: Sandbox = this;
         let n = 1;
         let N = actions.length;
@@ -274,7 +280,7 @@ function actionArray(c: Parser.Parse): ActionFunction {
         });
     };
     c.dedent();
-    return actionArrayFunction;
+    return actionArrayFunction(scenario);
 }
 
 function singleAction(c: Parser.Parse): NamedAction {
@@ -301,7 +307,7 @@ function unnamedAction(c: Parser.Parse): NamedAction {
     );
     eatComments(c);
     logger.debug("found unnamedAction")
-    return new NamedAction(c.context().scenarioUnderConstruction as Scenario, fct );
+    return new NamedAction(c.context().scenarioUnderConstruction as Scenario, fct);
 
 }
 

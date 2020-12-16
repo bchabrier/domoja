@@ -22,7 +22,7 @@ import { VM, VMScript } from 'vm2';
 
 import * as Parser from "shitty-peg/dist/Parser";
 
-import { currentSource, removeQuotes, eatCommentsBlock, eatComments, trim, sortedDeviceList, debugSetting } from './load_helpers';
+import { currentSource, removeQuotes, eatCommentsBlock, eatComments, trim, sortedDeviceList, debugSetting, TRUE, FALSE } from './load_helpers';
 import { condition, actions, elseActions } from './load_scenarios';
 import * as  colors from 'colors/safe';
 
@@ -241,6 +241,7 @@ export class ConfigLoader extends events.EventEmitter {
     rootModule: Module;
 
     currentParsedFile: string;
+    currentGlobalDebugMode: boolean;
 
     private sandbox: Sandbox = {
         isReleased: () => { return this.released },
@@ -688,7 +689,13 @@ let prevContext = {};
 
 function configDoc(c: Parser.Parse, section: Section): void {
 
+    let document = <ConfigLoader>c.context().doc;
+
     Object.assign(c.context(), prevContext);
+
+    eatCommentsBlock(c);
+    let d = c.optional(debugSetting);
+    document.currentGlobalDebugMode = d == undefined ? false : d;
 
     eatCommentsBlock(c);
     let imports;
@@ -700,6 +707,10 @@ function configDoc(c: Parser.Parse, section: Section): void {
     logger.debug('imports done')
 
     eatCommentsBlock(c);
+    d = c.optional(debugSetting);
+    if (d != undefined) document.currentGlobalDebugMode = d;
+
+    eatCommentsBlock(c);
     let sources;
     if (section == 'ALL' || section == 'SOURCES')
         sources = c.optional(sourcesSection);
@@ -707,6 +718,10 @@ function configDoc(c: Parser.Parse, section: Section): void {
         c.optional(c => c.one(Parser.token(/^sources: *\n(([ #].*\n)|\n)*/, '"sources:"')));
     }
     logger.debug('sources done')
+
+    eatCommentsBlock(c);
+    d = c.optional(debugSetting);
+    if (d != undefined) document.currentGlobalDebugMode = d;
 
     eatCommentsBlock(c);
     let devices;
@@ -718,6 +733,10 @@ function configDoc(c: Parser.Parse, section: Section): void {
     logger.debug('devices done')
 
     eatCommentsBlock(c);
+    d = c.optional(debugSetting);
+    if (d != undefined) document.currentGlobalDebugMode = d;
+
+    eatCommentsBlock(c);
     let scenarios: { comment: string, scenarios: Map<scenarioItem> }
     if (section == 'ALL' || section == 'SCENARIOS')
         scenarios = c.optional(scenariosSection);
@@ -725,6 +744,10 @@ function configDoc(c: Parser.Parse, section: Section): void {
         c.optional(c => c.one(Parser.token(/^scenarios: *\n(([ #].*\n)|\n)*/, '"scenarios:"')));
     }
     logger.debug('scenarios done')
+
+    eatCommentsBlock(c);
+    d = c.optional(debugSetting);
+    if (d != undefined) document.currentGlobalDebugMode = d;
 
     eatCommentsBlock(c);
     let pages;
@@ -736,6 +759,10 @@ function configDoc(c: Parser.Parse, section: Section): void {
     logger.debug('pages done')
 
     eatCommentsBlock(c);
+    d = c.optional(debugSetting);
+    if (d != undefined) document.currentGlobalDebugMode = d;
+
+    eatCommentsBlock(c);
     let users;
     if (section == 'ALL' || section == 'USERS')
         users = c.optional(usersSection);
@@ -744,8 +771,9 @@ function configDoc(c: Parser.Parse, section: Section): void {
     }
     logger.debug('users done')
 
-
-    let document = <ConfigLoader>c.context().doc;
+    eatCommentsBlock(c);
+    d = c.optional(debugSetting);
+    if (d != undefined) document.currentGlobalDebugMode = d;
 
     if (users) {
         //document.importsComment = imports.comment;
@@ -940,6 +968,7 @@ function sourceItem(c: Parser.Parse): sourceItem {
     let instance = document.createInstance(obj.name, klass, initObject);
     if (instance instanceof Source) {
         source = instance;
+        source.setDebugMode(initObject.debug == undefined ? document.currentGlobalDebugMode : initObject.debug.toString().includes("true"));
         if (klass.registerDeviceTypes) {
             klass.registerDeviceTypes();
         } else {
@@ -1069,6 +1098,10 @@ function deviceItem(c: Parser.Parse): deviceItem {
     let obj = c.one(namedObject);
     c.popContext();
 
+    if (document.currentGlobalDebugMode && obj.object.debug == undefined) {
+        obj.object.debug = "true";
+    }
+
     return { name: obj.name, object: obj.object, device: undefined }
 }
 
@@ -1119,7 +1152,7 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
     let debug = c.optional(debugSetting);
     eatCommentsBlock(c);
     let scenario = c.optional(trigger);
-    scenario.setDebugMode(debug);
+    scenario.setDebugMode(debug == undefined ? document.currentGlobalDebugMode : debug);
     c.context().scenarioUnderConstruction = scenario;
     eatCommentsBlock(c);
     let cond = c.optional(condition);
@@ -1369,7 +1402,7 @@ function object(c: Parser.Parse): { [x: string]: value } {
         allowedKeys.push("type", "name", "debug", "source", "attribute", "id", "camera", "widget", "persistence", "tags", "transform");
     }
     if (c.context().type == 'source') {
-        allowedKeys.push("type");
+        allowedKeys.push("type", "debug");
     }
 
     if (c.context().type == 'object') {
@@ -1450,6 +1483,8 @@ function object(c: Parser.Parse): { [x: string]: value } {
             } else {
                 val = c.oneOf(...allowedTypeValues);
             }
+        } else if (key == 'debug') {
+            val = c.oneOf(TRUE, FALSE);
         } else {
             val = c.one(value);
         }

@@ -81,8 +81,8 @@ export function sortedDeviceList(c: Parser.Parse): string[] {
 }
 
 let DEBUG = Parser.token(/^debug: */, "debug:");
-let TRUE = Parser.token(/^ *true */, "true");
-let FALSE = Parser.token(/^ *false */, "false");
+export let TRUE = Parser.token(/^ *true */, "true");
+export let FALSE = Parser.token(/^ *false */, "false");
 
 export function debugSetting(c: Parser.Parse): boolean {
     c.one(DEBUG);

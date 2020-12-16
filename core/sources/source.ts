@@ -34,6 +34,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     private devicesByAttribute: { [attribute: string]: { [id: string]: GenericDevice[] } };
     private devicesByPath: { [path: string]: GenericDevice }
     path: string;
+    debugMode: boolean = false;
     private discoveredDevices: { [id_attribute: string]: boolean } = {};
 
     constructor(path: string) {
@@ -58,6 +59,10 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         this.eventEmitter = null;
 
         this.discoveredDevices = null;
+    }
+
+    setDebugMode(debug: boolean) {
+        this.debugMode = debug;
     }
 
     addDevice(device: GenericDevice): void {
