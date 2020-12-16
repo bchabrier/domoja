@@ -24,31 +24,44 @@ then
 	exit 0
 fi
 
+usage () {
+	echo "Usage: `basename $0` [--install | [-h | --help]  [-d] [--dev] [<config>]]" >&2
+	echo "  --install  : installs domoja with pm2" >&2
+	echo "  -h | --help: this usage help" >&2
+	echo "  -d         : run in debug mode" >&2
+	echo "  --dev      : run in dev mode" >&2
+	echo "  <config>   : path to config file or directory (./config by default)" >&2
+	exit 2 
+}
+
 debug=false
 devMode=false
 while [ "$1" != "" ]
 do
 case "$1" in
 	"--dev")
+		$devMode && usage
 		devMode=true
 		shift
 		;;
 	"-d")
+		$debug && usage
 		debug=true
 		shift
 		;;
 	"-h"|"--help")
-		echo "Usage: `basename $0` [--install | [-h | --help]  [-d] [--dev] ]" >&2
-		echo "  --install  : installs domoja with pm2" >&2
-		echo "  -h | --help: this usage help" >&2
-		echo "  -d         : run in debug mode" >&2
-		echo "  --dev      : run in dev mode" >&2
-		exit 2 
+		usage
+		shift
+		;;
+	*)
+		[ ! -z $config_path ] && usage
+		config_path="$1"
 		shift
 		;;
 esac
 done
 
+[ -z $config_path ] && config_path=./config
 
 
 # check that mongodb is running
@@ -120,13 +133,13 @@ case "$main" in
 domoja.ts)
 	if $debug
 	then
-#		PORT=443 exec authbind --deep node --inspect=0.0.0.0 --require ts-node/register --require tsconfig-paths/register domoja.ts ./config
-		PORT=443 exec authbind --deep nodemon --ext ts --watch . --ignore node_modules,www --exec node --inspect=0.0.0.0 --require ts-node/register domoja.ts ./config $options
+#		PORT=443 exec authbind --deep node --inspect=0.0.0.0 --require ts-node/register --require tsconfig-paths/register domoja.ts "$config_path"
+		PORT=443 exec authbind --deep nodemon --ext ts --watch . --ignore node_modules,www --exec node --inspect=0.0.0.0 --require ts-node/register domoja.ts "$config_path" $options
 	else
-		PORT=443 TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER=typescript-cached-transpile exec authbind --deep ts-node domoja.ts ./config $options
+		PORT=443 TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER=typescript-cached-transpile exec authbind --deep ts-node domoja.ts "$config_path" $options
 	fi
 	;;
 *domoja.js)
-	PORT=443 exec authbind --deep node dist/domoja.js ./config $options
+	PORT=443 exec authbind --deep node dist/domoja.js "$config_path" $options
 	;;
 esac
