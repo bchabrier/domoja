@@ -54,10 +54,12 @@ const whitelist = [
 ];
 
 export function checkRoute(req: express.Request) {
-  if (!whitelist.some(s => {
+  let bad = !whitelist.some(s => {
     if (typeof s == "string") return req.path == s;
     return s.test(req.path)
-  })) {
+  });
+
+  if (bad) {
     logger.warn("Url:", req.protocol + "://" + req.hostname + req.url);
     if (req.query && req.query != {}) logger.warn("Query:", req.query);
     if (req.method == "POST") logger.warn("Body:", req.body);
@@ -65,6 +67,7 @@ export function checkRoute(req: express.Request) {
     logger.warn("User-agent:", req.headers["user-agent"]);
     logger.warn("IP:", req.ip);
   }
+  return !bad;
 }
 
 export class DomojaServer {
