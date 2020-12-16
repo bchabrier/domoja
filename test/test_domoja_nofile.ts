@@ -10,6 +10,7 @@ describe('Module domoja', function () {
       // let's simulate an unexistent config file as argument in order to go through the code, for the coverage
       process.argv.push('--args');
       process.argv.push('unexistent_file');
+      console.log("Simulated execution (through require):")
       require('../domoja');
     });
     after(function () {
@@ -17,7 +18,8 @@ describe('Module domoja', function () {
       process.argv.pop();
     });
     it('should exit', function (done) {
-      this.timeout(50000);
+      this.timeout(120000);
+      console.log("Real execution (through subprocess):")
       child_process.exec("./node_modules/ts-node/dist/bin.js domoja.ts unexistent_file", (err, stdout, stderr) => {
         console.log(stdout);
         console.error(stderr);
