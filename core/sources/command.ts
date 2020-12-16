@@ -10,9 +10,9 @@ var logger = require("tracer").colorConsole({
 
 export class command extends Source {
 
-	stateUpdaterProcess: child_process.ChildProcessWithoutNullStreams;
+	stateUpdaterProcess: { [devicePath: string]: child_process.ChildProcessWithoutNullStreams } = {};
 
-	constructor(path: string, public VALUES: {[value: string]: string}, public pushUpdates: string) {
+	constructor(path: string, public VALUES: { [value: string]: string }, public pushUpdates: string) {
 		super(path);
 	}
 
@@ -29,14 +29,15 @@ export class command extends Source {
 	addDevice(device: GenericDevice): void {
 		super.addDevice(device);
 		if (this.pushUpdates) {
-			this.stateUpdaterProcess = child_process.exec(this.pushUpdates, { env: { 'ID': device.id } });
+			this.stateUpdaterProcess[device.path] = child_process.exec(this.pushUpdates, { env: { 'ID': device.id } });
 			let data = '';
-			this.stateUpdaterProcess.stderr.on('data', chunk => { logger.warn(`Got stderr from command '${this.path}' push-updates:\n${chunk}`); });
-			this.stateUpdaterProcess.stdout.on('data', chunk => {
+			this.stateUpdaterProcess[device.path].stderr.on('data', chunk => { logger.warn(`Got stderr from command '${this.path}' push-updates:\n${chunk}`); });
+			this.stateUpdaterProcess[device.path].stdout.on('data', chunk => {
 				data += chunk;
 				while (data.indexOf('\n') != -1) {
 					let line = data.substring(0, data.indexOf('\n'));
 					data = data.substr(data.indexOf('\n') + 1);
+					logger.error(`Line in command '${this.path}': 'push-udpates' returned '${line}'.`);
 
 					if (line != '') {
 						let sep = line.indexOf(':');
@@ -54,8 +55,11 @@ export class command extends Source {
 	}
 
 	releaseDevice(device: GenericDevice): void {
-		if (this.stateUpdaterProcess) {
-			kill(this.stateUpdaterProcess.pid);
+		if (this.stateUpdaterProcess[device.path]) {
+			//this.stateUpdaterProcess[device.path].kill('SIGINT');
+			//process.kill(-this.stateUpdaterProcess[device.path].pid, 'SIGINT');
+			kill(this.stateUpdaterProcess[device.path].pid);
+			delete this.stateUpdaterProcess[device.path];
 		}
 		super.releaseDevice(device);
 	}
