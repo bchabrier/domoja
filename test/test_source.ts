@@ -48,13 +48,16 @@ describe('Module sources', function () {
       it('should release the object', function () {
         let source: Source = derivedSource.prototype.createInstance(null, null, null);
         assert(source);
-        assert.deepEqual(source['devicesByPath'], {});
-        assert.deepEqual(source['devicesByAttribute'], {});
+        assert.deepStrictEqual(source['devicesByPath'], {});
+        assert.deepStrictEqual(source['devicesByAttribute'], {});
         source.release();
-        assert.deepEqual(source['devicesByPath'], null);
-        assert.deepEqual(source['devicesByAttribute'], null);
+        assert.deepStrictEqual(source['devicesByPath'], null);
+        assert.deepStrictEqual(source['devicesByAttribute'], null);
         Object.keys(source).forEach(element => {
-          assert.equal((source as any)[element], null);
+          if ((source as any)[element] != null) {
+            if (typeof ((source as any)[element]) == 'object') console.error((source as any)[element]);
+            assert.notStrictEqual(typeof ((source as any)[element]), 'object');
+          }
         });
       });
     });
