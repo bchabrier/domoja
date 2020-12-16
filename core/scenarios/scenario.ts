@@ -1,6 +1,7 @@
 //import { Condition } from '../scenarios/condition'
 import { Trigger } from './trigger'
 import { ConfigLoader, getDevice, getSource } from '..'
+import * as async from 'async';
 
 var logger = require("tracer").colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -29,15 +30,19 @@ export class Scenario {
         this.debugMode = false;
     }
 
-    activate(callback?: (err: Error, s: Scenario) => void): void {
-        this.triggers.forEach(trigger => {
-            trigger.activate();
+    activate(callback: (err: Error, s: Scenario) => void): void {
+        async.parallel(this.triggers.map(trigger => (cb: (err: Error, t: Trigger) => void) => {
+            trigger.activate(cb);
+        }), (err: Error) => {
+            callback(err, this);
         });
     }
 
-    deactivate(callback?: (err: Error, s: Scenario) => void): void {
-        this.triggers.forEach(trigger => {
-            trigger.deactivate();
+    deactivate(callback: (err: Error, s: Scenario) => void): void {
+        async.parallel(this.triggers.map(trigger => (cb: (err: Error, t: Trigger) => void) => {
+            trigger.deactivate(cb);
+        }), (err: Error) => {
+            callback(err, this);
         });
     }
 

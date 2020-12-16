@@ -34,8 +34,8 @@ export abstract class Trigger {
         }
     }
 
-    abstract activate(callback?: (err: Error, trigger: Trigger) => void): void;
-    abstract deactivate(callback?: (err: Error, trigger: Trigger) => void): void;
+    abstract activate(callback: (err: Error, trigger: Trigger) => void): void;
+    abstract deactivate(callback: (err: Error, trigger: Trigger) => void): void;
 
 }
 
@@ -73,10 +73,10 @@ export class TimeTrigger extends Trigger {
 
                 let dt = TimeTrigger.dateTime(msg.newValue);
 
-                logger.info(`Scenario "${this.scenario.path}" trigger date redefined due to device "${this.when}"'s state change from "${msg.oldValue}" to "${msg.newValue}".`);
+                this.scenario.debugMode && logger.info(`Scenario "${this.scenario.path}" trigger date redefined due to device "${this.when}"'s state change from "${msg.oldValue}" to "${msg.newValue}".`);
                 this.cronJob && this.cronJob.stop();
                 if (!isNaN(dt) && dt > Date.now()) {
-                    this.cronJob = new CronJob(new Date(dt), () => { this.reason = dt + " reached"; this.handler() });
+                    this.cronJob = new CronJob(new Date(dt), () => { this.reason = new Date(dt) + " reached"; this.handler() });
                     this.cronJob.start();
                     this.scenario.debugMode && logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates());
                 } else {
@@ -85,6 +85,13 @@ export class TimeTrigger extends Trigger {
                 }
             }
             this.doc.devices[this.when].device.on('change', this.atHandler);
+            this.atHandler({
+                oldValue: null,
+                newValue: this.doc.devices[this.when].device.getState(),
+                id: this.doc.devices[this.when].device.id,
+                emitter: this.doc.devices[this.when].device,
+                date: new Date
+            });
         } else if (this.when.match(CRONPATTERN)) {
             // cronjob
             this.cronJob = new CronJob(this.when, () => {
@@ -149,7 +156,7 @@ export class StateTrigger extends Trigger {
         callback && callback(null, this);
     }
     deactivate(callback?: (err: Error, trigger: Trigger) => void): void {
-        this.device && this.device.removeListener("change", msg => {this.reason = this.device.id + `'s state changed from '${msg.oldValue}' to '${msg.newValue}'`; this.handler(msg)})
+        this.device && this.device.removeListener("change", msg => { this.reason = this.device.id + `'s state changed from '${msg.oldValue}' to '${msg.newValue}'`; this.handler(msg) })
         callback && callback(null, this);
     }
 

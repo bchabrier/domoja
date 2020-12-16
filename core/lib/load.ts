@@ -274,48 +274,50 @@ export class ConfigLoader extends events.EventEmitter {
         this.released = true;
 
         logger.info('Releasing %d scenario(s)...', Object.keys(this.scenarios).length)
-        Object.keys(this.scenarios).forEach(e => {
+        let tasks = Object.keys(this.scenarios).map(e => (callback: (err: Error, scenario: Scenario) => void) => {
             this.scenarios[e].stop();
-            this.scenarios[e].deactivate();
-        })
-        this.scenarios = undefined;
-        logger.info('Releasing %d device(s)...', Object.keys(this.devices).length)
-        Object.keys(this.devices).forEach(e => {
-            this.devices[e].device && this.devices[e].device.release();
-            this.devices[e].device = null;
+            this.scenarios[e].deactivate(callback);
         });
-        this.devices = undefined;
-        logger.info('Releasing %d source(s)...', Object.keys(this.sources).length)
-        Object.keys(this.sources).forEach(e => {
+        async.parallel(tasks, (err: Error) => {
+            this.scenarios = undefined;
+            logger.info('Releasing %d device(s)...', Object.keys(this.devices).length)
+            Object.keys(this.devices).forEach(e => {
+                this.devices[e].device && this.devices[e].device.release();
+                this.devices[e].device = null;
+            });
+            this.devices = undefined;
+            logger.info('Releasing %d source(s)...', Object.keys(this.sources).length)
+            Object.keys(this.sources).forEach(e => {
 
-            let klass = <new () => Source>this.imports['sources.' + this.sources[e].object.type].class
-            Source.deregisterDeviceTypes(klass);
-            this.imports['sources.' + this.sources[e].object.type].class = null;
+                let klass = <new () => Source>this.imports['sources.' + this.sources[e].object.type].class
+                Source.deregisterDeviceTypes(klass);
+                this.imports['sources.' + this.sources[e].object.type].class = null;
 
-            this.sources[e].source.release();
-            this.sources[e].source = null;
-        });
-        this.sources = undefined;
+                this.sources[e].source.release();
+                this.sources[e].source = null;
+            });
+            this.sources = undefined;
 
-        this.DEFAULT_SOURCE.release();
+            this.DEFAULT_SOURCE.release();
 
-        /*
-                let id = require.resolve(path.resolve(__dirname, '..', moduleName));
-                // remove previous modules from rootModule
-                rootModule.children = rootModule.children.filter(m => {
-                    if (m.id === id) {
-                        // and disconnect them to make sure they are freed in memory
-                        for (let i in m.children) {
-                            m.children[i].parent = null;
+            /*
+                    let id = require.resolve(path.resolve(__dirname, '..', moduleName));
+                    // remove previous modules from rootModule
+                    rootModule.children = rootModule.children.filter(m => {
+                        if (m.id === id) {
+                            // and disconnect them to make sure they are freed in memory
+                            for (let i in m.children) {
+                                m.children[i].parent = null;
+                            }
+                            m.children = [];
                         }
-                        m.children = [];
-                    }
-                    return m.id !== id
-                })
-                delete require.cache[id]; // to make sure the file is reloaded*/
-        this.rootModule = null;
-        this.comments = [];
-        this.userMgr.clearUsers();
+                        return m.id !== id
+                    })
+                    delete require.cache[id]; // to make sure the file is reloaded*/
+            this.rootModule = null;
+            this.comments = [];
+            this.userMgr.clearUsers();
+        });
     }
 
     parse(fileOrDir: string, done: (err?: Error) => void) {
@@ -393,7 +395,7 @@ export class ConfigLoader extends events.EventEmitter {
 
         if (this.devices) {
             // instanciate all devices
-            logger.debug("Starting restoring all devices initial state...")
+            logger.info("Starting restoring all devices initial state...")
             async.rejectSeries(Object.keys(this.devices).map(d => this.devices[d].device.path),
                 (devicePath, callback) => {
                     this.getDevice(devicePath).restoreStateFromDB((err) => {
@@ -402,25 +404,29 @@ export class ConfigLoader extends events.EventEmitter {
                 },
                 (err, results) => {
                     if (results.length > 0) {
-                        logger.debug(`Done restoring devices initial state, ${results.length} failed: ${results.join(", ")}`);
+                        logger.warn(`Done restoring devices initial state, ${results.length} failed: ${results.join(", ")}`);
                     } else {
-                        logger.debug(`Done restoring all ${Object.keys(this.devices).length} devices initial state.`);
+                        logger.info(`Done restoring all ${Object.keys(this.devices).length} devices initial state.`);
                     }
 
                     if (this.scenarios) {
                         let N = Object.keys(this.scenarios).length;
-                        logger.debug("Starting activating all %s scenarios...", N)
+                        logger.info("Starting activating all %s scenarios...", N)
                         let n = 0;
-                        Object.keys(this.scenarios).forEach(e => {
+                        let tasks = Object.keys(this.scenarios).map(e => (callback: (err: Error, scenario: Scenario) => void) => {
                             n++;
                             process.stdout.write(n + "/" + N + "\r");
                             let scenario = this.scenarios[e];
                             //console.log(scenario)
-                            scenario.activate();
-                        })
-                        logger.debug("Done activating all %d scenarios.", N)
+                            scenario.activate(callback);
+                        });
+                        async.parallel(tasks, (scenarioactivationerr) => {
+                            logger.info("Done activating all %d scenarios.", N)
+                            return done(scenarioactivationerr);
+                        });
+                    } else {
+                        return done(err);
                     }
-                    return done(err);
                 });
         } else {
             return done();
