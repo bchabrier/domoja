@@ -28,6 +28,10 @@ scenarios:
           right: {operator: "!=", left: 1, right: 0 }
         }
         - boolean_binary-condition-flat: { operator: or, left: {operator: =, left: 1, right: 0 }, right: {operator: "!=", left: 1, right: 0 } }
+        - boolean_binary-condition-interpreted: { operator: or, 
+          left: {operator: =, left: this.msg.oldValue, right: this.msg.newValue }, 
+          right: {operator: "!=", left: this.msg.oldValue, right: this.msg.newValue }
+        }
       actions:
         - !!js/function 'function(callback) {
             this.actionDone();

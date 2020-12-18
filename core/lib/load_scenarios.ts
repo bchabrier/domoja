@@ -127,12 +127,14 @@ function binaryCondition(c: Parser.Parse): ConditionFunction {
 
     c.skip(/^, */)
     c.skip(/^left: */)
+    logger.debug("found 'left:', trying expression with", currentSource(c));
     let left = c.one(expression)
-    logger.debug("found left:", left);
+    logger.debug("found left:", left, "continuing with", currentSource(c));
     c.skip(/^, */)
     c.skip(/^right: */)
+    logger.debug("found 'right:', trying expression with", currentSource(c));
     let right = c.one(expression)
-    logger.debug("found right:", right);
+    logger.debug("found right:", right, "continuing with", currentSource(c));
     c.skip(/^ *} */)
 
     let binaryExpression: (left: string, right: string) => boolean;

@@ -41,8 +41,8 @@ function interpretedJavascriptString(c: Parser.Parse): string {
         let more = true;
         while (more) {
             s += c.one(/^[^ },]+/);
-            logger.debug('read ', s)
-            if (c.isNext(/^ *} *(#.*)?\n/) || c.isNext(/^ *, *[-a-zA-Z0-9]+: +/)) {
+            logger.debug('read ', s, 'continuing with', currentSource(c));
+            if (c.isNext(/^ *} *,? *(#.*)?\n/) || c.isNext(/^ *, *[-a-zA-Z0-9]+: +/)) {
                 // end of block with "}",        or followed by a "key: "
                 more = false;
                 logger.debug('stop!')
