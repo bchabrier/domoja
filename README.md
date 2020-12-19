@@ -216,7 +216,6 @@ Siri is then available on iOS through the Home application.
 - Use KEEP for persistence
 - Temperature graphs
     - passer par API pour renvoyer sur login si non connecté
-- implement TRACE in yml files
 - support other attribute than 'id' in devices
 - support for dev: reload module when changed
 - improve the text widget to support format, color, unit...
