@@ -29,16 +29,14 @@
     "crypto-js": "^4.0.0",
     "mqtt": "^4.2.1",
     "mqtt-match": "^2.0.3",
-    "socket.io-client": "^2.3.0",
     "tracer": "^1.1.2"
   },
   "devDependencies": {
-    "@types/crypto-js": "^3.1.47",
     "@types/node": "^14.0.13",
     "@types/socket.io-client": "^1.4.33",
-    "mocha": "7",
+    "mocha": "^8.2.1",
     "nyc": "^15.0.1",
-    "ts-mocha": "^7.0.0",
+    "ts-mocha": "^8.0.0",
     "typescript": "^4.0.2"
   },
   "files": [
