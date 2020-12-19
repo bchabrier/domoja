@@ -3,7 +3,7 @@ import { GenericDevice, ConfigLoader, message, CRONPATTERN } from '..';
 import { Scenario } from './scenario';
 
 import { CronJob } from 'cron';
-import * as moment from 'moment';
+import * as dayjs from 'dayjs';
 
 var logger = require("tracer").colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -52,13 +52,13 @@ export class TimeTrigger extends Trigger {
 
     static dateTime(dateString: string): number {
         // check the supported date / time formats
-        let m = moment(dateString)
-        if (!m.isValid()) m = moment(dateString, [
+        let m = dayjs(dateString)
+        if (!m.isValid()) m = dayjs(dateString, [
             'HH:mm',
             'HH:mm:ss',
             'DD/MM/YYYY HH:mm:ss',
         ]);
-        console.log(dateString, m.format())
+        //console.log(dateString, m.format())
 
         return m.valueOf();
     }
