@@ -4,6 +4,8 @@ import { Scenario } from './scenario';
 
 import { CronJob } from 'cron';
 import * as dayjs from 'dayjs';
+var customParseFormat = require('dayjs/plugin/customParseFormat');
+dayjs.extend(customParseFormat);
 
 var logger = require("tracer").colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -52,14 +54,13 @@ export class TimeTrigger extends Trigger {
 
     static dateTime(dateString: string): number {
         // check the supported date / time formats
-        let m = dayjs(dateString)
+        let m = dayjs(dateString);
         if (!m.isValid()) m = dayjs(dateString, [
             'HH:mm',
             'HH:mm:ss',
             'DD/MM/YYYY HH:mm:ss',
         ]);
-        //console.log(dateString, m.format())
-
+        //logger.info(dateString, "->", m, m.valueOf(), new Date(m.valueOf()));
         return m.valueOf();
     }
 
