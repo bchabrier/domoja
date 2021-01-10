@@ -29,6 +29,12 @@ sources:
   - robonect-weather: {
       type: demo
   }
+  - robonect-command: {
+      type: demo
+  }
+  - robonect-error: {
+      type: demo
+  }
   - myZibase: {
       type: demo
   }
@@ -42,12 +48,16 @@ sources:
   - myESPs: {
       type: demo
   }
+  - myESPs-status: {
+      type: demo
+  }
   - tempo: { type: tempo }
   - voice: {
       type: demo
   }
 
 devices:
+  - comm: { type: variable, widget: "comm", name: "Communication"}
   - aquarium:
     - controle : { type: variable, widget: "multistate:AUTO,ON,OFF:primary,secondary,danger", tags: 'aquarium-page', name: "Commande de l'aquarium"} 
     - pompes : { type: device, widget: toggle, tags: 'aquarium-page', source: myZibase, id: "ZC8", name: "Pompes aquarium" }
@@ -189,7 +199,8 @@ devices:
 
   - piscine:
      - controle : { type: variable, widget: "multistate:AUTO,ON,OFF:primary,secondary,danger", tags: 'piscine-page', name: "Programmation filtration"} 
-     - filtration: { type: device, widget: toggle, tags: 'piscine-page', source: myESPs, id: "04a87b", name: "Filtration piscine" }
+     - filtration: { type: device, debug: false, widget: toggle, tags: 'piscine-page', source: myESPs, id: "04a87b", name: "Filtration piscine" }
+     - filtration-status: { type: device, debug: false, widget: text, tags: 'piscine-page', source: myESPs-status, id: "04a87b", name: "Status filtration piscine" }
      - pieuvre: { type: device, widget: toggle, tags: 'piscine-page', source: myZibase, id: "ZP8", name: "Pieuvre" }
      - chlore_plus: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZA14", name: "Chlore +" }
      - chlore_moins: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZO14", name: "Chlore -" }
@@ -199,7 +210,7 @@ devices:
         # id:TTL:raw|aggregate:KEEP    default, 5 ans
      - temperature-graph : { type: variable, widget: temp-graph:piscine.temperature, tags: 'piscine-temp-page', name: "Courbe de température"} 
      - couleur : { type: variable, widget: color, tags: 'piscine', name: "Couleur de la température"} 
-     - planning-filtration-graph : { type: variable, widget: graph, tags: 'piscine-page', name: "Planning de filtration"} 
+     - planning-filtration-graph : { type: variable, debug: false, widget: graph, tags: 'piscine-page', name: "Planning de filtration"} 
      - filtration-couleur : { type: variable, widget: color, tags: 'piscine', name: "Couleur de la filtration"} 
      - filtration-icon : { type: variable, widget: text, tags: 'piscine', name: "Icône de la filtration"} 
      - filtration-message : { type: variable, widget: text, tags: 'piscine', name: "Message de la filtration"} 
@@ -209,7 +220,7 @@ devices:
      - filtration-stop2 : { type: variable, widget: text, tags: 'piscine', name: "Heure 2 d'arrêt de la filtration"} 
      - filtration-duration : { type: variable, widget: text, tags: 'piscine', name: "Durée de la filtration (heures)"} 
      - durees-filtration : { type: variable, widget: text, tags: 'piscine', name: "Tableau des durées de filtration [°C, h]"} 
-     - durees-filtration-graph : { type: variable, widget: graph, tags: 'piscine-page', name: "Durées de filtration"} 
+     - durees-filtration-graph : { type: variable, debug: false, widget: graph, tags: 'piscine-page', name: "Durées de filtration"} 
 
   - petit_portail:
     - controle : { type: variable, widget: "confirm:Actionner:primary:Petit portail:Actionner le petit portail?:Partiel,Grand,Non", tags: 'portails-page, entrée', name: "Actionner le petit portail"} 
@@ -223,6 +234,12 @@ devices:
       }' }
 
   - tondeuse:
+    - start : { type: variable, widget: toggle, id: unused, tags: tondeuse-page, name: "Marche/Arrêt" }
+    - do-start : { type: device, widget: text, source: robonect-command, id: unused, tags: tondeuse-page, name: "Activation Marche/Arrêt" }
+    - reset-error : { type: variable, widget: "multistate:RESET:danger", tags: tondeuse-page, name: "Réinitialisation erreur" }
+    - do-reset-error : { type: device, widget: text, source: robonect-error, id: toto, tags: tondeuse-page, name: "Appel reset erreur" }
+    - error-code : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/error/code", tags: tondeuse, name: "Error (code)" }
+    - error-message : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/error/message", tags: tondeuse-page, name: "Error" }
     - weather : { type: sensor, source: robonect-weather, widget: text, tags: tondeuse-page, id: tmnuweather, name: "Météo" }
     - stopped : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/stopped", tags: tondeuse, name: "Arrêté" }
     - stopped-plain : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/stopped", tags: tondeuse-page, transform: "true=>Arrêté,false=>Marche", name: "Marche/Arrêt" }
@@ -236,11 +253,10 @@ devices:
             function displayAsDuration(duration) {
               var d = Math.floor(duration/60/24);
               var h = Math.floor((duration - 24*60*d)/60);
-              var mn = Math.round(duration - 60*h);
+              var mn = Math.round(duration - d*24*60 - 60*h);
 
               var str = "";
-              if (d>0) str = d + "jour";
-              if (d>1) str += "s";
+              if (d>0) str = d + "j";
               if (h>0) str += (str!=""?" ":"") + h + "h";
               if (mn>0) str += (str!=""?" ":"") + mn + "mn";
               if (d==0 && h===0 && mn===0) str = "0mn";
@@ -248,11 +264,18 @@ devices:
             }
             return displayAsDuration(parseInt(value));
       }' }
-    - charge : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/battery/charge", tags: tondeuse-page, name: "Charge batterie" }
+    #- charge-unused : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/battery/charge", tags: tondeuse-page, name: "Charge batterie" }
+    - charge : { type: sensor, source: robonect, widget: progress-bar, id: "/Robonect/mower/battery/charge", tags: tondeuse-page, name: "Charge batterie", transform: !!js/function 'function (value) { 
+      let v = parseInt(value);
+      if (isNaN(v)) v = 0;
+      // should return <value>:<meter|progress>:<min>:<low>:<high>:<optimum>:<max>
+      return v + ":meter:0:33:66:90:100";
+    }' }
     - tension-batterie : { type: sensor, source: robonect, widget: text, id: "/Robonect/health/voltage/batt", tags: tondeuse-page, name: "Tension batterie" }
-    - next-start : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/timer/next/unix", tags: tondeuse-page, name: "Prochaine tonte", transform: !!js/function 'function (value) { let v = parseInt(value); console.log(value, v); return v>0?new Date(v*1000 + (new Date()).getTimezoneOffset() * 60 * 1000 /* for some reason the unix date returned by the robonect is not correct */):"Non défini"; }' }
+    - next-start : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/timer/next/unix", tags: tondeuse-page, name: "Prochaine tonte", transform: !!js/function 'function (value) { let v = parseInt(value); return v>0?new Date(v*1000 + (new Date()).getTimezoneOffset() * 60 * 1000 /* for some reason the unix date returned by the robonect is not correct */):"Non défini"; }' }
 
   - tempo:
+    - option_active : { type: variable, widget: toggle, tags: "tempo, aquarium-page", name: "Option tempo active" }
     - couleur_du_jour : { type: device, widget: tempo-color, tags: 'tempo', source: tempo, id: couleurDuJour, name: "Couleur du jour" }
     - couleur_de_demain : { type: device, widget: tempo-color, tags: 'tempo', source: tempo, id: couleurDeDemain, name: "Couleur de demain" }
 
@@ -356,17 +379,23 @@ scenarios:
       - set_Bleu:
           triggers:
             - state: tempo.couleur_du_jour
+            - state: tempo.option_active
             - state: sunset_plus_30mn
           conditions:
-            - {operator: =, left: tempo.couleur_du_jour, right: "Bleu"}
+            - {operator: 'or',
+                left: {operator: =, left: tempo.couleur_du_jour, right: "Bleu"},
+                right: {operator: =, left: tempo.option_active, right: "OFF"}
+            }
           actions:
             - {device: aquarium.pompes_start, state: sunset}
             - {device: aquarium.lampes_start, state: sunset_plus_30mn}
       - set_others:
           triggers:
             - state: tempo.couleur_du_jour
+            - state: tempo.option_active
           conditions:
             - {operator: "!=", left: tempo.couleur_du_jour, right: "Bleu"}
+            - {operator: =, left: tempo.option_active, right: "ON"}
           actions:
             - {device: aquarium.pompes_start, state: "21:30"}
             - {device: aquarium.lampes_start, state: "22:00"}
@@ -499,8 +528,8 @@ scenarios:
               let oldtab = [];
               if (oldlist) oldtab = oldlist.split(", ");
 
-              console.log(oldtab);
-              console.log(newtab);
+              //console.log(oldtab);
+              //console.log(newtab);
               oldtab.forEach(n => {
                 if (newtab.indexOf(n) == -1) {
                   this.setDeviceState("say", n + " n" + String.fromCharCode(39) + "est plus au Séméria");
@@ -603,6 +632,8 @@ scenarios:
                 "0607186716": "Bruno",
                 "0615457163": "Marie-Pierre",
                 "0477506276": "Grand-mère de Fontaneilles",
+                "0952361243": "Grand-mère de Golfe",
+                "0493632270": "Grand-mère de Golfe",
                 "0492182000": "Alerte mairie",
               }
               let num = appel_en_cours;
@@ -781,6 +812,8 @@ scenarios:
           - {operator: "!=", left: piscine.filtration-duration, right: undefined}
         actions:
           - !!js/function 'function setFiltrationMessage (callback) {
+            debug=false;
+
             let msg = "";
             let filtration = this.getDeviceState("piscine.filtration");
             let duration = parseFloat(this.getDeviceState("piscine.filtration-duration"), 10) * 60;
@@ -821,14 +854,19 @@ scenarios:
             if (filtration != "ON") {
               let start1 = this.getDeviceState("piscine.filtration-start1");
               let _start1 = start1 && new Date(start1);
+              debug && console.log("_start1=", _start1);
               let start2 = this.getDeviceState("piscine.filtration-start2");
               let _start2 = start2 && new Date(start2);
+              debug && console.log("_start2=", _start2);
               let start = _start1 && _start1 > Date.now() ? _start1 : (_start2 && _start2 > Date.now() ? _start2 : undefined );
+              debug && console.log("start=", start);
               if (start) {
                 let startTime = displayAsTime(start);
+                let currentDuration = start == _start1? duration - 60: 60;
+                let durationLength = displayAsDuration(currentDuration);
                 msg = `Mise en<BR/>marche<br><strong>${startTime}</strong><br>pour ${durationLength}`;
               } else {
-                msg = `Marche<br>permanente`;
+                msg = `Arrêt<br>permanent`;
               }
             } 
             if (filtration == "ON") {
@@ -839,6 +877,8 @@ scenarios:
               let stop = _stop1 && _stop1 > Date.now() ? _stop1 : (_stop2 && _stop2 > Date.now() ? _stop2 : undefined );
               if (stop) {
                 let stopTime = displayAsTime(stop);
+                let currentDuration = stop == _stop1? duration - 60: 60;
+                let durationLength = displayAsDuration(currentDuration);
                 msg = `Arrêt<br><strong>${stopTime}</strong><br>Durée<br>${durationLength}`;
               } else {
                 msg = `Marche<br>permanente`;
@@ -864,53 +904,62 @@ scenarios:
       - AUTO-Offline:
         triggers:
           - at: startup
+          - state: piscine.filtration-status
           - state: piscine.filtration
           - state: piscine.controle
         conditions:
           - {operator: =, left: this.getDeviceState("piscine.controle"), right: "AUTO"}
-          - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "offline"}
+          - {operator: =, left: this.getDeviceState("piscine.filtration-status"), right: "offline"}
         actions:
           - {device: piscine.filtration-couleur, state: "orange" } 
           - {device: piscine.filtration-icon, state: "timer" }
       - AUTO-ON:
         triggers:
           - at: startup
+          - state: piscine.filtration-status
           - state: piscine.filtration
           - state: piscine.controle
         conditions:
           - {operator: =, left: this.getDeviceState("piscine.controle"), right: "AUTO"}
           - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "ON"}
+          - {operator: "!=", left: this.getDeviceState("piscine.filtration-status"), right: "offline"}
         actions:
           - {device: piscine.filtration-couleur, state: "#33cd5f" } # green
           - {device: piscine.filtration-icon, state: "timer" }
       - AUTO-OFF:
         triggers:
           - at: startup
+          - state: piscine.filtration-status
           - state: piscine.filtration
           - state: piscine.controle
         conditions:
           - {operator: =, left: this.getDeviceState("piscine.controle"), right: "AUTO"}
           - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "OFF"}
+          - {operator: "!=", left: this.getDeviceState("piscine.filtration-status"), right: "offline"}
         actions:
           - {device: piscine.filtration-couleur, state: "lightgrey" } 
           - {device: piscine.filtration-icon, state: "timer" }
       - ON-Offline:
         triggers:
           - at: startup
+          - state: piscine.filtration-status
           - state: piscine.controle
         conditions:
           - {operator: =, left: this.getDeviceState("piscine.controle"), right: "ON"}
-          - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "offline"}
+          - {operator: =, left: this.getDeviceState("piscine.filtration-status"), right: "offline"}
         actions:
           - {device: piscine.filtration-couleur, state: "orange" } 
           - {device: piscine.filtration-icon, state: "flash" }
       - ON-ON:
         triggers:
           - at: startup
+          - state: piscine.filtration-status
+          - state: piscine.filtration
           - state: piscine.controle
         conditions:
           - {operator: =, left: this.getDeviceState("piscine.controle"), right: "ON"}
           - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "ON"}
+          - {operator: "!=", left: this.getDeviceState("piscine.filtration-status"), right: "offline"}
         actions:
           - {device: piscine.filtration-couleur, state: "#33cd5f" } # green
           - {device: piscine.filtration-icon, state: "flash" }
@@ -919,9 +968,11 @@ scenarios:
           - at: startup
           - state: piscine.controle
           - state: piscine.filtration
+          - state: piscine.filtration-status
         conditions:
           - {operator: =, left: this.getDeviceState("piscine.controle"), right: "ON"}
           - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "OFF"}
+          - {operator: "!=", left: this.getDeviceState("piscine.filtration-status"), right: "offline"}
         actions:
           - {device: piscine.filtration-couleur, state: "#ef473a" } # red
           - {device: piscine.filtration-icon, state: "flash" }
@@ -930,10 +981,10 @@ scenarios:
         triggers:
           - at: startup
           - state: piscine.controle
-          - state: piscine.filtration
+          - state: piscine.filtration-status
         conditions:
           - {operator: =, left: this.getDeviceState("piscine.controle"), right: "OFF"}
-          - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "offline"}
+          - {operator: =, left: this.getDeviceState("piscine.filtration-status"), right: "offline"}
         actions:
           - {device: piscine.filtration-couleur, state: "orange" } 
           - {device: piscine.filtration-icon, state: "power" }
@@ -942,9 +993,11 @@ scenarios:
           - at: startup
           - state: piscine.controle
           - state: piscine.filtration
+          - state: piscine.filtration-status
         conditions:
           - {operator: =, left: this.getDeviceState("piscine.controle"), right: "OFF"}
           - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "OFF"}
+          - {operator: "!=", left: this.getDeviceState("piscine.filtration-status"), right: "offline"}
         actions:
           - {device: piscine.filtration-couleur, state: "#ef473a" } # red
           - {device: piscine.filtration-icon, state: "power" }
@@ -953,9 +1006,11 @@ scenarios:
           - at: startup
           - state: piscine.controle
           - state: piscine.filtration
+          - state: piscine.filtration-status
         conditions:
           - {operator: =, left: this.getDeviceState("piscine.controle"), right: "OFF"}
           - {operator: =, left: this.getDeviceState("piscine.filtration"), right: "ON"}
+          - {operator: "!=", left: this.getDeviceState("piscine.filtration-status"), right: "offline"}
         actions:
           - {device: piscine.filtration-couleur, state: "#ef473a" } # red
           - {device: piscine.filtration-icon, state: "power" }
@@ -978,6 +1033,8 @@ scenarios:
       - calcul-duree:
         triggers:
           - state: piscine.temperature
+        conditions:
+          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
         actions:
           - !!js/function 'function f(callback) {
             let temp = parseFloat(this.getDeviceState("piscine.temperature"), 10);
@@ -1003,7 +1060,7 @@ scenarios:
             // avoid unwanted stop/start
             if (duree > 23 + 50/60) duree=24;
             this.setDeviceState("piscine.filtration-duration", duree, callback);
-          }'         
+          }'        
       - calcul-start:
         triggers:
           - state: zenith
@@ -1014,6 +1071,8 @@ scenarios:
           #- { operator: "!=", left: piscine.filtration, right: "ON"}
         actions:
           - !!js/function 'function f(callback) {
+            debug = false;
+
             let dureeTotale = parseFloat(this.getDeviceState("piscine.filtration-duration"), 10);
 
             let zenith = new Date(this.getDeviceState("zenith"));
@@ -1028,40 +1087,40 @@ scenarios:
             let stop2 = start2 + 59 * 60 * 1000;
             // check if next day
             if (stop2 < Date.now()) {
-              console.log("2 is next day")
+              debug && console.log("2 is next day")
               start2 = start2 + 24 * 60 * 60 * 1000;
               stop2 = stop2 + 24 * 60 * 60 * 1000;
             }
 
             let duree = dureeTotale - (stop2 - start2) / 60 / 60 / 1000;
-            console.log("duree", duree, "total", dureeTotale);
+            debug && console.log("duree", duree, "total", dureeTotale);
 
             let start1 = zenith.getTime() - duree * 60 * 60 * 1000 / 2;
 
             if (start1 < Date.now() + 5 * 60 * 1000) {
               // start1 is almost in the past (5 mn), probably because the temperature is increasing.
-              console.log("start1 before 5 mn!!! Let s use previous_start1:", previous_start1)
+              debug && console.log("start1 before 5 mn!!! Let s use previous_start1:", previous_start1)
               start1 = previous_start1;
               // if not defined yet, probably because the first time it is called. Let s start asap
               if (!start1 || new Date(start1).toString() == "Invalid Date") {
                 start1 = Date.now() + 3 * 60 * 1000;
-                console.log("start1 new Date + 3 = ", start1)
-                console.log("previous_start1 was not defined!!! Let s start asap in 3 mn at", start1)
+                debug && console.log("start1 new Date + 3 = ", start1)
+                debug && console.log("previous_start1 was not defined!!! Let s start asap in 3 mn at", start1)
               }
             }
 
             let stop1 = start1 + duree * 60 * 60 * 1000;
             // check if next day
             if (stop1 < Date.now()) {
-              console.log("1 is next day")
+              debug && console.log("1 is next day")
               start1 = start1 + 24 * 60 * 60 * 1000;
               stop1 = stop1 + 24 * 60 * 60 * 1000;
             }
 
-            console.log("start1", new Date(start1).toString())
-            console.log("stop1", new Date(stop1).toString())
-            console.log("start2", new Date(start2).toString())
-            console.log("stop2", new Date(stop2).toString())
+            debug && console.log("start1", new Date(start1).toString())
+            debug && console.log("stop1", new Date(stop1).toString())
+            debug && console.log("start2", new Date(start2).toString())
+            debug && console.log("stop2", new Date(stop2).toString())
 
             // check full time
             if (dureeTotale > 24 - 10/60) {
@@ -1074,7 +1133,7 @@ scenarios:
               // start1 ---------------- stop1
               //              start2 --------------- stop2
               if (start1 && start2 && stop1 && stop2 && start1 < start2 && stop1 > start2 && stop1 < stop2) {
-                console.log("chevauchant")
+                debug && console.log("chevauchant")
                 start2 = undefined;
                 stop1 = undefined;
               }
@@ -1082,7 +1141,7 @@ scenarios:
               // start1 ----------------------------- stop1
               //              start2 ----- stop2
               if (start1 && start2 && stop1 && stop2 && start1 < start2 && stop1 > stop2) {
-                console.log("inclus")
+                debug && console.log("inclus")
                 start2 = undefined;
                 stop2 = undefined;
               }
@@ -1091,20 +1150,20 @@ scenarios:
               //              <--------------> 
               //                    < 5 mn
               if (stop1 && start2 && Math.abs(stop1 - start2) < 5 * 60 * 1000) {
-                console.log("tres prets")
+                debug && console.log("tres prets")
                 start2 = undefined;
                 stop1 = undefined;
               }
 
             }
 
-            console.log("=>start1", new Date(start1).toString())
-            console.log("=>stop1", new Date(stop1).toString())
-            console.log("=>start2", new Date(start2).toString())
-            console.log("=>stop2", new Date(stop2).toString())
+            debug && console.log("=>start1", new Date(start1).toString())
+            debug && console.log("=>stop1", new Date(stop1).toString())
+            debug && console.log("=>start2", new Date(start2).toString())
+            debug && console.log("=>stop2", new Date(stop2).toString())
 
 
-            //console.log(new Date(start1).toString(), new Date(start2).toString())
+            debug && console.log(new Date(start1).toString(), new Date(start2).toString())
 
             this.setDeviceState("piscine.filtration-start1", new Date(start1));
             this.setDeviceState("piscine.filtration-stop1", new Date(stop1));
@@ -1112,7 +1171,16 @@ scenarios:
             this.setDeviceState("piscine.filtration-stop2", new Date(stop2), callback);
             //stop2 || callback();
           }'    
+      - calcul-start-update:
+        triggers:
+          - at: piscine.filtration-start1
+          - at: piscine.filtration-start2
+          - at: startup
+        actions:
+          - { wait: 10 s }
+          - { scenario: piscine.filtration-duree-start.calcul-start, action: start}
     - filtration-start:
+      debug: false
       triggers:
         - at: piscine.filtration-start1
         - at: piscine.filtration-start2
@@ -1131,6 +1199,7 @@ scenarios:
             }
           }' 
     - filtration-stop:
+      debug: false
       triggers:
         - at: piscine.filtration-stop1
         - at: piscine.filtration-stop2
@@ -1149,21 +1218,35 @@ scenarios:
             }
           }' 
     - filtration-offline:
+        debug: false
         triggers:
-          - state: piscine.filtration
+          - state: piscine.filtration-status
         conditions:
           - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
           - {operator: "=", left: this.msg.newValue, right: "offline"}
         actions:
+          - { device: say, state: "Err" }
+          - { wait: 5s } # sometimes goes offline then immediately back online
+          - { scenario: piscine.warn-if-filtration-really-offline, action: start } 
+        else:
+          - { scenario: piscine.warn-if-filtration-really-offline, action: stop } 
+    - warn-if-filtration-really-offline:
+        debug: false
+        triggers:
+          - at: startup
+        conditions:
+          - {operator: "=", left: getDeviceState("piscine.filtration-status"), right: "offline"}
+        actions:
           - { device: say, state: "Attention, la filtration de la piscine vient de passer en erreur !" }
     - filtration-offline-at-start-or-stop:
+        debug: false
         triggers:
           - at: piscine.filtration-start1
           - at: piscine.filtration-start2
           - at: piscine.filtration-stop1
           - at: piscine.filtration-stop2
         conditions:
-          - {operator: "=", left: this.getDeviceState("piscine.filtration"), right: "offline"}
+          - {operator: "=", left: this.getDeviceState("piscine.filtration-status"), right: "offline"}
         actions:
           - { device: say, state: "Attention, la filtration de la piscine est en erreur !" }
     - update-durees-filtration-graph:
@@ -1171,6 +1254,11 @@ scenarios:
         - state: piscine.durees-filtration
         - state: piscine.temperature
         - state: piscine.filtration-duration
+      conditions:
+          - {operator: "!=", left: this.msg.newValue, right: ""}
+          - {operator: "!=", left: this.msg.newValue, right: null}
+          - {operator: "!=", left: this.msg.newValue, right: undefined}
+          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
       actions:
         - !!js/function 'function f(callback) {
 
@@ -1210,6 +1298,7 @@ scenarios:
             this.setDeviceState("piscine.durees-filtration-graph", JSON.stringify(data), callback);
           }'
     - update-planning-filtration-graph:
+      debug: false
       triggers:
         - at: startup
         - cron: 00 * * * * * # reload every minutes
@@ -1220,12 +1309,14 @@ scenarios:
         - state: piscine.filtration-stop2
       actions:
         - !!js/function 'function f(callback) {
+            debug = false;
+
             function h(d) {
               if (d) {
                 let _d = new Date(d);
-                //console.log("=", _d.toString());
+                //debug && console.log("=", _d.toString());
                 let hh = _d.getHours() + _d.getMinutes()/60 + _d.getSeconds()/3600;
-                //console.log("=>", hh);
+                //debug && console.log("=>", hh);
                 return hh
               }
               return undefined;
@@ -1279,15 +1370,15 @@ scenarios:
               stop1 = stop1 && stop1 - 24 * 60 * 60 * 1000;
             } 
 
-            console.log("============================");
-            console.log("start1:", _start1);
-            console.log("stop1:", _stop1);
-            console.log("prev_stop1:", prev_stop1 && new Date(prev_stop1).toString());
-            console.log("start2:", _start2);
-            console.log("stop2:", _stop2);
-            console.log("prev_stop2:", prev_stop2 && new Date(prev_stop2).toString());
-            console.log("d24:", new Date(d24).toString());
-            console.log("now:", new Date(now).toString());
+            debug && console.log("============================");
+            debug && console.log("start1:", _start1);
+            debug && console.log("stop1:", _stop1);
+            debug && console.log("prev_stop1:", prev_stop1 && new Date(prev_stop1).toString());
+            debug && console.log("start2:", _start2);
+            debug && console.log("stop2:", _stop2);
+            debug && console.log("prev_stop2:", prev_stop2 && new Date(prev_stop2).toString());
+            debug && console.log("d24:", new Date(d24).toString());
+            debug && console.log("now:", new Date(now).toString());
 
 
             let _data;
@@ -1296,7 +1387,7 @@ scenarios:
             let OFF = { v: 0, f: "OFF"};
 
             if (!start1 && !stop1 && !start2 && !stop2) {
-              console.log("no date");
+              debug && console.log("no date");
               _data = [
                 [ {v: 0, f: formatHour(0)}, null, null, OFF, false ],
                 [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, OFF, false ],
@@ -1304,7 +1395,7 @@ scenarios:
               ];
             } else if (!stop1 && !start2 && !stop2) {
               // full time
-              console.log("full time");
+              debug && console.log("full time");
               _data = [
                 [ {v: 0, f: formatHour(0)}, null, null, ON, true ],
                 [ {v: h(now), f: formatHour(h(now))}, "Maintenant", undefined, ON, true ],
@@ -1314,7 +1405,7 @@ scenarios:
               if (!start2 && !stop1) {
                 // start1 ---------------- stop1
                 //              start2 --------------- stop2
-                console.log("overlap, start2 before stop1");
+                debug && console.log("overlap, start2 before stop1");
                 if (d24 <= stop2) {
                   // ON at midnight
                   if (now < prev_stop2) {
@@ -1385,7 +1476,7 @@ scenarios:
               } else if (!start2 && !stop2) {
                 // start1 ----------------------------- stop1
                 //              start2 ----- stop2
-                console.log("complete overlap, start2-stop2 inside start1-stop1");
+                debug && console.log("complete overlap, start2-stop2 inside start1-stop1");
                 if (d24 <= stop1) {
                   // ON at midnight
                   if (now < prev_stop1) {
@@ -1455,7 +1546,7 @@ scenarios:
                 }
               } else {
                 // no overlap
-                console.log("no overlap");
+                debug && console.log("no overlap");
                 if (now < start1) {
                     _data = [
                       [ {v: 0, f: formatHour(0)}, null, null, OFF, true ],
@@ -1582,6 +1673,78 @@ scenarios:
         actions:
             - { device: grand_portail.grand, state: "ON" }
             - { device: grand_portail.controle, state: "OFF" }  
+    - wheather-500:
+        triggers:
+          - state: tondeuse.weather
+        conditions:
+          - { operator: "=", left: msg.newValue, right: "Erreur 500" }
+        actions:
+          - { device: say, state: "Erreur 500" }
+    - wheather-500-fixed:
+        triggers:
+          - state: tondeuse.weather
+        conditions:
+          - { operator: "=", left: msg.oldValue, right: "Erreur 500" }
+        actions:
+          - { device: say, state: "Erreur 500 réparée" }
+    - set-start-stop:
+      - start-status: # updates the position of the start toggle
+        - start-status-OFF: # updates the position of the start toggle to OFF
+            triggers:
+              - at: startup
+              - state: tondeuse.stopped
+            conditions:
+              - { operator: "=", left: tondeuse.stopped, right: "true" }
+              - { operator: "=", left: tondeuse.start, right: "ON" }
+            actions:
+              - { device: tondeuse.start, state: "OFF" }
+        - start-status-ON: # updates the position of the start toggle to ON
+            triggers:
+              - at: startup
+              - state: tondeuse.stopped
+            conditions:
+              - { operator: "=", left: tondeuse.stopped, right: "false" }
+              - { operator: "!=", left: tondeuse.start, right: "ON" }
+            actions:
+              - { device: tondeuse.start, state: "ON" }
+      - set-start: # start the mower when the start toggle is switched on
+          triggers:
+            - state: tondeuse.start
+          conditions:
+            - { operator: "=", left: msg.newValue, right: "ON" }
+            - { operator: "=", left: msg.oldValue, right: "OFF" }
+            - { operator: "=", left: tondeuse.stopped, right: "true" }
+          actions:
+            - { device: tondeuse.do-start, state: "ON" }
+      - set-stop: # stop the mower when the start toggle is switched off
+          triggers:
+            - state: tondeuse.start
+          conditions:
+            - { operator: "=", left: msg.newValue, right: "OFF" }
+            - { operator: "=", left: msg.oldValue, right: "ON" }
+            - { operator: "=", left: tondeuse.stopped, right: "false" }
+          actions:
+            - { device: tondeuse.do-start, state: "OFF" }
+
+    - activate-reset-button:
+        triggers:
+          - at: startup
+          - state: tondeuse.error-code
+        conditions:
+          - { operator: "!=", left: msg.newValue, right: 0 }
+        actions:
+          - { device: tondeuse.reset-error, state: "RESET" }
+        else:
+          - { device: tondeuse.reset-error, state: "OFF" }
+    - reset-error:
+        triggers:
+          - state: tondeuse.reset-error
+        conditions:
+          - { operator: "!=", left: msg.oldValue, right: "RESET" }
+          - { operator: "=", left: msg.newValue, right: "RESET" }
+        actions:
+          - { device: tondeuse.do-reset-error, state: "doRESET" }
+          - { device: tondeuse.reset-error, state: "OFF" }
     - tondeuse-injoignable:
         triggers:
           - cron: 0 */15 * * * * # check and notify every 15 mn
@@ -1744,7 +1907,7 @@ scenarios:
 
           // push new message
           motd.push({
-            date: (new Date()).toUTCString(),
+            date: (new Date()).toString(),
             message: this.getDeviceState("say")
           });
 
@@ -1875,6 +2038,7 @@ pages:
             widget: dashboard-tempo
             couleurDuJour: "${tempo.couleur_du_jour}"
             couleurDeDemain: "${tempo.couleur_de_demain}"
+            optionActive: "${tempo.option_active}"
             label: "Tempo"           
           - tondeuse:
             widget: dashboard-icon
