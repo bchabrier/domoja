@@ -1,7 +1,7 @@
 {
   "name": "domoja-ipx800",
   "author": "Bruno Chabrier",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": false,
   "license": "GPL-3.0",
   "description": "IPX800 source for Domoja",
