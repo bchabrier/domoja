@@ -384,7 +384,7 @@ scenarios:
           conditions:
             - {operator: 'or',
                 left: {operator: =, left: tempo.couleur_du_jour, right: "Bleu"},
-                right: {operator: =, left: tempo.option_active, right: "OFF"}
+                right: {operator: "!=", left: tempo.option_active, right: "ON"}
             }
           actions:
             - {device: aquarium.pompes_start, state: sunset}
