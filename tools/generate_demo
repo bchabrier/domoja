@@ -30,6 +30,7 @@ EOF
          cat >> $DEMO_CONFIG <<EOF
   - demo:
     - presence_simulator:
+        debug: true
         triggers:
           - at: startup
         actions:
@@ -51,6 +52,7 @@ EOF
             callback(null);
            }'
     - pool-temp_simulator:
+        debug: true
         triggers:
           - cron: */30 * * * * *
         actions:
@@ -76,7 +78,8 @@ EOF
 
     for file in $SOURCES_CONFIG
     do
-        awk '
+        # keep only a couple of things in debug mode to make sure we have some traces but not too many
+        grep -v 'debug: true' $file | sed -e 's/^\( *- sunset_plus_30mn: { type: variable,\)/\1 debug: true,/g' | awk '
         BEGIN   {
             where="before imports"
             acceptedSources="astronomy tempo"
@@ -209,7 +212,7 @@ EOF
 
         { if (doprint) print }
 
-        ' $file >> $DEMO_CONFIG
+        ' >> $DEMO_CONFIG
     done
     echo >> $DEMO_CONFIG
 done

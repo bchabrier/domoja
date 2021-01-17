@@ -68,7 +68,7 @@ devices:
     - pompes_end : { type: variable, widget: text, tags: 'aquarium', name: "Heure arrêt pompes aquarium" }
 
   - sunset: { type: device, persistence: "mongo:sunset:1200:aggregate", widget: text, tags: 'astronomy', source: astronomy, id: sunsetTime, name: "Coucher du soleil" }
-  - sunset_plus_30mn: { type: variable, widget: text, tags: 'astronomy', name: "Coucher du soleil + 30mn" }
+  - sunset_plus_30mn: { type: variable, debug: true, widget: text, tags: 'astronomy', name: "Coucher du soleil + 30mn" }
   - sunrise: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunriseTime, name: "Lever du soleil" }
   - zenith: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: zenithTime, name: "Zénith" }
   - daynight: { type: variable, widget: text, tags: 'astronomy', name: "Jour/nuit" }
@@ -305,6 +305,7 @@ devices:
 scenarios:
   - demo:
     - presence_simulator:
+        debug: true
         triggers:
           - at: startup
         actions:
@@ -326,6 +327,7 @@ scenarios:
             callback(null);
            }'
     - pool-temp_simulator:
+        debug: true
         triggers:
           - cron: */30 * * * * *
         actions:
