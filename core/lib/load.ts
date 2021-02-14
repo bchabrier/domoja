@@ -139,6 +139,9 @@ class ExternalFunction {
             self.sandbox.console.debug = overridden(self.sandbox.console.debug);
             self.sandbox.console.trace = overridden(self.sandbox.console.trace);
 
+            self.sandbox.scriptFile = file;
+            self.sandbox.scriptLine = line;
+
             //if (true || !self.vm) {                                     // workaround
             const timeout = 2000;
             let vm = new VM({
@@ -221,7 +224,9 @@ export type Sandbox = {
         emitter: string,
         oldValue: string,
         newValue: string
-    }
+    },
+    scriptFile: string,
+    scriptLine: number
 };
 
 type Section = 'ALL' | 'IMPORTS' | 'SOURCES' | 'DEVICES' | 'SCENARIOS' | 'PAGES' | 'USERS';
@@ -260,6 +265,8 @@ export class ConfigLoader extends events.EventEmitter {
         getDeviceLastUpdateDate: getDeviceLastUpdateDate,
         msg: <{ emitter: string, oldValue: string, newValue: string }>new Object(), // new Object needed to access outside of the sandbox
         args: <{ args: any[], result: any }>new Object(), // new Object needed to access outside of the sandbox
+        scriptFile: '',
+        scriptLine: undefined
     }
 
 
