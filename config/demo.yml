@@ -166,6 +166,7 @@ devices:
       else
         return "";
     }', name: "Date dernier appel" }
+    - caracteristiques-dernier-appel: { type: variable, widget: text, tags: 'téléphone', name: "Appel:danger:nom:provenance"}
     - message-dernier-appel : { type: variable, widget: text, tags: 'téléphone', name: "Message dernier appel"} 
     - appel-en-cours: { type: sensor, widget: text, tags: 'téléphone-page', source: freebox, id: '/call/log/', transform: !!js/function 'function (value) { 
       if (!value) return value; 
@@ -199,7 +200,10 @@ devices:
 
   - piscine:
      - controle : { type: variable, widget: "multistate:AUTO,ON,OFF:primary,secondary,danger", tags: 'piscine-page', name: "Programmation filtration"} 
-     - filtration: { type: device, debug: false, widget: toggle, tags: 'piscine-page', source: myESPs, id: "04a87b", name: "Filtration piscine" }
+     - filtration: { type: device, debug: false, widget: toggle, tags: 'piscine-page', source: myESPs, id: "04a87b", 
+        persistence: "mongo:piscine_ON_OFF:0:raw:120000",
+        name: "Filtration piscine" }
+        # id:TTL:raw|aggregate:KEEP    default, 5 ans
      - filtration-status: { type: device, debug: false, widget: text, tags: 'piscine-page', source: myESPs-status, id: "04a87b", name: "Status filtration piscine" }
      - pieuvre: { type: device, widget: toggle, tags: 'piscine-page', source: myZibase, id: "ZP8", name: "Pieuvre" }
      - chlore_plus: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZA14", name: "Chlore +" }
@@ -264,13 +268,27 @@ devices:
             }
             return displayAsDuration(parseInt(value));
       }' }
-    #- charge-unused : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/battery/charge", tags: tondeuse-page, name: "Charge batterie" }
+    - charge-plain : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/battery/charge", tags: tondeuse, name: "Charge batterie (valeur)", transform: !!js/function 'function (value) { 
+      let v = parseInt(value);
+      if (isNaN(v)) v = 0;
+      return v;
+    }' }
     - charge : { type: sensor, source: robonect, widget: progress-bar, id: "/Robonect/mower/battery/charge", tags: tondeuse-page, name: "Charge batterie", transform: !!js/function 'function (value) { 
       let v = parseInt(value);
       if (isNaN(v)) v = 0;
       // should return <value>:<meter|progress>:<min>:<low>:<high>:<optimum>:<max>
       return v + ":meter:0:33:66:90:100";
     }' }
+    - charge-progress-color : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/battery/charge", tags: tondeuse, name: "Charge batterie (couleur)", transform: !!js/function 'function (value) { 
+      let v = parseInt(value);
+      if (isNaN(v)) v = 0;
+      // should return <value>:<meter|progress>:<min>:<low>:<high>:<optimum>:<max>
+      if (v > 98) return "transparent";
+      if (v > 75) return "green";
+      if (v > 25) return "orange";
+      if (v >= 0) return "red";
+    }' }
+
     - tension-batterie : { type: sensor, source: robonect, widget: text, id: "/Robonect/health/voltage/batt", tags: tondeuse-page, name: "Tension batterie" }
     - next-start : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/timer/next/unix", tags: tondeuse-page, name: "Prochaine tonte", transform: !!js/function 'function (value) { let v = parseInt(value); return v>0?new Date(v*1000 + (new Date()).getTimezoneOffset() * 60 * 1000 /* for some reason the unix date returned by the robonect is not correct */):"Non défini"; }' }
 
@@ -626,38 +644,229 @@ scenarios:
     - appel-en-cours:
         triggers:
           - state: home.appel-en-cours
+          - at: startup
         actions:
           - !!js/function 'function f(callback) {
+
+            debug=true;
+
             let appel_en_cours = this.getDeviceState("home.appel-en-cours");
+            //appel_en_cours = "00390494906746"; // italie
+            //appel_en_cours = "0160862732"; // Paris
+            //appel_en_cours = "0973055227"; // Dangereux
+            //appel_en_cours = "0607186716"; // known
+            //appel_en_cours = "Inconnu"; // numéro inconnu
+            //appel_en_cours = "0680488523"; // test
             if (appel_en_cours) {
-              let known_nums = {
-                "0607186716": "Bruno",
-                "0615457163": "Marie-Pierre",
-                "0477506276": "Grand-mère de Fontaneilles",
-                "0952361243": "Grand-mère de Golfe",
-                "0493632270": "Grand-mère de Golfe",
-                "0492182000": "Alerte mairie",
+
+              debug && console.log("appel_en_cours:", appel_en_cours)
+
+              function retrieveFromWebsite(source, cb, url, field_tagRe_transform, localdebug) {
+                (debug || localdebug) && console.log("%s doing request ", source, url);
+                require("https").get(url, res => {
+                  let data = ""  
+                  res.setEncoding("utf8");
+                  res.on("data", (chunk) => {
+                    data += chunk
+                  });
+                  res.on("end", () => {
+
+                    function textInTag(data, balise) {
+                      let startPos = data.search(balise);
+                      // console.log(source, startPos);
+                      // console.log(source, data.substr(startPos))
+                      return startPos>=0?data.substr(startPos).replace(balise, "").replace(/( *<[^>]*> *)*([^<]*).*/, "$2").trim():"";
+                    }
+
+                    // for testing purposes
+                    let valid_data_118712="<div class=!item-content!> <div  class=!item_number!> <div class=!poi icon-pin! > <p class=!icon icon-geoloc-pin!></p> <p class=!numero!>1</p> <p class=!pinshadow!></p> </div> </div> <div class=!item-info!> <h2 class=!titre! itemprop=!name!> <a data-tealium-link=!1! data-tealium-zone=!resultat! href=!/ppart/Alpes-maritimes-06/Le-golfe-juan-06220/Chabrier_gerard-0493632270_8E0090F00001R10300E10011G! id=!result_1! title=!Chabrier Gérard! target=!_blank!>                            Chabrier Gérard            </a> </h2> <h3 class=!activity!>                                    Particulier                            </h3> <div class=!address! itemprop=!address! itemscope itemtype=!http://schema.org/PostalAddress!> <h3> <span class=!streetAddress! itemprop=!streetAddress! data-nosnippet>495 avenue Pierre Sémard,</span> <span itemprop=!postalCode!>06220</span> <span itemprop=!addressLocality!>LE GOLFE JUAN</span> </h3> </div> <div class=!actions-btn!> <a data-tealium=!telephone_1! href=!javascript:;! class=!item_phone button special-phone! title=!Appeler Chabrier Gérard au 04 93 63 22 70! onclick=!oss118.popinSpecialPhone.open(this);! data-title=!Appeler Chabrier Gérard au 04 93 63 22 70! data-href=!tel:0493632270! data-wording=!<span class=!sr-only!>Appeler Chabrier Gérard au </span>04 93 63 22 70! data-special-phone=!No direct marketing! ><span class=!icon icon-no-market! title=!Opposé au démarchage téléphonique! aria-hidden=!true!></span><span class=!sr-only!>Appeler Chabrier Gérard au </span><span itemprop=!telephone! class=!button_wording nomobile! data-nosnippet>04 93 63 22 70</span> <span class=!button_wording mobile_only!>Appeler<span class=!sr-only!>  Chabrier Gérard au 04 93 63 22 70</span></span> </a> </div> </div> </div> </div> <div class=!right-item!> <div class=!table!> <div class=!image_container!> <div class=!icon_container!> <div class=!icon_propart_container!> <span class=!icon-part! aria-hidden=!true!>".replace(/!/g, String.fromCharCode(34));
+                    let error_data="errored data";
+                    let valid_data_ctqui="<table width=!550! border=!0! align=!center! cellpadding=!5! cellspacing=!0!><tr><td background=!/image/hautcadre3.gif!><div align=!center!><font color=!#FFFFFF! size=!3! face=!Arial, Helvetica, sans-serif!><strong>Resultat de la recherche pour le : 04 93 64 95 20</strong></font></div></td></tr><tr><td background=!/image/milieucadre3.gif! valign=!middle!><b><center><font color=!#FF0000! size=!1! face=!Arial, Helvetica, sans-serif!>Cette information vous est gracieusement offerte par CTQui gr&acirc;ce &agrave; nos sponsors et à votre aide !<br />Pour maintenir ce service Gratuit depuis bientôt 15 ans, pensez &agrave; d&eacute;couvrir leurs offres ci-dessous<br />et surtout, faîtes savoir que vous appréciez CTQui en cliquant sur !J aime! ou !Partager!</font></center></b><div style=!background: #fff; margin: 20px auto; padding: 15px 20px; width: 86%; border-radius: 20px;-webkit-border-radius: 20px;-moz-border-radius: 20px;!><font color=!#006699! size=!4! face=!Arial, Helvetica, sans-serif!><strong>Chabrier Bruno</strong></font><font color=!#006699! size=!3! face=!Arial, Helvetica, sans-serif!><br />21 B, Chemin De L!estelle<br />06110 Le Cannet<br /><br />Tel : 04 93 64 95 20<br />Fax : 09 58 05 63 02<br />Type : Particulier</font></div><div style=!font-family:Arial, Helvetica, sans-serif; font-size:14px; background: #fff; margin: 0 auto 15px; padding: 10px 8px; width: 90%; border-radius: 10px;-webkit-border-radius: 10px;-moz-border-radius: 10px;!><div style=!float:right;width:120px;!><iframe src=!//www.facebook.com/plugins/like.php?href=http%3A%2F%2Fwww.ctqui.com&amp;width&amp;layout=button&amp;action=like&amp;show_faces=false&amp;share=true&amp;height=35! scrolling=!no! frameborder=!0! style=!border:none; overflow:hidden; height:35px;! allowTransparency=!true!></iframe></div>  Vous appréciez CTQui, faîtes le savoir !</div><div style=!background: #fff; margin: 5px auto; padding: 10px 8px; width: 90%; border-radius: 10px;-webkit-border-radius: 10px;-moz-border-radius: 10px;!><table width=!100%! border=!0!><tr><td width=!9%!><a href=!http://www.awin1.com/awclick.php?gid=309016&mid=7315&awinaffid=290867&linkid=625633&clickref=! target=!_blank!><img src=!/image/internet.gif! width=!36! height=!36! border=!0! alt=!! /></a></td><td width=!91%!><font size=!2! face=!Arial, Helvetica, sans-serif!><strong><a href=!http://www.awin1.com/awclick.php?gid=309016&mid=7315&awinaffid=290867&linkid=625633&clickref=! target=!_blank!><font color=!#006699!>Fibre - Surfez à très grande vitesse pour 19,99€/mois !</font></a><br /><font color=!#FF0000!>TV + Internet + Téléphone fixe</font><font color=!#006699! size=!1! face=!Arial, Helvetica, sans-serif!><br />(SFR Box ou SFR Play Gratuit + SFR Presse + Appels illimités Fixe et Mobile. Très Haut débit 200 Mb/s)</font></strong></font></td> </tr></table><br /><br /></div></td></tr><tr><td style=!background:url(!image/bascadre3.gif!) no-repeat top center! height=!5!></td></tr></table>".replace(/!/g, String.fromCharCode(34));
+                    //data = valid_data_118712;
+                    //data = error_data;
+                    //data = valid_data_ctqui;
+
+                    //(debug || localdebug) && console.log("%s end:", source, data);
+                    data = data.replace(/\n|\r/gm," ");
+                    
+                    let result = { source: source };
+                    let allvalues = "";
+                    field_tagRe_transform.forEach(ftt => {
+                      result[ftt.field] = textInTag(data, ftt.regexp);
+                      if (ftt.transform) result[ftt.field] = ftt.transform(result[ftt.field]);
+                      allvalues += result[ftt.field];
+                    });
+                    (debug || localdebug) && console.log(source, ": result=", result);
+                    (debug || localdebug) && console.log("allvalues", allvalues);
+                    (debug || localdebug) && console.log("cb called with args:", allvalues==""?"no result from " + source:null, result);
+                    cb(allvalues==""?"no result from " + source:null, result);
+                  });
+                }).on("error", err => {
+                  console.warn(`${source}: Cannot connect to "${url}"`, err);
+                  cb(err, null);
+                });
               }
-              let num = appel_en_cours;
-              if (known_nums[num]) {
-                num = known_nums[num]
-              } else if (appel_en_cours.match(/^[0-9]{10}$/)) {
-                num = "";
-                for (i = 0; i < 10; i+=2) {
-                    num += appel_en_cours[i] + appel_en_cours[i+1] + " ";
-                }
-                num = num.substr(0, num.length - " ".length);
-              }
-              //console.log(num);
-              this.setDeviceState("say", "Appel de " + num);
+
+              require("async").parallel([
+                function checkDanger(cb) {
+                  //return cb(null, "toto");
+                  if (appel_en_cours == "Inconnu") return cb(null, {});
+                  retrieveFromWebsite("numeroinconnu.fr", cb, "https://www.numeroinconnu.fr/numero/" + appel_en_cours,
+                    [
+                      {
+                        field: "danger",
+                        regexp: /<div id="progress-bar-inner" class="progress-bar-rank[0-9]*">/
+                      },
+                      {
+                        field: "pays",
+                        regexp: /<td class="[^"]+" itemprop="addressCountry">/
+                      },
+                      {
+                        field: "ville",
+                        regexp: /<span itemprop="addressLocality">/
+                      },
+                    ],
+                    false
+                  );
+                },
+                function getNameLocality(cb) {
+
+                  // use the first positive response
+                  require("async").tryEach([
+                    function handleSpecialNumbers(cb) {
+                      let known_nums = {
+                        "Inconnu": {},
+                        "0607186716": { name: "Bruno" },
+                        "0615457163": { name: "Marie-Pierre" },
+                        "0477506276": { name: "Grand-mère", locality: "Fontaneilles" },
+                        "0952361243": { name: "Grand-mère", locality: "Golfe" },
+                        "0493632270": { name: "Grand-mère", locality: "Golfe" },
+                        "0492182000": { name: "Alerte mairie" },
+                      }
+                      debug && console.log("Special number:", known_nums[appel_en_cours])
+                      cb(known_nums[appel_en_cours]?null:"not a special number", known_nums[appel_en_cours]);
+                    },
+                    function retrieveFrom118712(cb) {
+                      //return cb("disabled");
+                      retrieveFromWebsite("118712", cb, "https://annuaire.118712.fr/?s=" + appel_en_cours,
+                        [
+                          { field: "name", regexp: /<h2 class=.titre. itemprop=.name.>/ }, 
+                          { field: "locality", regexp: /<span itemprop="addressLocality">/ }
+                        ]);
+                    },
+                    function retrieveFromPagesJaunes(cb) {                  
+                      //return cb("disabled");
+                      retrieveFromWebsite("pagesjaunes", cb, "https://www.pagesjaunes.fr/annuaireinverse/recherche?quoiqui=" + appel_en_cours,
+                        [
+                          { field: "name", regexp: /<a class="denomination-links pj-lb pj-link"[^>]*>/ }, 
+                          { field: "locality", regexp: /<div class="adresse-container noTrad">/, 
+                            transform: locality => {
+                              return locality.replace(/[^,]*, +[0-9]+ /, "");
+                            }
+                          }
+                        ]);
+                    },
+                    function retrieveFromCTQui(cb) {                  
+                      retrieveFromWebsite("ctqui", cb, "https://www.ctqui.com/resultat.asp?part=www.ctqui.com&num=" + appel_en_cours,
+                        [
+                          { field: "name", regexp: /<div style="background: #fff; margin: 20px auto; [^>]*>/ }, 
+                          { field: "locality", regexp: /<div style="background: #fff; margin: 20px auto; [^<]+<font[^<]+<strong[^<]+<\/strong><\/font><font[^<]+<br[^<]+<br[^>]*>/,
+                            transform: locality => {
+                              return locality.replace(/[0-9]+ /, "");
+                            }
+                          }
+                      ]);
+                    },
+                  ], cb);
+                }], function (err, results) {
+                  debug && console.log("err:", err, ", results:", results)
+                  danger = results[0] && results[0].danger || 0;
+                  country = results[0] && results[0].pays || "";
+                  city = results[0] && results[0].ville || "";
+                  name = results[1] && results[1].name || "";
+                  locality = results[1] && results[1].locality || "";
+
+                  debug && console.log("danger=", danger);
+                  debug && console.log("country=", country);
+                  debug && console.log("city=", city);
+                  debug && console.log("name=", name);
+                  debug && console.log("locality=", locality);
+
+                  let from = locality;
+                  if (from == "") {
+                    if (country == "" || country.toLowerCase() == "france") {
+                      from = city;
+                    } else from = country;
+                  }
+
+                  let message = appel_en_cours + ":" + danger + ":" + name + ":" + from; 
+
+                  if (from != "") from = " de " + from;
+                  debug && console.log("from=", from);
+
+                  let danger_str = "";
+                  if (danger >= 75) danger_str = "très douteux";
+                  else if (danger > 0) danger_str = "douteux";
+                  debug && console.log("danger_str=", danger_str);
+
+                  let say = "";
+
+                  let num = appel_en_cours; 
+
+                  let name_str = name;
+                  if (name_str == "") {
+                    if (appel_en_cours.match(/^0[1-9][0-9]{8}$/)) {
+                      // normal unknown number
+                      num = "";
+                      for (i = 0; i < 10; i+=2) {
+                          num += appel_en_cours[i] + appel_en_cours[i+1] + " ";
+                      }
+                      num = num.substr(0, num.length - " ".length);
+                      name_str = num;
+                    } else name_str = num;
+                  } 
+                  if (name_str != "") name_str = " de " + name_str;
+                  debug && console.log("name_str=", name_str);
+
+                  if (name_str == "" && from == "")  {
+                    say = "Appel " + danger_str + " en cours";
+                  } else {
+                    say = "Appel " + danger_str + name_str + from;
+                  }
+                  this.setDeviceState("home.caracteristiques-dernier-appel", message);
+                  debug && console.log("say:", say);
+                  this.setDeviceState("say", say );
+                  callback(err);
+                } 
+              );
             }
-            callback(null);
+
+            // for some reason, console doesn t survive past the end of the script,
+            // hence we log on a file
+            var stream = require("fs").createWriteStream("/tmp/freebox_output.txt", {flags:"a"});
+            console.log = (...args) => { 
+              let stackLine = (new Error).stack.split("\n")[2];
+              let [atfunction, vm, lineInFunction, char] = [ "", "", 0, 0 ];
+              if (stackLine.indexOf("(") >= 0) {
+                [atfunction, vm, lineInFunction, char] = stackLine.split(/[\():]/);
+              } else {
+                [atfunctionNotUsed, lineInFunction, char] = stackLine.split(/[\():]/);
+              }
+              let newargs = [];
+              newargs.push("%s" + args[0]);
+              newargs.push(this.scriptFile + ":" + (this.scriptLine + parseInt(lineInFunction) - 1) + " (" + atfunction.replace(/^ *at ([^ ]+) *$/, "$1") + ") ");
+              newargs = newargs.concat(args.slice(1));
+
+              stream.write(require("util").format(...newargs)); 
+              stream.write("\n"); 
+            }
           }'
     - message-dernier-appel:
         triggers:
           - cron: 00 00 00 * * *  # every midnight, to update the friendly time
           - state: home.dernier-appel
           - state: home.date-dernier-appel
+          - state: home.caracteristiques-dernier-appel
         actions:
           - !!js/function 'function message_dernier_appel(callback) {
 
@@ -695,7 +904,32 @@ scenarios:
                 num = num.substr(0, num.length - "&nbsp;".length);
               } else num = dernier_appel;
 
-              this.setDeviceState("home.message-dernier-appel", num + "<BR/>" + displayAsTime(date_dernier_appel), callback);
+              let caracteristiques_dernier_appel = this.getDeviceState("home.caracteristiques-dernier-appel");
+              let updatedate_caracteristiques_dernier_appel = this.getDeviceLastUpdateDate("home.caracteristiques-dernier-appel");
+              let danger = 0;
+              let name = "";
+              let from = "";
+              console.log("car date", updatedate_caracteristiques_dernier_appel, "appel", date_dernier_appel);
+              if (caracteristiques_dernier_appel && updatedate_caracteristiques_dernier_appel && date_dernier_appel
+                && updatedate_caracteristiques_dernier_appel.getTime() > date_dernier_appel.getTime()) {
+                let t = caracteristiques_dernier_appel.split(":");
+                console.log("num,danger,name,from=", t);
+                if (t && t[0] == dernier_appel) {
+                  danger = t[1];
+                  name = t[2];
+                  from = t[3];
+                }
+              }
+              let color = "black"
+              if (danger > 0) color = "orange";
+              if (danger > 75) color = "red";
+              let info = "";
+              if (name != "") info = name + (from != ""?" (" + from + ")":"")
+              else if (from != "") info = from;
+              if (info != "") info += "</BR>";
+
+              console.log("info=",info)
+              this.setDeviceState("home.message-dernier-appel", "<span style=color:" + color + ">" + info + num + "</span><BR/>" + displayAsTime(date_dernier_appel), callback);
             }'
 
 
@@ -1220,7 +1454,6 @@ scenarios:
             }
           }' 
     - filtration-offline:
-        debug: false
         triggers:
           - state: piscine.filtration-status
         conditions:
@@ -1232,6 +1465,14 @@ scenarios:
           - { scenario: piscine.warn-if-filtration-really-offline, action: start } 
         else:
           - { scenario: piscine.warn-if-filtration-really-offline, action: stop } 
+    - filtration-back-online:
+        triggers:
+          - state: piscine.filtration-status
+        conditions:
+          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
+          - {operator: "=", left: this.msg.newValue, right: "online"}
+        actions:
+          - { device: piscine.filtration, state: getDeviceState("piscine.filtration")}
     - warn-if-filtration-really-offline:
         debug: false
         triggers:
@@ -2047,7 +2288,8 @@ pages:
             icon: "https://hqvcdn3.azureedge.net/qs_ver=20200901T111258&hcsh=521DD67B7F6A78F2B9520C4778134371/_$$_/media/aprimo/gardena/robotic%20lawnmowers/photos/studio/ga310-05xxxx/ga310-0592.png"
             linkPage: Tondeuse
             label: "${tondeuse.status-plain}"
-            text: "<div style=position:relative;bottom:-45px;width:100%;>${tondeuse.mode-plain}</div>"
+            active: "${tondeuse.start}"
+            text: "<div style=position:relative;bottom:-42px;width:100%>${tondeuse.mode-plain}</div><div style=width:${tondeuse.charge-plain}%;height:100%;position:absolute;bottom:-59px;opacity:0.3;background:${tondeuse.charge-progress-color};></div>"
           - presence-semeria:
             widget: dashboard-icon
             icon: home # a valid ionic icon name https://ionicframework.com/docs/v3/ionicons/
