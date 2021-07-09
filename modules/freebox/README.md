@@ -47,4 +47,6 @@ http://mafreebox.freebox.fr/api/v8/login/authorize/{track_id}
 
 You can then insert `app_token` in your configuration file.
 
-The list of available api can be found here: [http://mafreebox.freebox.fr/doc/index.html](http://mafreebox.freebox.fr/doc/index.html)
+If you have no access to `curl`, you can make use of the [iCurlHTTP](https://apps.apple.com/fr/app/icurlhttp/id611943891) app when connected to the Freebox with the WiFi.
+
+The list of available apis can be found here: [http://mafreebox.freebox.fr/doc/index.html](http://mafreebox.freebox.fr/doc/index.html)
