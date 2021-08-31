@@ -99,13 +99,15 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         logger.debug('updateAttribute', id, attribute, value);
         if (this.isAttributeSupported(id, attribute)) {
             let devices = this.devicesByAttribute[attribute][id];
+            logger.debug(`updating attribute for ${devices?devices.length:0} device(s)`);
             if (devices) {
                 devices.forEach(device => {
                     let oldValue = device.getState();
+                    device.previousState = device.getState();
                     device.state = value;
                     device.stateHasBeenSet = true;
                     device.lastUpdateDate = new Date;
-                    logger.debug('emitting change event for', device.path);
+                    logger.debug('emitting change event for', device.path, oldValue, "=>", value);
                     this.emitEvent('change', device.path, { oldValue: oldValue, newValue: value, date: device.lastUpdateDate });
                 });
                 return;

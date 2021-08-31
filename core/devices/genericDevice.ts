@@ -296,9 +296,8 @@ export abstract class GenericDevice implements DomoModule {
     setState(newState: string | Date, callback: (err: Error) => void): void {
         if (newState instanceof Date) return this.setState(newState.toString(), callback);
 
-        logger.debug('setState of device "%s" to "%s"', this.path, newState);
+        logger.debug('setState of device "%s" from "%s" to "%s"', this.path, this.state, newState);
         this.stateHasBeenSet = true;
-        this.previousState = this.state;
         this.source.setAttribute(this.id, this.attribute, newState, callback);
     }
 
