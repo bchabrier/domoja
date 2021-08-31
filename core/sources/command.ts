@@ -37,12 +37,12 @@ export class command extends Source {
 				while (data.indexOf('\n') != -1) {
 					let line = data.substring(0, data.indexOf('\n'));
 					data = data.substr(data.indexOf('\n') + 1);
-					logger.error(`Line in command '${this.path}': 'push-udpates' returned '${line}'.`);
+					logger.error(`Line in command '${this.path}': 'push-updates' returned '${line}'.`);
 
 					if (line != '') {
 						let sep = line.indexOf(':');
 						if (sep == -1) {
-							logger.error(`Error in command '${this.path}': 'push-udpates' returned '${line}', which is not like: 'attribute:value'.`);
+							logger.error(`Error in command '${this.path}': 'push-updates' returned '${line}', which is not like: 'attribute:value'.`);
 						} else {
 							let attribute = line.substring(0, sep);
 							let value = line.substr(sep + 1);
