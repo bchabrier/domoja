@@ -1,0 +1,42 @@
+{
+  "name": "domoja-openzwave",
+  "author": "Bruno Chabrier",
+  "version": "0.0.1",
+  "private": false,
+  "license": "GPL-3.0",
+  "description": "Openzwave source for Domoja",
+  "scripts": {
+    "build": "tsc",
+    "test": ": run test coverage; trap 'tput cnorm' INT; nyc --extension .ts npm --scripts-prepend-node-path=auto run test:only",
+    "test:only": ": run test suite once; trap 'tput cnorm' INT; ts-mocha test/**/*.ts $WATCHPARAMS --exit; tput cnorm",
+    "test:watch": ": watch running test suite; trap 'tput cnorm' INT; WATCHPARAMS='-w --watch-extensions ts,yml' npm --scripts-prepend-node-path=auto run test:only"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bchabrier/domoja.git"
+  },
+  "keywords": [
+    "zibase",
+    "zapi",
+    "home automation"
+  ],
+  "bugs": {
+    "url": "https://github.com/bchabrier/domoja/issues"
+  },
+  "homepage": "https://github.com/bchabrier/domoja/modules/openzwave#readme",
+  "dependencies": {
+    "tracer": "^1.1.2",
+    "zwave-js": "^8.0.6"
+  },
+  "devDependencies": {
+    "@types/node": "^14.0.13",
+    "mocha": "^8.2.1",
+    "nyc": "^15.0.1",
+    "ts-mocha": "^8.0.0",
+    "typescript": "^4.0.2"
+  },
+  "main": "index.ts",
+  "files": [
+    "dist/**/*"
+  ]
+}
