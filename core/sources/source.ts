@@ -36,12 +36,49 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     path: string;
     debugMode: boolean = false;
     private discoveredDevices: { [id_attribute: string]: boolean } = {};
+    private tracer = require("tracer").colorConsole({
+        stackIndex: 1,
+        dateformat: "dd/mm/yyyy HH:MM:ss.l",
+        level: 0
+        // 0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
+    });
+    logger: {
+        info: (...data: any[]) => void,
+        warn: (...data: any[]) => void,
+        warning: (...data: any[]) => void,
+        error: (...data: any[]) => void,
+    }
+    forceLogger: {
+        info: (...data: any[]) => void,
+        warn: (...data: any[]) => void,
+        warning: (...data: any[]) => void,
+        error: (...data: any[]) => void,
+    }
 
     constructor(path: string) {
         this.eventEmitter = new events.EventEmitter();
         this.devicesByAttribute = {};
         this.devicesByPath = {};
         this.path = path;
+
+        const rewriteFunction = (logFunction: (...data: any[]) => void, force: boolean = false) => {
+            return (...args: any[]) => {
+                (this.debugMode || force) && logFunction(`Source "${this.path}" of type "${"TBC"}": ` + args[0], ...args.slice(1));
+            }
+        }
+
+        this.logger = {
+            info: rewriteFunction(this.tracer.info),
+            warn: rewriteFunction(this.tracer.warn),
+            warning: rewriteFunction(this.tracer.warning),
+            error: rewriteFunction(this.tracer.error),
+        }
+        this.forceLogger = {
+            info: rewriteFunction(this.tracer.info, true),
+            warn: rewriteFunction(this.tracer.warn, true),
+            warning: rewriteFunction(this.tracer.warning, true),
+            error: rewriteFunction(this.tracer.error, true),
+        }
     }
 
     abstract createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source;
