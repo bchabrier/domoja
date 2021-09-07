@@ -29,7 +29,7 @@ export class command extends Source {
 	addDevice(device: GenericDevice): void {
 		super.addDevice(device);
 		if (this.pushUpdates) {
-			this.stateUpdaterProcess[device.path] = child_process.exec(this.pushUpdates, { env: { 'ID': device.id } });
+			this.stateUpdaterProcess[device.path] = child_process.exec(this.pushUpdates, { env: { 'ID': device.id, 'DEBUG': this.debugMode?'1':'0' } });
 			let data = '';
 			this.stateUpdaterProcess[device.path].stderr.on('data', chunk => { logger.warn(`Got stderr from command '${this.path}' push-updates:\n${chunk}`); });
 			this.stateUpdaterProcess[device.path].stdout.on('data', chunk => {
