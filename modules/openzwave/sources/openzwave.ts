@@ -1,6 +1,6 @@
 import { Source, message, ConfigLoader, InitObject, Parameters, GenericDevice } from 'domoja-core';
-import { BinarySwitchCC, Driver, NodeNamingAndLocationCCLocationSet, ThermostatFanMode, ValueID, ZWaveNode } from "zwave-js";
-import { createLogMessagePrinter, CommandClasses, allCCs } from "@zwave-js/core";
+import { Driver, ValueID, ZWaveNode, ValueMetadata } from "zwave-js";
+import { createLogMessagePrinter, CommandClasses, allCCs, TranslatedValueID } from "@zwave-js/core";
 import * as winston from "winston";
 import * as chokidar from 'chokidar';
 import * as assert from 'assert'
@@ -123,7 +123,7 @@ export class Openzwave extends Source {
 					});
 					node.on('value updated', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.logger.warn(`node "${node.id}": value [${deviceId}] updated from "${args.prevValue}" to "${args.newValue}"`);
+						this.logger.warn(`node "${node.id}"${this.getDevicesAsString(deviceId)}: value [${deviceId}] updated from "${args.prevValue}" to "${args.newValue}"`);
 						this.refreshConfig();
 						let newValue = args.newValue.toString();
 						if (node.supportsCC(CommandClasses['Multilevel Switch'])) {
@@ -137,18 +137,18 @@ export class Openzwave extends Source {
 					});
 					node.on('value notification', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.logger.warn(`node "${node.id}": value notificatiion: "${args.value}"`);
+						this.logger.warn(`node "${node.id}"${this.getDevicesAsString(deviceId)}: value notificatiion: "${args.value}"`);
 						this.updateAttribute(deviceId, 'state', args.value.toString(), new Date);
 					});
 					node.on('value added', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.logger.warn(`node "${node.id}": value added for [${deviceId}]: "${args.newValue}"`);
+						this.logger.warn(`node "${node.id}"${this.getDevicesAsString(deviceId)}: value added for [${deviceId}]: "${args.newValue}"`);
 						this.refreshConfig();
 						this.updateAttribute(deviceId, 'state', args.newValue?.toString(), new Date);
 					});
 					node.on('value removed', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.logger.warn(`node "${node.id}": value removed for [${deviceId}]: "${args.prevValue}"`);
+						this.logger.warn(`node "${node.id}"${this.getDevicesAsString(deviceId)}: value removed for [${deviceId}]: "${args.prevValue}"`);
 						this.refreshConfig();
 						this.updateAttribute(deviceId, 'state', undefined, new Date);
 					});
@@ -241,6 +241,14 @@ export class Openzwave extends Source {
 		startDriver();
 	}
 
+	getDevicesAsString(deviceId: string): string {
+		let devices = this.getDevices('state', deviceId);
+		let list = "";
+		if (devices) list = devices.map(d => d.path).join(', ');
+		if (list !== "") list = " (" + list + ")";
+		return list;
+	}
+
 	private refreshNeighborsTimeout: NodeJS.Timeout;
 	private refreshNeighborsLock = false;
 	private refreshNeighborsMaxSeconds = 60;
@@ -288,7 +296,16 @@ export class Openzwave extends Source {
 		this.driver.controller.nodes.forEach((node) => {
 			const values = node.getDefinedValueIDs();
 			const commandClassNames = values.map(v => v.commandClassName).sort().filter((el, i, a) => i === a.indexOf(el));
-			let valuesArray = [];
+			let valuesArray: {
+				commandClassName: string;
+				values: {
+					id: string;
+					propertyName: string;
+					valueMetadata: ValueMetadata;
+					valueId: TranslatedValueID;
+					value: unknown;
+				}[];
+			}[] = [];
 
 			commandClassNames.forEach(cn => {
 				const valuesForCommandClass = values.filter(v => v.commandClassName === cn).map(v => {
