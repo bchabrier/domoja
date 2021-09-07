@@ -102,6 +102,10 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         this.debugMode = debug;
     }
 
+    getDevices(attribute: string, id: string) {
+        return this.devicesByAttribute[attribute][id];
+    }
+
     addDevice(device: GenericDevice): void {
         logger.debug('Adding device "%s" (%s, %s, %s) to source "%s"...', device.path, device.id, device.attribute, device.name, this.path);
         this.devicesByPath[device.path] = device;
