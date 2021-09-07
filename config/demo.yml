@@ -35,6 +35,9 @@ sources:
   - robonect-error: {
       type: demo
   }
+  - ZStick: {
+      type: demo
+  }
   - myZibase: {
       type: demo
   }
@@ -60,8 +63,8 @@ devices:
   - comm: { type: variable, widget: "comm", name: "Communication"}
   - aquarium:
     - controle : { type: variable, widget: "multistate:AUTO,ON,OFF:primary,secondary,danger", tags: 'aquarium-page', name: "Commande de l'aquarium"} 
-    - pompes : { type: device, widget: toggle, tags: 'aquarium-page', source: myZibase, id: "ZC8", name: "Pompes aquarium" }
-    - lampes : { type: device, widget: toggle, tags: 'aquarium-page', source: myZibase, id: "ZP7", name: "Lampes UV aquarium" }
+    - pompes : { type: device, widget: toggle, tags: 'aquarium-page', source: ZStick, id: "14-37-2-currentValue", name: "Pompes aquarium" }
+    - lampes : { type: device, widget: toggle, tags: 'aquarium-page', source: ZStick, id: "14-37-1-currentValue", name: "Lampes UV aquarium" }
     - lampes_start : { type: variable, widget: text, tags: 'aquarium-page', name: "Heure allumage aquarium" }
     - lampes_end : { type: variable, widget: text, tags: 'aquarium', name: "Heure extinction aquarium" }
     - pompes_start : { type: variable, widget: text, tags: 'aquarium-page', name: "Heure démarrage pompes aquarium" }
@@ -187,11 +190,11 @@ devices:
   - lampes:
     - lampe_chambre_parents: { type: device, widget: toggle, tags: 'lampes-presence', source: myZibase, id: "ZA4", name: "Lampe Chambre parents" }
     - lampe_table_cuisine: { type: device, widget: toggle, tags: 'lampes-presence', source: myZibase , id: "ZP4", name: "Spots Table Cuisine" }
-    - lampe_preau: { type: device, widget: toggle, tags: 'lampes-presence entrée', source: myZibase, id: "ZA5", name: "Lampe Préau" }
+    - lampe_preau: { type: device, widget: toggle, tags: 'lampes-presence entrée', source: ZStick, id: "15-38-0-currentValue", name: "Lampe Préau" }
     - lampe_hall: { type: device, widget: toggle, tags: 'lampes-presence', source: myZibase, id: "ZC9", name: "Spots hall" }
-    - lampe_rouge_haut: { type: device, widget: toggle, tags: 'lampes', source: myZibase, id: "ZO15", name: "Lampe rouge haut" }
-    - lampe_rouge_bas: { type: device, widget: toggle, tags: 'lampes', source: myZibase, id: "ZC4", name: "Lampe rouge bas" }
-    - lampe_escalier: { type: device, widget: toggle, tags: 'lampes-presence', source: myZibase, id: "ZB11", name: "Lampe escalier" }
+    - lampe_rouge_haut: { type: device, widget: toggle, tags: 'lampes', source: ZStick, id: "17-37-2-currentValue", name: "Lampe rouge haut" }
+    - lampe_rouge_bas: { type: device, widget: toggle, tags: 'lampes', source: ZStick, id: "17-37-1-currentValue", name: "Lampe rouge bas" }
+    - lampe_escalier: { type: device, widget: toggle, tags: 'lampes-presence', source: ZStick, id: "13-38-0-currentValue", name: "Lampe escalier" }
     - nb_lampes: { type: group, widget: text, tags: 'lampes', function: count, taglist: 'lampes-presence', name: "Nombre de lampes" }
     - nb_lampes_ON: { type: group, widget: text, tags: 'lampes', function: !!js/function 'function (newValues, callback) {
           return callback(null, newValues.filter(v => v=="ON").length);
@@ -208,7 +211,7 @@ devices:
      - pieuvre: { type: device, widget: toggle, tags: 'piscine-page', source: myZibase, id: "ZP8", name: "Pieuvre" }
      - chlore_plus: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZA14", name: "Chlore +" }
      - chlore_moins: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZO14", name: "Chlore -" }
-     - temperature: { type: sensor, widget: text, tags: 'piscine-page, piscine-temp-page', source: myZibase, id: "OS439157539", attribute: "tem", 
+     - temperature: { type: sensor, widget: text, tags: 'piscine-page, piscine-temp-page', source: ZStick, id: "12-49-3-Air temperature", 
         persistence: "mongo:temperature_piscine:0:aggregate:120000", 
         name: "Température" }
         # id:TTL:raw|aggregate:KEEP    default, 5 ans
@@ -228,8 +231,8 @@ devices:
 
   - petit_portail:
     - controle : { type: variable, widget: "confirm:Actionner:primary:Petit portail:Actionner le petit portail?:Partiel,Grand,Non", tags: 'portails-page, entrée', name: "Actionner le petit portail"} 
-    - partiel: { type: device, widget: text, tags: 'portails', source: myZibase, id: "ZA3", name: "Petit Portail", camera: camera_exterieure }
-    - grand: { type: device, widget: text, tags: 'portails', source: myZibase, id: "ZO10", name: "Petit Portail ouvert en grand", camera: camera_exterieure }
+    - partiel: { type: device, widget: text, tags: 'portails', source: ZStick, id: "16-37-1-currentValue", name: "Petit Portail", camera: camera_exterieure }
+    - grand: { type: device, widget: text, tags: 'portails', source: ZStick, id: "16-37-2-currentValue", name: "Petit Portail ouvert en grand", camera: camera_exterieure }
   - grand_portail:
     - controle : { type: variable, widget: "confirm:Actionner:primary:Grand portail:Actionner le grand portail?:Grand,Non", tags: 'portails-page, entrée', name: "Actionner le grand portail"} 
     - grand: { type: device, widget: text, tags: 'portails', source: myZibase, id: "ZA10", name: "Grand Portail" }
@@ -318,6 +321,11 @@ devices:
   - repeat : { type: variable, widget: "multistate:Répéter:primary", tags: 'voix', name: "Répéter le dernier message"} 
   - say-messages-of-the-day : { type: variable, widget: "multistate:Messages du jour:primary", tags: 'voix', name: "Dire les messages du jour"} 
   - text-to-say : { type: variable, widget: "input", tags: 'voix', name: "Message à dire"} 
+
+  - zwave:
+     - controller : { type: device, widget: "multistate:INCLUSION,INCLUSION_NON_SECURE,EXCLUSION,NO_INCLUSION_EXCLUSION:secondary,secondary,danger,primary", tags: 'zwave', source: ZStick, id: "1", attribute: "inclusion_mode", name: "Controleur"} 
+     - config : { type: device, widget: "zwave-config", tags: 'zwave', source: ZStick, id: "1", attribute: "zwave_config", name: "ZWave config"} 
+     - config-text : { type: device, widget: "text", tags: 'zwave', source: ZStick, id: "1", attribute: "zwave_config", name: "ZWave config"} 
 
 
 scenarios:
@@ -548,8 +556,6 @@ scenarios:
               let oldtab = [];
               if (oldlist) oldtab = oldlist.split(", ");
 
-              //console.log(oldtab);
-              //console.log(newtab);
               oldtab.forEach(n => {
                 if (newtab.indexOf(n) == -1) {
                   this.setDeviceState("say", n + " n" + String.fromCharCode(39) + "est plus au Séméria");
@@ -562,7 +568,6 @@ scenarios:
               });
 
               let n = newtab.length;
-              console.log(n);
 
               if (n == 0) {
                 this.setDeviceState("say", "Il n" + String.fromCharCode(39) + "y a maintenant plus personne au Séméria");
@@ -940,7 +945,7 @@ scenarios:
     - lampes-couleur:
       triggers:
         - at: startup
-        - state: lampes.nb_lampes
+        - state: lampes.nb_lampes_ON
       actions:
           - !!js/function 'function f(callback) {
             let nb = this.getDeviceState("lampes.nb_lampes_ON");
@@ -2226,6 +2231,57 @@ scenarios:
 
           this.setDeviceState("say-volatile", text, callback);
       }'
+    - inclusion:
+        triggers:
+          - state: zwave.controller
+        conditions:
+          - {operator: "=", left: this.msg.newValue, right: "INCLUSION"}
+          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue }
+        actions:
+          - { device: say-volatile, state: "Mode inclusion activé" }
+    - inclusion-non-secure:
+        triggers:
+          - state: zwave.controller
+        conditions:
+          - {operator: "=", left: this.msg.newValue, right: "INCLUSION_NON_SECURE"}
+          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue }
+        actions:
+          - { device: say-volatile, state: "Mode inclusion non sécurisé activé" }
+    - exclusion:
+        triggers:
+          - state: zwave.controller
+        conditions:
+          - {operator: "=", left: this.msg.newValue, right: "EXCLUSION"}
+          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
+        actions:
+          - { device: say-volatile, state: "Mode exclusion activé" }
+    - no-inclusion:
+        triggers:
+          - state: zwave.controller
+        conditions:
+          - {operator: "=", left: this.msg.newValue, right: "NO_INCLUSION_EXCLUSION"}
+          - {operator: "=", left: this.msg.oldValue, right: "INCLUSION"}
+          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
+        actions:
+          - { device: say-volatile, state: "Mode inclusion désactivé" }
+    - no-inclusion-non-secure:
+        triggers:
+          - state: zwave.controller
+        conditions:
+          - {operator: "=", left: this.msg.newValue, right: "NO_INCLUSION_EXCLUSION"}
+          - {operator: "=", left: this.msg.oldValue, right: "INCLUSION_NON_SECURE"}
+          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
+        actions:
+          - { device: say-volatile, state: "Mode inclusion non sécurisé désactivé" }
+    - no-exclusion:
+        triggers:
+          - state: zwave.controller
+        conditions:
+          - {operator: "=", left: this.msg.newValue, right: "NO_INCLUSION_EXCLUSION"}
+          - {operator: "=", left: this.msg.oldValue, right: "EXCLUSION"}
+          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
+        actions:
+          - { device: say-volatile, state: "Mode exclusion désactivé" }
 
 pages:
   - Home:
@@ -2378,6 +2434,12 @@ pages:
       page: list.html
       args: 
         - tag-list: 'voix'
+        - headers: false
+  - ZWave:
+      title: 'ZWave'
+      page: list.html
+      args: 
+        - tag-list: 'zwave'
         - headers: false
   - Devices:
       title: 'Tous les devices'
