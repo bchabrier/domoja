@@ -123,7 +123,7 @@ export class Openzwave extends Source {
 					});
 					node.on('value updated', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.logger.warn(`node "${node.id}"${this.getDevicesAsString(deviceId)}: value [${deviceId}] updated from "${args.prevValue}" to "${args.newValue}"`);
+						this.logger.warn(`node "${node.id}": value [${deviceId}]${this.getDevicesAsString(deviceId)} updated from "${args.prevValue}" to "${args.newValue}"`);
 						this.refreshConfig();
 						let newValue = args.newValue.toString();
 						if (node.supportsCC(CommandClasses['Multilevel Switch'])) {
@@ -137,18 +137,18 @@ export class Openzwave extends Source {
 					});
 					node.on('value notification', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.logger.warn(`node "${node.id}"${this.getDevicesAsString(deviceId)}: value notificatiion: "${args.value}"`);
+						this.logger.warn(`node "${node.id}"${this.getDevicesAsString(deviceId)}: value notification for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.value}"`);
 						this.updateAttribute(deviceId, 'state', args.value.toString(), new Date);
 					});
 					node.on('value added', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.logger.warn(`node "${node.id}"${this.getDevicesAsString(deviceId)}: value added for [${deviceId}]: "${args.newValue}"`);
+						this.logger.warn(`node "${node.id}": value added for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.newValue}"`);
 						this.refreshConfig();
 						this.updateAttribute(deviceId, 'state', args.newValue?.toString(), new Date);
 					});
 					node.on('value removed', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.logger.warn(`node "${node.id}"${this.getDevicesAsString(deviceId)}: value removed for [${deviceId}]: "${args.prevValue}"`);
+						this.logger.warn(`node "${node.id}": value removed for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.prevValue}"`);
 						this.refreshConfig();
 						this.updateAttribute(deviceId, 'state', undefined, new Date);
 					});

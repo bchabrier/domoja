@@ -35,6 +35,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     private devicesByPath: { [path: string]: GenericDevice }
     path: string;
     debugMode: boolean = false;
+    type: string;
     private discoveredDevices: { [id_attribute: string]: boolean } = {};
     private tracer = require("tracer").colorConsole({
         stackIndex: 1,
@@ -60,10 +61,11 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         this.devicesByAttribute = {};
         this.devicesByPath = {};
         this.path = path;
+        this.type = require('util').inspect(this).split(" ")[0]; // hack to retrieve the source type
 
         const rewriteFunction = (logFunction: (...data: any[]) => void, force: boolean = false) => {
             return (...args: any[]) => {
-                (this.debugMode || force) && logFunction(`Source "${this.path}" of type "${"TBC"}": ` + args[0], ...args.slice(1));
+                (this.debugMode || force) && logFunction(`Source "${this.path}" of type "${this.type}": ` + args[0], ...args.slice(1));
             }
         }
 
