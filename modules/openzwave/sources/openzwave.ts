@@ -36,7 +36,7 @@ export class Openzwave extends Source {
 
 		let watchTimeout: NodeJS.Timer;
 		this.watcher.on('add', (event, path) => {
-			this.logger.warn(`Device inserted on port ${driverPort}, initializing OpenZWave driver...`);
+			this.debugModeLogger.warn(`Device inserted on port ${driverPort}, initializing OpenZWave driver...`);
 			attempt = 0;
 
 			if (watchTimeout) {
@@ -85,7 +85,7 @@ export class Openzwave extends Source {
 			// Listen for the driver ready event before doing anything with the driver
 			this.driver.once("driver ready", () => {
 
-				this.logger.info(`driver is ready.`);
+				this.debugModeLogger.info(`driver is ready.`);
 				attempt = 0;
 
 				/*
@@ -95,94 +95,94 @@ export class Openzwave extends Source {
 				*/
 
 				const nbNodes = this.driver.controller.nodes.size;
-				this.logger.info(`${nbNodes} known node${nbNodes > 1 ? "s" : ""} included...`);
+				this.debugModeLogger.info(`${nbNodes} known node${nbNodes > 1 ? "s" : ""} included...`);
 
 				let i = 0;
 				this.driver.controller.nodes.forEach((node) => {
-					this.logger.info(`handling node...`, node);
+					this.debugModeLogger.info(`handling node...`, node);
 
 					this.nodes.set(node.id.toString(), node);
 
 					// e.g. add event handlers to all known nodes
 					node.once("ready", async () => {
 						i++;
-						this.logger.info(`node ${node.id} is ready (${i}/${nbNodes})...`, require('util').inspect(node));
-						this.logger.warn(`id=${node.id}`);
-						this.logger.warn(`nodeId=${node.nodeId}`);
-						this.logger.warn(`label=${node.label}`);
-						this.logger.warn(`description=${node.deviceConfig.description}`);
-						this.logger.warn(`manufacturer=${node.deviceConfig.manufacturer}`);
-						this.logger.warn(`${node.deviceConfig.devices.length} devices`);
+						this.debugModeLogger.info(`node ${node.id} is ready (${i}/${nbNodes})...`, require('util').inspect(node));
+						this.debugModeLogger.warn(`id=${node.id}`);
+						this.debugModeLogger.warn(`nodeId=${node.nodeId}`);
+						this.debugModeLogger.warn(`label=${node.label}`);
+						this.debugModeLogger.warn(`description=${node.deviceConfig.description}`);
+						this.debugModeLogger.warn(`manufacturer=${node.deviceConfig.manufacturer}`);
+						this.debugModeLogger.warn(`${node.deviceConfig.devices.length} devices`);
 						node.deviceConfig.devices.forEach((d, i) => {
-							this.logger.warn(`Device ${i}:`, d);
+							this.debugModeLogger.warn(`Device ${i}:`, d);
 						});
-						this.logger.warn(`${node.deviceConfig.endpoints ? node.deviceConfig.endpoints.size : 0} config endpoints`);
-						this.logger.warn(`${node.getAllEndpoints().length} endpoints`);
-						this.logger.warn(`${node.getEndpointCount()} endpoints count`);
-						this.logger.warn(`definedValueIds:`, node.getDefinedValueIDs());
+						this.debugModeLogger.warn(`${node.deviceConfig.endpoints ? node.deviceConfig.endpoints.size : 0} config endpoints`);
+						this.debugModeLogger.warn(`${node.getAllEndpoints().length} endpoints`);
+						this.debugModeLogger.warn(`${node.getEndpointCount()} endpoints count`);
+						this.debugModeLogger.warn(`definedValueIds:`, node.getDefinedValueIDs());
 					});
 					node.on('value updated', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.logger.warn(`node "${node.id}": value [${deviceId}]${this.getDevicesAsString(deviceId)} updated from "${args.prevValue}" to "${args.newValue}"`);
+						this.debugModeLogger.warn(`node "${node.id}": value [${deviceId}]${this.getDevicesAsString(deviceId)} updated from "${args.prevValue}" to "${args.newValue}"`);
 						this.refreshConfig();
 						let newValue = args.newValue.toString();
 						if (node.supportsCC(CommandClasses['Multilevel Switch'])) {
-							this.logger.warn("multilevel switch value");
+							this.debugModeLogger.warn("multilevel switch value");
 							newValue = args.newValue === 99 ? "ON" : args.newValue === 0 ? "OFF" : newValue;
 						} else if (node.supportsCC(CommandClasses['Binary Switch'])) {
-							this.logger.warn("binary switch value");
+							this.debugModeLogger.warn("binary switch value");
 							newValue = args.newValue ? "ON" : "OFF";
 						}
 						this.updateAttribute(deviceId, 'state', newValue, new Date);
 					});
 					node.on('value notification', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.logger.warn(`node "${node.id}"${this.getDevicesAsString(deviceId)}: value notification for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.value}"`);
+						this.debugModeLogger.warn(`node "${node.id}"${this.getDevicesAsString(deviceId)}: value notification for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.value}"`);
 						this.updateAttribute(deviceId, 'state', args.value.toString(), new Date);
 					});
 					node.on('value added', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.logger.warn(`node "${node.id}": value added for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.newValue}"`);
+						this.debugModeLogger.warn(`node "${node.id}": value added for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.newValue}"`);
 						this.refreshConfig();
 						this.updateAttribute(deviceId, 'state', args.newValue?.toString(), new Date);
 					});
 					node.on('value removed', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.logger.warn(`node "${node.id}": value removed for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.prevValue}"`);
+						this.debugModeLogger.warn(`node "${node.id}": value removed for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.prevValue}"`);
 						this.refreshConfig();
 						this.updateAttribute(deviceId, 'state', undefined, new Date);
 					});
 					node.on('notification', async (node, ccId, args) => {
-						this.logger.warn(`node "${node.id}": notification: "${ccId}" "${args}"`);
+						this.debugModeLogger.warn(`node "${node.id}": notification: "${ccId}" "${args}"`);
 						//this.updateAttribute(node.id.toString(), 'state', undefined, new Date);
 					});
 					node.on('statistics updated', async (node, statistics) => {
-						//this.logger.warn(`node "${node.id}": statistics updated:`, statistics);
+						//this.debugModeLogger.warn(`node "${node.id}": statistics updated:`, statistics);
 					});
 					node.on('interview started', async (node) => {
-						this.logger.warn(`node "${node.id}": interview started`);
+						this.debugModeLogger.warn(`node "${node.id}": interview started`);
 						//this.updateAttribute(node.id.toString(), 'state', undefined, new Date);
 					});
 					node.on('interview completed', async (node) => {
-						this.logger.warn(`node "${node.id}": interview completed`);
+						this.debugModeLogger.warn(`node "${node.id}": interview completed`);
 						this.refreshConfig();
 						//this.updateAttribute(node.id.toString(), 'state', undefined, new Date);
 					});
 
-					this.logger.error(`node "${node.id}": getAllAssociationGroups:`, this.driver.controller.getAllAssociationGroups(node.id));
-					this.logger.error(`node "${node.id}": getAllAssociations:`, this.driver.controller.getAllAssociations(node.id));
+					this.debugModeLogger.error(`node "${node.id}": getAllAssociationGroups:`, this.driver.controller.getAllAssociationGroups(node.id));
+					this.debugModeLogger.error(`node "${node.id}": getAllAssociations:`, this.driver.controller.getAllAssociations(node.id));
 					if (false && node.id === 5) {
-						this.logger.error("Working on associations");
-						this.logger.error("isAssociationAllowed:", this.driver.controller.isAssociationAllowed({ nodeId: 5 }, 3, { nodeId: 1 }));
+						this.debugModeLogger.error("Working on associations");
+						this.debugModeLogger.error("isAssociationAllowed:", this.driver.controller.isAssociationAllowed({ nodeId: 5 }, 3, { nodeId: 1 }));
 						if (this.driver.controller.isAssociationAllowed({ nodeId: 5 }, 3, { nodeId: 1 })) {
-							this.logger.error("adding association");
+							this.debugModeLogger.error("adding association");
 							this.driver.controller.addAssociations({ nodeId: 5 }, 3, [{ nodeId: 1 }]);
 						}
 					}
 
 
 				});
-				this.logger.error("ownNodeId:", this.driver.controller.ownNodeId);
+				this.debugModeLogger.error("ownNodeId:", this.driver.controller.ownNodeId);
 
 				// set controller handlers
 				this.driver.controller.on('inclusion started', (secure: boolean) => {
@@ -198,18 +198,18 @@ export class Openzwave extends Source {
 					this.updateAttribute(this.driver.controller.ownNodeId.toString(), 'state', 'NO_INCLUSION_EXCLUSION', new Date);
 				});
 				this.driver.controller.on('inclusion failed', () => {
-					this.forceLogger.error('Inclusion failed');
+					this.logger.error('Inclusion failed');
 					this.updateAttribute(this.driver.controller.ownNodeId.toString(), 'state', 'NO_INCLUSION_EXCLUSION', new Date);
 				});
 				this.driver.controller.on('exclusion failed', () => {
-					this.forceLogger.error('Exclusion failed');
+					this.logger.error('Exclusion failed');
 					this.updateAttribute(this.driver.controller.ownNodeId.toString(), 'state', 'NO_INCLUSION_EXCLUSION', new Date);
 				});
 				this.driver.controller.on('exclusion failed', () => {
 					this.updateAttribute(this.driver.controller.ownNodeId.toString(), 'state', 'NO_INCLUSION_EXCLUSION', new Date);
 				});
 
-				this.logger.info(`end of driver ready...`);
+				this.debugModeLogger.info(`end of driver ready...`);
 
 				/*
 							// When a node is marked as ready, it is safe to control it
@@ -222,7 +222,7 @@ export class Openzwave extends Source {
 			});
 			this.driver.once('all nodes ready', () => {
 				this.refreshNeighbors();
-				this.logger.info(`all nodes are ready.`);
+				this.debugModeLogger.info(`all nodes are ready.`);
 				this.refreshConfig();
 			});
 			// Start the driver. To await this method, put this line into an async method
@@ -255,7 +255,7 @@ export class Openzwave extends Source {
 
 	refreshNeighbors() {
 		if (this.refreshNeighborsLock) {
-			this.forceLogger.warn(`Cannot call refreshNeighors more than once every ${this.refreshNeighborsMaxSeconds} seconds.`)
+			this.logger.warn(`Cannot call refreshNeighors more than once every ${this.refreshNeighborsMaxSeconds} seconds.`)
 			return;
 		}
 		this.refreshNeighborsLock = true;
@@ -277,7 +277,7 @@ export class Openzwave extends Source {
 			clearTimeout(this.refreshNeighborsTimeout);
 			this.refreshNeighborsTimeout = null;
 			this.refreshNeighborsLock = false;
-			this.forceLogger.info(`Neighbors:`, this.neighbors);
+			this.logger.info(`Neighbors:`, this.neighbors);
 		});
 	}
 
@@ -337,12 +337,12 @@ export class Openzwave extends Source {
 			});
 		});
 		const value = JSON.stringify(this.config);
-		//this.logger.error("config value=", value);
+		//this.debugModeLogger.error("config value=", value);
 		this.updateAttribute(this.driver.controller.ownNodeId.toString(), 'zwave_config', value, new Date);
 	}
 
 	private sendSwitchCommand(address: string, action: boolean, callback: (err: Error) => void): void {
-		this.logger.error("address =", address);
+		this.debugModeLogger.error("address =", address);
 		const tab = address.split('-');
 		if (tab.length != 4) this.logger.error(`Malformed id [${address}]. Should be [number-number-number|string-number|string].`);
 
@@ -384,7 +384,7 @@ export class Openzwave extends Source {
 	}
 
 	private sendControllerConfig(config: string, callback: (err: Error) => void): void {
-		this.logger.error("Controller config command:", JSON.parse(config).command);
+		this.debugModeLogger.error("Controller config command:", JSON.parse(config).command);
 		const command = JSON.parse(config).command;
 		const node = this.nodes.get(command.nodeId);
 		const commandName = command.command;

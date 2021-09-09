@@ -43,13 +43,13 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         level: 0
         // 0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
     });
-    logger: {
+    debugModeLogger: {
         info: (...data: any[]) => void,
         warn: (...data: any[]) => void,
         warning: (...data: any[]) => void,
         error: (...data: any[]) => void,
     }
-    forceLogger: {
+    logger: {
         info: (...data: any[]) => void,
         warn: (...data: any[]) => void,
         warning: (...data: any[]) => void,
@@ -69,13 +69,13 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
             }
         }
 
-        this.logger = {
+        this.debugModeLogger = {
             info: rewriteFunction(this.tracer.info),
             warn: rewriteFunction(this.tracer.warn),
             warning: rewriteFunction(this.tracer.warning),
             error: rewriteFunction(this.tracer.error),
         }
-        this.forceLogger = {
+        this.logger = {
             info: rewriteFunction(this.tracer.info, true),
             warn: rewriteFunction(this.tracer.warn, true),
             warning: rewriteFunction(this.tracer.warning, true),

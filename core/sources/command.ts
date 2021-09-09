@@ -3,11 +3,6 @@ import { Source, ConfigLoader, GenericDevice, InitObject, Parameters } from '..'
 import * as child_process from 'child_process';
 import * as kill from 'tree-kill';
 
-var logger = require("tracer").colorConsole({
-	dateformat: "dd/mm/yyyy HH:MM:ss.l",
-	level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
-});
-
 export class command extends Source {
 
 	stateUpdaterProcess: { [devicePath: string]: child_process.ChildProcessWithoutNullStreams } = {};
@@ -31,18 +26,18 @@ export class command extends Source {
 		if (this.pushUpdates) {
 			this.stateUpdaterProcess[device.path] = child_process.exec(this.pushUpdates, { env: { 'ID': device.id, 'DEBUG': this.debugMode?'1':'0', SOURCE: this.path } });
 			let data = '';
-			this.stateUpdaterProcess[device.path].stderr.on('data', chunk => { logger.warn(`Got stderr from command '${this.path}' push-updates:\n${chunk}`); });
+			this.stateUpdaterProcess[device.path].stderr.on('data', chunk => { this.logger.warn(`Got stderr from command '${this.path}' push-updates:\n${chunk}`); });
 			this.stateUpdaterProcess[device.path].stdout.on('data', chunk => {
 				data += chunk;
 				while (data.indexOf('\n') != -1) {
 					let line = data.substring(0, data.indexOf('\n'));
 					data = data.substr(data.indexOf('\n') + 1);
-					logger.error(`Line in command '${this.path}': 'push-updates' returned '${line}'.`);
+					this.debugModeLogger.info(`Line in command '${this.path}': 'push-updates' returned '${line}'.`);
 
 					if (line != '') {
 						let sep = line.indexOf(':');
 						if (sep == -1) {
-							logger.error(`Error in command '${this.path}': 'push-updates' returned '${line}', which is not like: 'attribute:value'.`);
+							this.logger.error(`Error in command '${this.path}': 'push-updates' returned '${line}', which is not like: 'attribute:value'.`);
 						} else {
 							let attribute = line.substring(0, sep);
 							let value = line.substr(sep + 1);
@@ -67,8 +62,8 @@ export class command extends Source {
 	doSetAttribute(id: string, attribute: string, value: string, callback: (err: Error) => void): void {
 		if (attribute == 'state' && this.VALUES[value]) {
 			child_process.exec(this.VALUES[value], { env: { 'ID': id } }, (err, stdout, stderr) => {
-				stderr != "" && logger.warn(`Got stderr from command '${this.path}' ${value}:\n${stderr}`);
-				stdout != "" && logger.warn(`Got stdout from command '${this.path}' ${value}:\n${stdout}`);
+				stderr != "" && this.debugModeLogger.warn(`Got stderr from command '${this.path}' ${value}:\n${stderr}`);
+				stdout != "" && this.debugModeLogger.warn(`Got stdout from command '${this.path}' ${value}:\n${stdout}`);
 				callback(err);
 			});
 		} else
