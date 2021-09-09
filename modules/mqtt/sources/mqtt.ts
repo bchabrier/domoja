@@ -2,11 +2,6 @@ import { Source, message, ConfigLoader, InitObject, Parameters, GenericDevice } 
 import * as mqtt from 'mqtt';
 const match = require('mqtt-match');
 
-var logger = require("tracer").colorConsole({
-    dateformat: "dd/mm/yyyy HH:MM:ss.l",
-    level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
-});
-
 
 export class Mqtt extends Source {
     client: mqtt.MqttClient;
@@ -24,7 +19,6 @@ export class Mqtt extends Source {
 
     private connectAndDo(f: () => void): void {
         if (!this.client) {
-            console.log('creating client')
             this.creatingClient = true;
             this.client = mqtt.connect(this.url, {
                 username: this.user,
@@ -34,31 +28,29 @@ export class Mqtt extends Source {
             this.client.on('connect', (ack) => {
                 this.creatingClient = false;
                 if (ack && (<any>ack).returnCode == 0) {
-                    logger.info(`Successfully connected mqtt source '${this.path}' to mqtt server '${this.url}':`, ack);
+                    this.debugModeLogger.info(`Successfully connected mqtt source '${this.path}' to mqtt server '${this.url}':`, ack);
                 } else {
-                    logger.error(`Could not connect mqtt source '${this.path}' to mqtt server '${this.url}':`, ack);
+                    this.logger.error(`Could not connect mqtt source '${this.path}' to mqtt server '${this.url}':`, ack);
                 }
                 f();    
                 this.pushedDos.forEach(f => f());
                 this.pushedDos = [];
             });
             this.client.on('error', (err) => {
-                logger.error(err);
+                this.logger.error(err);
             });
             this.client.on('close', () => {
-                logger.error('close!!!!');
+                this.logger.error('close!!!!');
             });
             this.client.on('disconnect', () => {
-                logger.error('disconnect!!!');
+                this.logger.error('disconnect!!!');
             });
             this.client.on('message', (topic, message) => {
-                console.log(`received message '${message.toLocaleString()}'.`);
+                this.debugModeLogger.info(`received message '${message.toLocaleString()}'.`);
                 this.updateAttribute(topic, 'state', message.toLocaleString());
             });
         } else {
-            console.log('client already exists');
             if (this.creatingClient) {
-                console.log('client being created, pushing');
                 this.pushedDos.push(f);
             } else {
                 f();
@@ -73,7 +65,7 @@ export class Mqtt extends Source {
         this.connectAndDo(() => {
             console.log('addDevice, subscribing');
             this.client.subscribe(device.topic, err => {
-                if (err) logger.error(`mqtt source '${this.path}' could not subscribe to topic '${device.topic}' for device '${device.path}':`, err)
+                if (err) this.logger.error(`mqtt source '${this.path}' could not subscribe to topic '${device.topic}' for device '${device.path}':`, err)
             });
             this.topics.push(device.topic);
         });
@@ -82,7 +74,7 @@ export class Mqtt extends Source {
     releaseDevice(device: GenericDevice): void {
         this.connectAndDo(() => {
             this.client.unsubscribe(device.topic, (err: Error) => {
-                if (err) logger.error(`mqtt source '${this.path}' could not unsubscribe from topic '${device.topic}' for device '${device.path}':`, err);
+                if (err) this.logger.error(`mqtt source '${this.path}' could not unsubscribe from topic '${device.topic}' for device '${device.path}':`, err);
             });
             this.topics.splice(this.topics.indexOf(device.topic), 1);
         });
