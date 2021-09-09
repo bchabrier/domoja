@@ -22,7 +22,7 @@ export class Openzwave extends Source {
 	} = { nodes: [] };
 	neighbors: { [id: number]: readonly number[] } = {};
 
-	constructor(path: string, driverPort: string, driverLogLevel: string | number, callback?: (err: Error) => void) {
+	constructor(path: string, driverPort: string, driverLogLevel: string, callback?: (err: Error) => void) {
 		super(path);
 
 		this.watcher = chokidar.watch(driverPort, {
@@ -59,15 +59,17 @@ export class Openzwave extends Source {
 				return `${timestamp} ${level}:\t${label} ${primaryTags || ""} ${direction} ${message} ${secondaryTags || ""}`;
 			});
 
+			let level = !this.debugMode || driverLogLevel === undefined ? "error" : driverLogLevel;
+
 			// Tell the driver which serial port to use
 			this.driver = new Driver(driverPort, {
 				logConfig: {
 					enabled: true,
-					level: driverLogLevel === undefined ? "error" : driverLogLevel,
+					level: level,
 					//forceConsole: true,
 					transports: [
 						new winston.transports.Console({
-							level: 'silly',
+							level: level,
 							format: winston.format.combine(
 								//myFormat,
 								//winston.format.simple(),
