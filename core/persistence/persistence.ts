@@ -392,7 +392,7 @@ export class mongoDB extends persistence {
                     filter += "d.setMinutes(0);"
                 case "minute":
                     filter += "d.setMilliseconds(0);"
-                    console.log(from, to)
+                    logger.log(from, to)
                     collection.mapReduce(
                         "function () {\
                             var d = this.date;\
@@ -411,8 +411,8 @@ export class mongoDB extends persistence {
                             out: { inline: 1 },
                         },
                         (err, results) => {
-                            console.log(results && results[0]);
-                            console.log(results && results[0] && new Date(results[0]._id).toLocaleDateString());
+                            logger.log(results && results[0]);
+                            logger.log(results && results[0] && new Date(results[0]._id).toLocaleDateString());
                             callback(err, results.map((r: { _id: string, value: any }) => { return { "date": r._id, "value": r.value } }));
                         });
                     break;

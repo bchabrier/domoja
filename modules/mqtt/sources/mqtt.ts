@@ -40,7 +40,7 @@ export class Mqtt extends Source {
                 this.logger.error(err);
             });
             this.client.on('close', () => {
-                this.logger.error('close!!!!');
+                this.debugModeLogger.error('close!!!!');
             });
             this.client.on('disconnect', () => {
                 this.logger.error('disconnect!!!');
@@ -63,7 +63,7 @@ export class Mqtt extends Source {
         super.addDevice(device);
         device.topic = device.id; // as a workaround until non 'id' is supported
         this.connectAndDo(() => {
-            console.log('addDevice, subscribing');
+            this.debugModeLogger.info('addDevice, subscribing');
             this.client.subscribe(device.topic, err => {
                 if (err) this.logger.error(`mqtt source '${this.path}' could not subscribe to topic '${device.topic}' for device '${device.path}':`, err)
             });
@@ -106,7 +106,7 @@ export class Mqtt extends Source {
     }
 
     release(): void {
-        console.log('ending mqtt client')
+        this.debugModeLogger.info('ending mqtt client')
         this.client && this.client.end();
         super.release();
     }
