@@ -215,9 +215,6 @@ Siri is then available on iOS through the Home application.
 
 - Use KEEP for persistence
 - Ajouter un status general couplé avec Siri: "donne moi le statut de la maison/piscine/tondeuse..."
-- Temperature graphs
-    - passer par API pour renvoyer sur login si non connecté
-    - afficher un spin pendant le load
 - piscine: 
     - add graph of actual ON/OFF activity: creer un time serie graph générique pour afficher quand la filtration a marché
 - support other attribute than 'state' in devices // normalement ca marche (ex tem avec temp piscine). L'utiliser pour le stick etc
