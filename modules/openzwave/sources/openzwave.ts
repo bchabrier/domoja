@@ -87,7 +87,7 @@ export class Openzwave extends Source {
 			// Listen for the driver ready event before doing anything with the driver
 			this.driver.once("driver ready", () => {
 
-				this.debugModeLogger.info(`driver is ready.`);
+				this.logger.info(`driver is ready.`);
 				attempt = 0;
 
 				/*
