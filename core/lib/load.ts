@@ -224,9 +224,15 @@ class ExternalFunction {
                 atfunction = atfunction.replace(/^ *at /, "").replace(' ', '').replace('vm.js', '');
 
                 let newargs: any[] = [];
-                newargs.push("%s" + args[0]);
-                newargs.push(file + ":" + (line + parseInt(lineInFunction) - 1) + " (" + atfunction + ") ");
-                newargs = newargs.concat(args.slice(1));
+                const header = file + ":" + (line + parseInt(lineInFunction) - 1) + " (" + atfunction + ") ";
+                if (typeof args[0] === 'string') {
+                    newargs.push("%s" + args[0]);
+                    newargs.push(header);
+                    newargs = newargs.concat(args.slice(1));
+                } else {
+                    newargs.push(header);
+                    newargs = newargs.concat(args);
+                }
                 //console_log_function(...newargs);
                 // because of issue https://github.com/patriksimek/vm2/issues/306, we apply the followig workaround:
                 // - create the VM before each run
