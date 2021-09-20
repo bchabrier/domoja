@@ -51,7 +51,7 @@ sources:
   - myESPs: {
       type: demo
   }
-  - myESPs-status: {
+  - ESPs: {
       type: demo
   }
   - tempo: { type: tempo }
@@ -134,6 +134,7 @@ devices:
 
 
   - semeria:
+    - presence-timeline : { type: variable, debug: false, widget: vis-graph, tags: 'semeria', name: "Présence Séméria"} 
     - voix : { type: variable, widget: toggle, tags: "semeria voix", name: "Voix Séméria" }
     - nb_connected: { type: variable, widget: text, tags: 'semeria', name: "nb Connectés Séméria" }
     - hosts-connected: { type: sensor, widget: text, tags: 'semeria', source: freeboxSemeria, id: '/lan/browser/pub/', transform: !!js/function 'function (value) { 
@@ -142,7 +143,12 @@ devices:
       let tab = JSON.parse(value).filter(lh => lh.active && lh.reachable && lh.vendor_name != "Freebox SAS");
       //console.log("<<<<<",tab.length,tab.length && tab[0],">>>>>"); 
       return tab.map(lh => lh.primary_name).join(", ");
-    }', name: "Connectés Séméria" }
+    }', 
+      persistence: "mongo:hosts_connected_semeria:0:raw",
+      name: "Connectés Séméria" }
+        #id:TTL:raw|aggregate:KEEP    
+        # TTL: 0=default, 1h
+        # KEEP: in minutes. default = 5 years (not implemented)
     - presence : { type: variable, widget: text, tags: 'semeria', name: "Présence au Séméria"} 
     - presence-couleur : { type: variable, widget: color, tags: 'semeria', name: "Couleur icon"} 
     - presence-message : { type: variable, widget: text, tags: 'semeria', name: "Message présence"} 
@@ -188,10 +194,10 @@ devices:
     - couleur-telephone: { type: variable, widget: color, tags: 'téléphone', name: "Couleur du téléphone" }
 
   - lampes:
-    - lampe_chambre_parents: { type: device, widget: toggle, tags: 'lampes-presence', source: myZibase, id: "ZA4", name: "Lampe Chambre parents" }
-    - lampe_table_cuisine: { type: device, widget: toggle, tags: 'lampes-presence', source: myZibase , id: "ZP4", name: "Spots Table Cuisine" }
+    - lampe_chambre_parents: { type: variable, widget: toggle, tags: 'lampes-presence', id: "ZA4", name: "Lampe Chambre parents" }
+    - lampe_table_cuisine: { type: variable, widget: toggle, tags: 'lampes-presence', id: "ZP4", name: "Spots Table Cuisine" }
     - lampe_preau: { type: device, widget: toggle, tags: 'lampes-presence entrée', source: ZStick, id: "15-38-0-currentValue", name: "Lampe Préau" }
-    - lampe_hall: { type: device, widget: toggle, tags: 'lampes-presence', source: myZibase, id: "ZC9", name: "Spots hall" }
+    - lampe_hall: { type: variable, widget: toggle, tags: 'lampes-presence', id: "ZC9", name: "Spots hall" }
     - lampe_rouge_haut: { type: device, widget: toggle, tags: 'lampes', source: ZStick, id: "17-37-2-currentValue", name: "Lampe rouge haut" }
     - lampe_rouge_bas: { type: device, widget: toggle, tags: 'lampes', source: ZStick, id: "17-37-1-currentValue", name: "Lampe rouge bas" }
     - lampe_escalier: { type: device, widget: toggle, tags: 'lampes-presence', source: ZStick, id: "13-38-0-currentValue", name: "Lampe escalier" }
@@ -204,20 +210,26 @@ devices:
   - piscine:
      - controle : { type: variable, widget: "multistate:AUTO,ON,OFF:primary,secondary,danger", tags: 'piscine-page', name: "Programmation filtration"} 
      - filtration: { type: device, debug: false, widget: toggle, tags: 'piscine-page', source: myESPs, id: "04a87b", 
-        persistence: "mongo:piscine_ON_OFF:0:raw:120000",
+        persistence: "mongo:piscine_ON_OFF:0:raw",
         name: "Filtration piscine" }
-        # id:TTL:raw|aggregate:KEEP    default, 5 ans
-     - filtration-status: { type: device, debug: false, widget: text, tags: 'piscine-page', source: myESPs-status, id: "04a87b", name: "Status filtration piscine" }
+        #id:TTL:raw|aggregate:KEEP    
+        # TTL: 0=default, 1h
+        # KEEP: in minutes. default = 5 years (not implemented)
+     #- filtration-status: { type: device, debug: false, widget: text, tags: 'piscine-page', source: myESPs-status, id: "04a87b", name: "Status filtration piscine" }
+     - filtration-status: { type: device, debug: false, widget: text, tags: 'piscine-page', source: ESPs, id: "/WiFi/ESPRouter_04a87b/system/status", name: "Status filtration piscine" }
      - pieuvre: { type: device, widget: toggle, tags: 'piscine-page', source: myZibase, id: "ZP8", name: "Pieuvre" }
      - chlore_plus: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZA14", name: "Chlore +" }
      - chlore_moins: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZO14", name: "Chlore -" }
      - temperature: { type: sensor, widget: text, tags: 'piscine-page, piscine-temp-page', source: ZStick, id: "12-49-3-Air temperature", 
         persistence: "mongo:temperature_piscine:0:aggregate:120000", 
         name: "Température" }
-        # id:TTL:raw|aggregate:KEEP    default, 5 ans
+        #id:TTL:raw|aggregate:KEEP    
+        # TTL: 0=default, 1h
+        # KEEP: in minutes. default = 5 years (not implemented)
      - temperature-graph : { type: variable, widget: temp-graph:piscine.temperature, tags: 'piscine-temp-page', name: "Courbe de température"} 
      - couleur : { type: variable, widget: color, tags: 'piscine', name: "Couleur de la température"} 
-     - planning-filtration-graph : { type: variable, debug: false, widget: graph, tags: 'piscine-page', name: "Planning de filtration"} 
+     - filtration-timeline : { type: variable, debug: false, widget: vis-graph, tags: 'piscine-page', name: "Périodes de filtration"} 
+     - planning-filtration-graph : { type: variable, debug: false, widget: graph, tags: 'piscine-page', name: "Filtration"} 
      - filtration-couleur : { type: variable, widget: color, tags: 'piscine', name: "Couleur de la filtration"} 
      - filtration-icon : { type: variable, widget: text, tags: 'piscine', name: "Icône de la filtration"} 
      - filtration-message : { type: variable, widget: text, tags: 'piscine', name: "Message de la filtration"} 
@@ -323,7 +335,7 @@ devices:
   - text-to-say : { type: variable, widget: "input", tags: 'voix', name: "Message à dire"} 
 
   - zwave:
-     - controller : { type: device, widget: "multistate:INCLUSION,INCLUSION_NON_SECURE,EXCLUSION,NO_INCLUSION_EXCLUSION:secondary,secondary,danger,primary", tags: 'zwave', source: ZStick, id: "1", attribute: "inclusion_mode", name: "Controleur"} 
+     - controller : { type: device, widget: "multistate:INCLUSION,INCLUSION_NON_SECURE,EXCLUSION,NO_INCLUSION_EXCLUSION:secondary,secondary,danger,primary:Inclure,Inclure non séc.,Exclure,Stop", tags: 'zwave', source: ZStick, id: "1", attribute: "inclusion_mode", name: "Controleur"} 
      - config : { type: device, widget: "zwave-config", tags: 'zwave', source: ZStick, id: "1", attribute: "zwave_config", name: "ZWave config"} 
      - config-text : { type: device, widget: "text", tags: 'zwave', source: ZStick, id: "1", attribute: "zwave_config", name: "ZWave config"} 
 
@@ -639,6 +651,136 @@ scenarios:
               }
               this.setDeviceState("semeria.presence-message", msg, callback);
             }'
+    - update-presence-timeline:
+      triggers:
+        - at: startup
+        - cron: 00 * * * * * # reload every minutes
+        - state: semeria.hosts-connected
+      actions:
+        - !!js/function 'function updatePresenceTimeline(callback) {
+            debug = false;
+
+            getDeviceStateHistory("semeria.hosts-connected", "none", new Date(1900, 0, 1), new Date(3000, 0, 1), (err, res) => {
+
+            // for debugging purposes
+              if (false) res = [
+                { date: "2021-08-16T07:54:42.252Z", value: "iPhone de Bruno, Android, User 1" },
+                { date: "2021-08-16T10:54:42.252Z", value: "iPhone de Bruno, User 1" },
+                { date: "2021-08-16T11:10:42.252Z", value: "" },
+                { date: "2021-09-01T10:54:42.252Z", value: "Android" },
+                { date: "2021-09-01T15:54:42.252Z", value: "Android, User 2" },
+                { date: "2021-09-01T20:54:42.252Z", value: "User 2, iPhone de Bruno" },
+                { date: "2021-09-01T21:00:42.252Z", value: "User 2" },
+                { date: "2021-09-01T21:10:42.252Z", value: "User 2, iPhone de Bruno" },
+                { date: "2021-09-01T21:11:42.252Z", value: "User 2" },
+                { date: "2021-09-01T21:20:42.252Z", value: "" },
+                { date: "2021-09-01T20:25:42.252Z", value: "User 2, iPhone de Bruno" },
+                { date: "2021-09-01T22:54:42.252Z", value: "" },
+                { date: "2021-09-16T07:54:42.252Z", value: "iPhone de Bruno" },
+              ];
+
+              if (!res) callback(null);
+
+              let tab = res.sort((a, b) => { 
+                const A = new Date(a.date).getTime();
+                const B = new Date(b.date).getTime();
+                return A > B ? 1 : A < B ? -1 : 0;
+              })/*.map(r => {
+                return { 
+                  date: r.date, 
+                  value: JSON.parse(r.value).filter(lh => lh.active && lh.reachable && lh.vendor_name != "Freebox SAS").map(lh => lh.primary_name).join(", ")
+                }
+              })*/;
+
+              debug && console.log("history:", tab);
+
+              let colorIndex = 0;
+              let colors = [ "", 
+                "background-color:#FFB0B0;border-color:#FF0000;", 
+                "background-color:#B0FFB0;border-color:#00FF00;", 
+                "background-color:#B0B0FF;border-color:#0000FF;", 
+                "background-color:#B0FFFF;border-color:#00FFFF;", 
+                "background-color:#FFB0FF;border-color:#FF00FF;", 
+                "background-color:#FFFFB0;border-color:#FFFF00;"
+               ];
+
+              function getColor() {
+                let c = colors[colorIndex];
+                colorIndex = (colorIndex + 1) % colors.length;
+                return c;
+              }
+
+              let id = 0;
+              let itemColors = [];
+
+              function record(start, end, content) {
+                return {
+                      start: start,
+                      end: end,
+                      content: content,
+                      //group: content,
+                      style: `overflow: visible;${itemColors[content]}`,
+                      id: id++
+                }
+              }
+
+              let items = [];
+              let startTab = [];
+              tab.forEach((item, pos, ary) => {
+
+                let newlist = item.value;
+                let newtab = [];
+                if (newlist) newtab = newlist.split(", ");
+
+                let oldlist = pos > 0 ? ary[pos - 1].value : "";
+                let oldtab = [];
+                if (oldlist) oldtab = oldlist.split(", ");
+
+                oldtab.forEach(n => {
+                  if (newtab.indexOf(n) == -1) {
+                    // end of presence detected
+                    items.push(new record (ary[startTab[n]].date, ary[pos].date, n));
+                    startTab[n] = undefined;
+                  }
+                });
+                newtab.forEach(n => {
+                  if (oldtab.indexOf(n) == -1) {
+                    // track new presence (if really new)
+                    if (startTab[n] === undefined) startTab[n] = pos;
+                    if (itemColors[n] === undefined) itemColors[n] = getColor();
+                  }
+                });
+              });
+
+              Object.keys(startTab).forEach(n => {
+                if (startTab[n] !== undefined) {
+                    items.push(new record (tab[startTab[n]].date, (new Date()).toISOString(), n));
+                }
+              });
+
+              debug && console.log("items:", items);
+
+              let lastPresenceDate = items.length>0?new Date(items[items.length - 1].end):new Date();
+              let now = new Date();
+
+              let data = {
+                items: items,
+                options: {
+                      orientation: "top",
+                      width: "400px",
+                      editable: false,
+                      stack: true,
+                      groupEditable: false,
+                      selectable: false,
+                      zoomMin: 60 * 60 * 1000, // 1 hour
+                      start: new Date(lastPresenceDate.getFullYear(), lastPresenceDate.getMonth(), 1, 0, 0, 0, 0).toISOString(),
+                      end: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0).toISOString(),
+                    },
+              }
+
+              this.setDeviceState("semeria.presence-timeline", JSON.stringify(data), callback);
+            });
+          }'
   - home:
     - couleur-telephone:
         triggers:
@@ -1298,7 +1440,7 @@ scenarios:
                 }
               }
             }
-            // avoid unwanted stop/start
+            // avidunwanted stop/start
             if (duree > 23 + 50/60) duree=24;
             this.setDeviceState("piscine.filtration-duration", duree, callback);
           }'        
@@ -1343,7 +1485,7 @@ scenarios:
               debug && console.log("start1 before 5 mn!!! Let s use previous_start1:", previous_start1)
               start1 = previous_start1;
               // if not defined yet, probably because the first time it is called. Let s start asap
-              if (!start1 || new Date(start1).toString() == "Invalid Date") {
+              if (!start1 || new Date(start1).toString() == "InvalidDate") {
                 start1 = Date.now() + 3 * 60 * 1000;
                 debug && console.log("start1 new Date + 3 = ", start1)
                 debug && console.log("previous_start1 was not defined!!! Let s start asap in 3 mn at", start1)
@@ -1595,10 +1737,10 @@ scenarios:
             let _start2 = this.getDeviceState("piscine.filtration-start2");
             let _stop2 = this.getDeviceState("piscine.filtration-stop2");
             
-            let start1 = _start1 && _start1.toString() != "Invalid Date" && new Date(_start1).getTime() || undefined;
-            let stop1 = _stop1 && _stop1.toString() != "Invalid Date" && new Date(_stop1).getTime() || undefined;
-            let start2 = _start2 && _start2.toString() != "Invalid Date" && new Date(_start2).getTime() || undefined;
-            let stop2 = _stop2 && _stop2.toString() != "Invalid Date" && new Date(_stop2).getTime() || undefined;
+            let start1 = _start1 && _start1.toString() != "InvaidDate" && new Date(_start1).getTime() || undefined;
+            let stop1 = _stop1 && _stop1.toString() != "InvaidDate" && new Date(_stop1).getTime() || undefined;
+            let start2 = _start2 && _start2.toString() != "InvaidDate" && new Date(_start2).getTime() || undefined;
+            let stop2 = _stop2 && _stop2.toString() != "InvaidDate" && new Date(_stop2).getTime() || undefined;
             
             let prev_stop1 = stop1 && stop1 - 24 * 60 * 60 * 1000;
             let prev_stop2 = stop2 && stop2 - 24 * 60 * 60 * 1000;
@@ -1724,9 +1866,9 @@ scenarios:
               } else if (!start2 && !stop2) {
                 // start1 ----------------------------- stop1
                 //              start2 ----- stop2
-                debug && console.log("complete overlap, start2-stop2 inside start1-stop1");
+                debug && console.log("complete overlap, start2-stop2 inid start1-stop1");
                 if (d24 <= stop1) {
-                  // ON at midnight
+                  // ON at idight
                   if (now < prev_stop1) {
                     _data = [
                       [ {v: 0, f: formatHour(0)}, null, null, ON, true ],
@@ -1759,7 +1901,7 @@ scenarios:
                     ];
                   }
                 } else {
-                  // OFF at midnight
+                  // OFF at idight
                   if (now < start1) {
                     _data = [
                       [ {v: 0, f: formatHour(0)}, null, null, OFF, true ],
@@ -1882,6 +2024,130 @@ scenarios:
             }
 
             this.setDeviceState("piscine.planning-filtration-graph", JSON.stringify(data), callback);
+          }'
+    - update-filtration-timeline:
+      debug: false
+      triggers:
+        - at: startup
+        - cron: 00 * * * * * # reload every minutes
+        - state: piscine.filtration
+        - state: piscine.filtration-start1
+        - state: piscine.filtration-stop1
+        - state: piscine.filtration-start2
+        - state: piscine.filtration-stop2
+      actions:
+        - !!js/function 'function updateFiltrationTimeline(callback) {
+            debug = false;
+
+            getDeviceStateHistory("piscine.filtration", "none", new Date(1900, 0, 1), new Date(3000, 0, 1), (err, res) => {
+
+      
+              //const tab = res.filter(r => (new Date(r.date).getMonth()===8)&&(new Date(r.date).getDate()===15)).sort((a, b) => { 
+              const tab = res.sort((a, b) => { 
+                const A = new Date(a.date).getTime();
+                const B = new Date(b.date).getTime();
+                return A > B ? 1 : A < B ? -1 : 0;
+              });
+
+              debug && console.log("history:", tab);
+
+              let items = [];
+
+              // add planification as dashed
+              let start1 = getDeviceState("filtration-start1");
+              if (start1 === "Invalid Date") start1 = null;
+              let stop1 = getDeviceState("filtration-stop1");
+              if (stop1 === "Invalid Date") stop1 = null;
+              let start2 = getDeviceState("filtration-start2");
+              if (start2 === "Invalid Date") start2 = null;
+              let stop2 = getDeviceState("filtration-stop2");
+              if (stop2 === "Invalid Date") stop2 = null;
+
+              let id = -1;
+              const style = "background-color:transparent;border-style:dashed!important;text-align:end;z-index: 0;"
+              if (start1 && stop1) {
+                items.push({
+                  start: start1,
+                  end: stop1,
+                  content: "Plannifié",
+                  style: style,
+                  id: id--
+                });
+              }
+              if (start2 && stop2) {
+                items.push({
+                  start: start2,
+                  end: stop2,
+                  content: "Plannifié",
+                  style: style,
+                  id: id--
+                });
+              }
+              if (start1 && !stop1 && !start2 && stop2) {
+                items.push({
+                  start: start1,
+                  end: stop2,
+                  content: "Plannifié",
+                  style: style,
+                  id: id--
+                });
+              }
+
+              let prev_ON = -1;
+              let prev_OFF = -1;
+              tab.forEach((item, pos, ary) => {
+                if (item.value === "ON" && prev_ON === -1) {
+                  prev_ON = pos;
+                  prev_OFF = -1;
+                }
+                if (item.value === "OFF" && prev_OFF === -1) {
+                  prev_OFF = pos;
+                  items.push({
+                    start: ary[prev_ON].date,
+                    end: ary[prev_OFF].date,
+                    content: "ON",
+                    style: "overflow:hidden;",
+                    id: pos
+                  });
+                  prev_ON = -1;
+                }
+              });
+
+              let now = new Date();
+              //now = new Date(now.getTime() + 1 * 60 * 1000); // now + 1 mn
+              if (prev_ON !== -1 && prev_OFF === -1) {
+                // still not OFF until now
+                items.push({
+                  start: tab[prev_ON].date,
+                  end: now.toISOString(),
+                  content: "ON",
+                  style: "overflow:hidden;",
+                  id: tab.length
+                });
+              }
+
+              debug && console.log("items=", items);
+
+              const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 24, 0, 0, 0);
+
+              let data = {
+                items: items,
+                options: {
+                      orientation: "bottom",
+                      width: "400px",
+                      editable: false,
+                      stack: false,
+                      groupEditable: false,
+                      selectable: false,
+                      start: new Date(endOfDay.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+                      end: endOfDay.toISOString()
+                    }
+              }
+
+              setDeviceState("piscine.filtration-timeline", JSON.stringify(data), callback);
+
+            });
+
           }'
   - petit_portail:
     - controle:
