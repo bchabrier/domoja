@@ -18,7 +18,7 @@ const logger = require("tracer").colorConsole({
     // 0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
-type TransformFunction = (cb: any, transform?: (value: string) => string) => any;
+type TransformFunction = (cb: (value: any) => void, transform?: (value: string) => string) => any;
 
 export type DeviceOptions = {
     transform?: string | TransformFunction,
@@ -43,7 +43,7 @@ export type EventType = "change";
 //enum NotifyEnum { NEVER, ALWAYS, IN_ALARM };
 //pusher.notifyEnum = NotifyEnum;
 
-function transformFunction(callback: any, transform?: (value: string) => string) {
+function transformFunction(callback: (value: any) => void, transform?: (value: string) => string) {
     if (transform != undefined) {
         return function (msg: message) {
             var newMsg = new message;
@@ -112,6 +112,7 @@ export abstract class GenericDevice implements DomoModule {
     lastUpdateDate: Date;
     tags: string;
     debugMode: boolean;
+    transform?: (value: any) => any;
 
     stateHasBeenSet = false;
 
@@ -199,7 +200,7 @@ export abstract class GenericDevice implements DomoModule {
                 });
 
                 this.persistStates && this.persistence.insert({
-                    state: this.state,
+                    state: this.transform ? this.transform(this.state) : this.state,
                     date: d
                 }, (err: Error, docs: message[]) => {
                     if (err != null) {
