@@ -344,7 +344,7 @@ export class Openzwave extends Source {
 	}
 
 	private sendSwitchCommand(address: string, action: boolean, callback: (err: Error) => void): void {
-		this.debugModeLogger.error("address =", address);
+		this.debugModeLogger.error("address =", address, ", action =", action);
 		const tab = address.split('-');
 		if (tab.length != 4) this.logger.error(`Malformed id [${address}]. Should be [number-number-number|string-number|string].`);
 
@@ -373,12 +373,12 @@ export class Openzwave extends Source {
 			value = action;
 		}
 
-		node.setValue(valueId, value).catch(e => {
+		node.setValue(valueId, value).then(() => {
+			callback(null);
+		}, e => {
 			this.logger.error(e);
 			callback(e);
-		}).then(() => {
-			callback(null);
-		});;
+		});
 	}
 
 	private checkAddressIsController(address: string) {
@@ -392,14 +392,14 @@ export class Openzwave extends Source {
 		const commandName = command.command;
 		switch (commandName) {
 			case "setValue":
-				node.setValue(command.valueID, command.value).catch(e => {
-					this.logger.error(e);
-					callback(e);
-				}).then((res) => {
+				node.setValue(command.valueID, command.value).then((res) => {
 					if (!res) this.logger.warn(`Could not set value of node "${command.nodeId}" to "${command.value}"...`);
 					this.refreshConfig();
 					this.logger.error("getvalue apres refreshconfig =>", node.getValue(command.valueID));
 					callback(null);
+				}, e => {
+					this.logger.error(e);
+					callback(e);
 				});
 				break;
 			case "ping":
@@ -526,7 +526,7 @@ export class Openzwave extends Source {
 	}
 
 	doSetAttribute(id: string, attribute: string, value: string, callback: (err: Error) => void): void {
-
+		this.debugModeLogger.info(`doSetAttribute: ${id}, ${attribute}, ${value}`);
 		const allPairs = [
 			['zwave_config/<json>', "for controller"],
 			['state/ON', "for switches"],
