@@ -96,13 +96,14 @@ export class DevicesService {
 
     return new Promise<{}>((resolve, reject) => {
       method.apply(camera, [baseURL, res.req.headers, function onResponse(response: http.IncomingMessage) {
+        if (!response) return reject();
         if (res.req.query && res.req.query.t) {
           // if ?t=, then we cache the query
           res.setHeader("Cache-Control", "private, max-age=999999"); // max-age is needed for Safari
         }
         response.pipe(res);
         response.on('end', () => resolve(Return.NoResponse));
-        response.on('aborted', () => reject(Return.NoResponse));
+        response.on('aborted', () => reject());
       }]);
     });
   }

@@ -37,6 +37,7 @@ export class httpCamera extends camera {
 
     module.get(url.href, options, callback).on('error', (e) => {
       logger.warn('Cannot get snapshot for camera "%s":', this.name, e);
+      callback(null);
     });
   }
 
