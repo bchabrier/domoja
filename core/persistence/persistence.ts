@@ -204,23 +204,22 @@ export class mongoDB extends persistence {
             var db = client.db();
             var collection = db.collection('Backup states');
 
-            let error: Error;
-            try {
-                let result = collection.findOneAndReplace(
-                    {
-                        'id': this.id
-                    },
-                    {
-                        'id': this.id,
-                        state: state,
-                        date: new Date()
-                    },
-                    { upsert: true }
-                );
-            } catch (e) {
-                error = e;
-            }
-            callback(error);
+            collection.findOneAndReplace(
+                {
+                    'id': this.id
+                },
+                {
+                    'id': this.id,
+                    state: state,
+                    date: new Date()
+                },
+                { upsert: true }
+            ).catch(e => {
+                logger.error(e);
+                callback(e);
+            }).then(() => {
+                callback(null)
+            });
         });
     };
 
@@ -230,8 +229,6 @@ export class mongoDB extends persistence {
             var collection = this.id;
             if (aggregate != "none") {
                 collection += " by " + aggregate;
-            } else {
-
             }
             let collectionStore = db.collection(collection);
             collectionStore.find(
@@ -239,10 +236,17 @@ export class mongoDB extends persistence {
                     'date': { $gte: from, $lt: to },
                 },
                 {
-                    'projection': { '_id': 0, 'date': 1, 'count': 1, 'sum': 1 }
+                    'projection': { '_id': 0, 'date': 1, 'count': 1, 'sum': 1, 'state': 1 }
                 }
             ).toArray((err, results) => {
-                callback(err, results.map(r => { return { date: r.date, value: (r.sum as number) / (r.count as number) } }));
+                if (err) {
+                    callback(err, null);
+                } else {
+                    callback(null, aggregate != "none"
+                        ? results.map(r => { return { date: r.date, value: (r.sum as number) / (r.count as number) } })
+                        : results.map(r => { return { date: r.date, value: r.state } })
+                    );
+                }
             });
         });
     }
@@ -411,9 +415,13 @@ export class mongoDB extends persistence {
                             out: { inline: 1 },
                         },
                         (err, results) => {
-                            logger.log(results && results[0]);
-                            logger.log(results && results[0] && new Date(results[0]._id).toLocaleDateString());
-                            callback(err, results.map((r: { _id: string, value: any }) => { return { "date": r._id, "value": r.value } }));
+                            if (err) {
+                                callback(err, null);
+                            } else {
+                                logger.log(results && results[0]);
+                                logger.log(results && results[0] && new Date(results[0]._id).toLocaleDateString());
+                                callback(err, results.map((r: { _id: string, value: any }) => { return { "date": r._id, "value": r.value } }));
+                            }
                         });
                     break;
 
