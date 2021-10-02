@@ -732,7 +732,10 @@ function errorContext(body: string, linePos: number, charPos: number): string {
         return res;
     }
 
-    return regexp.exec(body)[2] + repeat(" ", charPos - 1) + "^";
+    let contextString: any[] = regexp.exec(body); // don't use ||[] because for some reason || disappears in the insertion in guard
+    if (!contextString) contextString = [];
+
+    return contextString[2] + repeat(" ", charPos - 1) + "^";
 }
 
 import assert = require('assert');
