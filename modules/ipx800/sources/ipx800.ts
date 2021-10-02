@@ -35,7 +35,7 @@ export class IPX800 extends Source {
 		let self = this;
 		this.client = new Socket;
 		this.client.on('error', (e: Error) => {
-			logger.error(e);
+			this.logger.error(e);
 		});
 		this.client.on('data', (data: Buffer) => {
 			logger.trace(data.toString());
@@ -54,19 +54,19 @@ export class IPX800 extends Source {
 			}
 		});
 		this.client.on('connect', () => {
-			logger.info('Connected to IPX!');
+			this.logger.info('Connected to IPX!');
 		});
 
 		this.client.on('close', () => {
 			//self.connect();
 			// if the socket is still here, let's try to reconnect
 			if (self.client && self.timeout) {
-				logger.info('Disconnected from IPX, trying to reconnect in %d secs...', self.timeout);
+				this.logger.info('Disconnected from IPX, trying to reconnect in %d secs...', self.timeout);
 				setTimeout(() => {
 					if (self.client) self.client.connect(8124);
 				}, self.timeout * 1000);
 			} else {
-				logger.info('Disconnected from IPX');
+				this.logger.info('Disconnected from IPX');
 			}
 		});
 		this.client.connect(8124);
@@ -107,8 +107,8 @@ export class IPX800 extends Source {
 				urlOrOptions.url;
 		}
 		request.get(param, callback /* error, response, body */)
-			.on('error', function (err: Error) {
-				logger.error('Cannot GET', param.url, ':', err.stack);
+			.on('error', (err: Error) => {
+				this.logger.error('Cannot GET', param.url, ':', err.stack);
 			});
 	}
 
@@ -129,7 +129,7 @@ export class IPX800 extends Source {
 			timeout = +initObject.timeout;
 		}
 		if (isNaN(timeout)) {
-			logger.warning(`Source "${path}" of type "IPX800": timeout "${initObject.timeout}" is not a number.`);
+			this.logger.warning(`Source "${path}" of type "IPX800": timeout "${initObject.timeout}" is not a number.`);
 		}
 		return new IPX800(path, initObject.macaddress, initObject.ip, initObject.port, timeout);
 	}
