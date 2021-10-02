@@ -170,16 +170,9 @@ export abstract class GenericDevice implements DomoModule {
         this.source.addDevice(this);
         allDevices.push(this);
         if (!backupJob) backupJob = setInterval(() => {
-            async.rejectSeries(allDevices, (device, callback) => {
-                device.backupStateToDB((err) => {
-                    callback(null, !err);
-                });
-            }, (err, results) => {
+            this.backupStateToDB((err) => {
                 if (err) {
-                    logger.error('Something happened while backing up all devices states:', err)
-                }
-                if (results.length > 0) {
-                    logger.debug(`Some devices could not backup their state, ${results.length} failed: ${results.join(", ")}`);
+                    logger.error(`Could not backup state of device "${this.path}" to DB:`, err);
                 }
             });
         }, 60 * 1000);
@@ -255,6 +248,7 @@ export abstract class GenericDevice implements DomoModule {
     }
 
     restoreStateFromDB(callback: (err: Error, success: boolean) => void) {
+        if (!this.persistence) return callback(null, false);
         this.persistence.restoreStateFromDB((err, value) => {
             if (err) {
                 logger.error(`Could not retrieve last persisted value for device "${this.path}":`, err);
@@ -270,6 +264,7 @@ export abstract class GenericDevice implements DomoModule {
     }
 
     backupStateToDB(callback: (err: Error, success: boolean) => void) {
+        if (!this.persistence) return callback(null, false);
         this.persistence.backupStateToDB(this.state, (err) => {
             if (err) {
                 logger.error(`Could not backup state of device "${this.path}":`, err);
