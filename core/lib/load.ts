@@ -1849,11 +1849,15 @@ function standardErrorHandler(err: Error) {
 }
 
 function setDeviceState(path: string, state: string, callback: (err: Error) => void = standardErrorHandler): void {
-
-    try {
-        getDevice(path).setState(state, callback);
-    } catch (err) {
-        callback(err);
+    let device = getDevice(path);
+    if (device) {
+        try {
+            device.setState(device.transform ? device.transform(state) : state, callback);
+        } catch (err) {
+            callback(err);
+        }
+    } else {
+        callback(new Error(`Device "${path}" not found!`));
     }
 }
 

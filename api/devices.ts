@@ -7,6 +7,12 @@ import { GenericDevice } from 'domoja-core';
 import * as core from 'domoja-core';
 import { getDomojaServer } from './app';
 
+const logger = require("tracer").colorConsole({
+  dateformat: "dd/mm/yyyy HH:MM:ss.l",
+  level: 3
+  // 0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
+});
+
 function deviceIdValidator(req: express.Request): express.Request {
 
   let deviceID = req.params['id'];
@@ -74,7 +80,8 @@ export class DevicesService {
   sendCommand(@PathParam('id') name: string, @FormParam('command') command: string) {
     let device = core.getDevices().find(device => device.path == name);
     return new Promise<string>((resolve, reject) => {
-      device.setState(command, err => { err ? reject(err) : resolve('OK') })
+      let transformedCommand = device.transform ? device.transform(command) : command;
+      device.setState(transformedCommand, err => { err ? reject(err) : resolve('OK') })
     });
   }
 
@@ -167,7 +174,7 @@ export class DevicesService {
       }
       device.persistence.getHistory(aggregate, fromDate, toDate, (err, results) => {
         if (err) {
-          console.log(err);
+          logger.error(err);
           reject("KO");
         } else {
           resolve(results);
