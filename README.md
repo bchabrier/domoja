@@ -220,6 +220,7 @@ Siri is then available on iOS through the Home application.
 - support other attribute than 'state' in devices // normalement ca marche (ex tem avec temp piscine). L'utiliser pour le stick etc
 - support for dev: reload module when changed
 - improve the text widget to support format, color, unit...
+- authentication cookies seem not persisted: when restarting the server, we need to relogin
 
 ## Issues
 
