@@ -129,6 +129,7 @@ function guard(sandbox: Sandbox) {
                             try {
                                 arg(...args);
                             } catch (e) {
+                                if (!sandbox.scriptFile) console.log(arg.toString());
                                 rewriteErrAndLog(e, sandbox.scriptFile, sandbox.functionString);
                             }
                         } :
