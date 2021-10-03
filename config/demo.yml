@@ -48,7 +48,6 @@ sources:
       type: astronomy,
       location: "06030"
   }
-  - myESPs: {
       type: demo
   }
   - ESPs: {
@@ -63,8 +62,10 @@ devices:
   - comm: { type: variable, widget: "comm", name: "Communication"}
   - aquarium:
     - controle : { type: variable, widget: "multistate:AUTO,ON,OFF:primary,secondary,danger", tags: 'aquarium-page', name: "Commande de l'aquarium"} 
-    - pompes : { type: device, widget: toggle, tags: 'aquarium-page', source: ZStick, id: "14-37-2-currentValue", name: "Pompes aquarium" }
-    - lampes : { type: device, widget: toggle, tags: 'aquarium-page', source: ZStick, id: "14-37-1-currentValue", name: "Lampes UV aquarium" }
+    #- pompes : { type: device, widget: toggle, tags: 'aquarium-page', source: ZStick, id: "14-37-2-currentValue", name: "Pompes aquarium" }
+    - pompes : { type: device, widget: toggle, tags: 'aquarium-page', source: ESPCommands, id: "3c6ed4:0", transform: "1=>OFF,0=>ON,OFF=>1,ON=>0", name: "Pompes aquarium" }
+    #- lampes : { type: device, widget: toggle, tags: 'aquarium-page', source: ZStick, id: "14-37-1-currentValue", name: "Lampes UV aquarium" }
+    - lampes : { type: device, widget: toggle, tags: 'aquarium-page', source: ESPCommands, id: "3c6ed4:4", transform: "1=>OFF,0=>ON,OFF=>1,ON=>0", name: "Lampes UV aquarium" }
     - lampes_start : { type: variable, widget: text, tags: 'aquarium-page', name: "Heure allumage aquarium" }
     - lampes_end : { type: variable, widget: text, tags: 'aquarium', name: "Heure extinction aquarium" }
     - pompes_start : { type: variable, widget: text, tags: 'aquarium-page', name: "Heure démarrage pompes aquarium" }
@@ -209,7 +210,7 @@ devices:
 
   - piscine:
      - controle : { type: variable, widget: "multistate:AUTO,ON,OFF:primary,secondary,danger", tags: 'piscine-page', name: "Programmation filtration"} 
-     - filtration: { type: device, debug: false, widget: toggle, tags: 'piscine-page', source: myESPs, id: "04a87b", 
+        transform: "0=>OFF,1=>ON,OFF=>0,ON=>1",
         persistence: "mongo:piscine_ON_OFF:0:raw",
         name: "Filtration piscine" }
         #id:TTL:raw|aggregate:KEEP    
@@ -220,14 +221,15 @@ devices:
      - pieuvre: { type: device, widget: toggle, tags: 'piscine-page', source: myZibase, id: "ZP8", name: "Pieuvre" }
      - chlore_plus: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZA14", name: "Chlore +" }
      - chlore_moins: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZO14", name: "Chlore -" }
-     - temperature: { type: sensor, widget: text, tags: 'piscine-page, piscine-temp-page', source: ZStick, id: "12-49-3-Air temperature", 
+     - temperature: { type: sensor, widget: "text!{value, number, :: .# } °C", tags: 'piscine-page, piscine-temp-page', source: ZStick, id: "12-49-3-Air temperature", 
         persistence: "mongo:temperature_piscine:0:aggregate:120000", 
         name: "Température" }
         #id:TTL:raw|aggregate:KEEP    
         # TTL: 0=default, 1h
         # KEEP: in minutes. default = 5 years (not implemented)
      - temperature-graph : { type: variable, widget: temp-graph:piscine.temperature, tags: 'piscine-temp-page', name: "Courbe de température"} 
-     - couleur : { type: variable, widget: color, tags: 'piscine', name: "Couleur de la température"} 
+     # - couleur : { type: variable, widget: color, tags: 'piscine', name: "Couleur de la température"} 
+     - couleur : { type: variable, widget: 'text!<span style="background-color:%s;color:black">%s</span>', tags: 'piscine', name: "Couleur de la température"} 
      - filtration-timeline : { type: variable, debug: false, widget: vis-graph, tags: 'piscine-page', name: "Périodes de filtration"} 
      - planning-filtration-graph : { type: variable, debug: false, widget: graph, tags: 'piscine-page', name: "Filtration"} 
      - filtration-couleur : { type: variable, widget: color, tags: 'piscine', name: "Couleur de la filtration"} 
@@ -237,7 +239,7 @@ devices:
      - filtration-stop1 : { type: variable, widget: text, tags: 'piscine', name: "Heure 1 d'arrêt de la filtration"} 
      - filtration-start2 : { type: variable, widget: text, tags: 'piscine', name: "Heure 2 de démarrage de la filtration"} 
      - filtration-stop2 : { type: variable, widget: text, tags: 'piscine', name: "Heure 2 d'arrêt de la filtration"} 
-     - filtration-duration : { type: variable, widget: text, tags: 'piscine', name: "Durée de la filtration (heures)"} 
+     - filtration-duration : { type: variable, widget: "text!{value, number, .##}", tags: 'piscine', name: "Durée de la filtration (heures)"} 
      - durees-filtration : { type: variable, widget: text, tags: 'piscine', name: "Tableau des durées de filtration [°C, h]"} 
      - durees-filtration-graph : { type: variable, debug: false, widget: graph, tags: 'piscine-page', name: "Durées de filtration"} 
 
@@ -256,7 +258,12 @@ devices:
     - start : { type: variable, widget: toggle, id: unused, tags: tondeuse-page, name: "Marche/Arrêt" }
     - do-start : { type: device, widget: text, source: robonect-command, id: unused, tags: tondeuse-page, name: "Activation Marche/Arrêt" }
     - reset-error : { type: variable, widget: "multistate:RESET:danger", tags: tondeuse-page, name: "Réinitialisation erreur" }
-    - do-reset-error : { type: device, widget: text, source: robonect-error, id: toto, tags: tondeuse-page, name: "Appel reset erreur" }
+    - do-reset-error : { type: device, widget: text, source: robonect-error, id: error-code, tags: tondeuse-page, 
+      transform: !!js/function 'function (value) { 
+          if (value == "doRESET") return value;
+          return value!=0?"RESET":"NOERROR";
+        }',
+      name: "Appel reset erreur" }
     - error-code : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/error/code", tags: tondeuse, name: "Error (code)" }
     - error-message : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/error/message", tags: tondeuse-page, name: "Error" }
     - weather : { type: sensor, source: robonect-weather, widget: text, tags: tondeuse-page, id: tmnuweather, name: "Météo" }
@@ -329,7 +336,7 @@ devices:
 
   - say : { type: variable, widget: text, tags: voix, name: "Message parlé"} 
   - say-volatile : { type: device, widget: text, source: voice, id: unused, tags: voix, name: "Message parlé par Google"} 
-  - messages-of-the-day : { type: variable, widget: text, tags: voix, name: "Messages de la journée"} 
+  - messages-of-the-day : { type: variable, widget: text:%j, tags: voix, name: "Messages de la journée"} 
   - repeat : { type: variable, widget: "multistate:Répéter:primary", tags: 'voix', name: "Répéter le dernier message"} 
   - say-messages-of-the-day : { type: variable, widget: "multistate:Messages du jour:primary", tags: 'voix', name: "Dire les messages du jour"} 
   - text-to-say : { type: variable, widget: "input", tags: 'voix', name: "Message à dire"} 
@@ -337,7 +344,7 @@ devices:
   - zwave:
      - controller : { type: device, widget: "multistate:INCLUSION,INCLUSION_NON_SECURE,EXCLUSION,NO_INCLUSION_EXCLUSION:secondary,secondary,danger,primary:Inclure,Inclure non séc.,Exclure,Stop", tags: 'zwave', source: ZStick, id: "1", attribute: "inclusion_mode", name: "Controleur"} 
      - config : { type: device, widget: "zwave-config", tags: 'zwave', source: ZStick, id: "1", attribute: "zwave_config", name: "ZWave config"} 
-     - config-text : { type: device, widget: "text", tags: 'zwave', source: ZStick, id: "1", attribute: "zwave_config", name: "ZWave config"} 
+     - config-text : { type: device, widget: "text:%j", tags: 'zwave', source: ZStick, id: "1", attribute: "zwave_config", name: "ZWave config"} 
 
 
 scenarios:
@@ -469,7 +476,6 @@ scenarios:
             - {operator: =, left: aquarium.controle, right: "AUTO"}
           actions:
             - { device: aquarium.pompes, state: "OFF" }
-
   - astronomy:
     - sunset_calculation:
       triggers:
@@ -990,6 +996,7 @@ scenarios:
 
             // for some reason, console doesn t survive past the end of the script,
             // hence we log on a file
+            if (false) { // should not be needed anymore since console.log repaired in load.ts
             var stream = require("fs").createWriteStream("/tmp/freebox_output.txt", {flags:"a"});
             console.log = (...args) => { 
               let stackLine = (new Error).stack.split("\n")[2];
@@ -1006,6 +1013,7 @@ scenarios:
 
               stream.write(require("util").format(...newargs)); 
               stream.write("\n"); 
+            }
             }
           }'
     - message-dernier-appel:
@@ -2069,7 +2077,7 @@ scenarios:
                 items.push({
                   start: start1,
                   end: stop1,
-                  content: "Plannifié",
+                  content: "Planifié",
                   style: style,
                   id: id--
                 });
@@ -2078,7 +2086,7 @@ scenarios:
                 items.push({
                   start: start2,
                   end: stop2,
-                  content: "Plannifié",
+                  content: "Planifié",
                   style: style,
                   id: id--
                 });
@@ -2087,7 +2095,7 @@ scenarios:
                 items.push({
                   start: start1,
                   end: stop2,
-                  content: "Plannifié",
+                  content: "Planifié",
                   style: style,
                   id: id--
                 });
@@ -2561,7 +2569,7 @@ pages:
             linkPage: PiscineTemp
             label: "Piscine"
             color: "${piscine.couleur}"
-            text: "<h1><BR/><strong>${piscine.temperature}</strong><BR/>°C</h1>"
+            text: "<h1><BR/><strong>${piscine.temperature, number, ::.#}</strong><BR/>°C</h1>"
           - pool-filtration:
             widget: dashboard-icon
             icon: "${piscine.filtration-icon}" # a valid ionic icon name https://ionicframework.com/docs/v3/ionicons/
