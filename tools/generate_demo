@@ -1,5 +1,9 @@
 #!/bin/sh
 
+DEBUG=false
+DEBUG_SECTION=sources
+DEBUG_FILE=sources.yml
+
 SOURCES_CONFIG_DIR=`dirname $0`/../config
 DEMO_CONFIG=`dirname $0`/../config/demo.yml
 SECTIONS="imports sources devices scenarios pages"
@@ -8,12 +12,36 @@ SOURCES_CONFIG="$(for f in $SOURCES_CONFIG_DIR/*.yml; do echo $f; done | grep -v
 
 SOURCES_CONFIG_DIR="`(cd $SOURCES_CONFIG_DIR; pwd)`"
 
+if $DEBUG
+then
+  found=false
+  for s in $SECTIONS
+  do
+    if [ "$s" = "$DEBUG_SECTION" ]
+    then 
+      found=true
+    fi
+  done
+  $found || echo "WARNING: DEBUG_SECTION '$DEBUG_SECTION' not found!"
+
+  found=false
+  for f in $SOURCES_CONFIG
+  do
+    if [ "$(basename $f)" = "$DEBUG_FILE" ]
+    then
+      found=true
+    fi
+  done
+  $found || echo "WARNING: DEBUG_FILE '$DEBUG_FILE' not found!"
+fi
+
 cp $DEMO_CONFIG /tmp/`basename $DEMO_CONFIG`.`date +%Y%m%d-%H%M%S`
 
 > $DEMO_CONFIG
 
 for section in $SECTIONS
 do
+    $DEBUG && echo "Handling section $section..."
     echo "$section:" >> $DEMO_CONFIG
 
     case "$section" in
@@ -78,13 +106,15 @@ EOF
 
     for file in $SOURCES_CONFIG
     do
+        $DEBUG && [ "$DEBUG_SECTION" = "$section" ] && echo "Handling file $file..."
+
         # keep only a couple of things in debug mode to make sure we have some traces but not too many
         grep -v 'debug: true' $file | sed -e 's/^\( *- sunset_plus_30mn: { type: variable,\)/\1 debug: true,/g' | awk '
         BEGIN   {
             where="before imports"
             acceptedSources="astronomy tempo"
             acceptedSources=" "acceptedSources" "
-            debug=0
+            debug='$($DEBUG && [ "$DEBUG_SECTION" = "$section" ] && [ "$DEBUG_FILE" = "$(basename $file)" ] && echo 1|| echo 0)'
         }
 
         where == "in '$section'" { doprint=1 }
@@ -126,7 +156,7 @@ EOF
         }
 
         where=="in sources" && /type:/ {
-            if (debug) print "type line:" $0
+            if (debug) print "type line:" $0 > "/dev/stderr"
             nf=split($0, fields, "[ \t:,}]+")
             for (f = 1; f<=nf; f++) {
                 if (fields[f]=="type" && f < nf) type=fields[f+1]
@@ -141,23 +171,23 @@ EOF
             next
         }
         where=="in sources" && $0 ~ /^ *- *+[a-zA-Z0-9-]+: *{/ {
-            if (debug) print "source line:" $0
+            if (debug) print "source line:" $0 > "/dev/stderr"
             if (doprint) print
             next
         }
 
         where=="in sources" && $0 ~ /^ +[a-zA-Z0-9-]+: */ {
-            if (debug) print "attribute line:" $0
+            if (debug) print "attribute line:" $0 > "/dev/stderr"
             if (accepted) if (doprint) print
             next
         }
 
         where=="in sources" && $0 !~ /^  } *\r?$/ && $0 !~ /^ +[a-zA-Z0-9-]+:/ {
-            if (debug) print "non attribute line:" $0
+            if (debug) print "non attribute line:" $0 > "/dev/stderr"
             next
         }
         where=="in sources" && ( $0 ~ /^  } *\r?$/ || $0 ~ /{/ ) {
-            if (debug) print "{ or }:" $0
+            if (debug) print "{ or }:" $0 > "/dev/stderr"
             if (doprint) print
             next
         }
