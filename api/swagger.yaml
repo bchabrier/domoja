@@ -5,7 +5,7 @@ info:
     license:
         name: GPL-3.0
     title: domoja
-    version: 1.2.0
+    version: 1.3.1
 paths:
     /app:
         get:
@@ -97,7 +97,7 @@ paths:
             description: 'Get a snapshot from a camera device'
             parameters:
                 -
-                    description: "path of the device\rCached if ?t=NNNN is append"
+                    description: "path of the device\r\nCached if ?t=NNNN is append"
                     in: path
                     name: id
                     required: true
@@ -113,7 +113,7 @@ paths:
             description: 'Get a stream from a camera device'
             parameters:
                 -
-                    description: "path of the device\rCached if ?t=NNNN is append"
+                    description: "path of the device\r\nCached if ?t=NNNN is append"
                     in: path
                     name: id
                     required: true
