@@ -1,7 +1,7 @@
 {
   "name": "domoja-voice-google",
   "author": "Bruno Chabrier",
-  "version": "0.0.2",
+  "version": "1.4.1",
   "private": false,
   "license": "GPL-3.0",
   "description": "Allows Domoja to speak, thanks to Google",
