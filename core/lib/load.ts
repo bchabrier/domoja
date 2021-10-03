@@ -88,6 +88,11 @@ type user = {
 */
 
 function rewriteErrAndLog(err: Error, file: string, functionString: string) {
+    var logger = require('tracer').colorConsole({
+        dateformat: "dd/mm/yyyy HH:MM:ss.l",
+        level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
+    });
+
     if (err) {
         let location = /[ \(]vm.js:([0-9]+):([0-9]+)[ \)\n]/.exec(err.stack);
         if (location) {
