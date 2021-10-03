@@ -687,7 +687,7 @@ scenarios:
                 { date: "2021-09-16T07:54:42.252Z", value: "iPhone de Bruno" },
               ];
 
-              if (!res) callback(null);
+              if (!res) return callback(null);
 
               let tab = res.sort((a, b) => { 
                 const A = new Date(a.date).getTime();
@@ -2056,11 +2056,11 @@ scenarios:
 
       
               //const tab = res.filter(r => (new Date(r.date).getMonth()===8)&&(new Date(r.date).getDate()===15)).sort((a, b) => { 
-              const tab = res.sort((a, b) => { 
+              const tab = res && res.sort((a, b) => { 
                 const A = new Date(a.date).getTime();
                 const B = new Date(b.date).getTime();
                 return A > B ? 1 : A < B ? -1 : 0;
-              });
+              }) || [];
 
               debug && console.log("history:", tab);
 
