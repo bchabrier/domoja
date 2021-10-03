@@ -6,15 +6,17 @@
     "target": "es5",
     "module": "commonjs",
     //"allowJs": true,
+    //"esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "rootDir": ".",
-    "outDir": "./build",
+    "outDir": "./dist",
     "types": [
       // add node as an option
       "node"
    ],
 },
   "exclude" : [
-    "./build",
+    "./dist",
     "./node_modules",
     "./www",
     "./bower_components",
