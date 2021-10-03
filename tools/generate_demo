@@ -1,8 +1,8 @@
 #!/bin/sh
 
 DEBUG=false
-DEBUG_SECTION=sources
-DEBUG_FILE=sources.yml
+DEBUG_SECTION=scenarios
+DEBUG_FILE=zwave.yml
 
 SOURCES_CONFIG_DIR=`dirname $0`/../config
 DEMO_CONFIG=`dirname $0`/../config/demo.yml
@@ -109,7 +109,7 @@ EOF
         $DEBUG && [ "$DEBUG_SECTION" = "$section" ] && echo "Handling file $file..."
 
         # keep only a couple of things in debug mode to make sure we have some traces but not too many
-        grep -v 'debug: true' $file | sed -e 's/^\( *- sunset_plus_30mn: { type: variable,\)/\1 debug: true,/g' | awk '
+        sed -e 's/debug: true/debug: false/g' -e 's/^\( *- sunset_plus_30mn: { type: variable,\)/\1 debug: true,/g' $file | awk '
         BEGIN   {
             where="before imports"
             acceptedSources="astronomy tempo"
@@ -170,7 +170,7 @@ EOF
             if (doprint) print
             next
         }
-        where=="in sources" && $0 ~ /^ *- *+[a-zA-Z0-9-]+: *{/ {
+        where=="in sources" && $0 ~ /^ *- *+[a-zA-Z0-9-]+ *: *{/ {
             if (debug) print "source line:" $0 > "/dev/stderr"
             if (doprint) print
             next
