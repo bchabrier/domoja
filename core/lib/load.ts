@@ -87,11 +87,101 @@ type user = {
 }
 */
 
+function rewriteErrAndLog(err: Error, file: string, functionString: string) {
+    if (err) {
+        let location = /[ \(]vm.js:([0-9]+):([0-9]+)[ \)\n]/.exec(err.stack);
+        if (location) {
+            let linePos = parseInt(location[1]);
+            let charPos = parseInt(location[2]);
+            err.message = err.message + "\n\n" + errorContext(functionString + '\n', linePos, charPos);
+        }
+        logger.error(`In file '${file}': %s\n`, err.message, err.stack);
+    } else {
+        logger.error(`In file '${file}': ` + 'Error "null" raised while executing', functionString.substr(0, 128), new Error("here"));
+    }
+}
+
+
+
+function guard(sandbox: Sandbox) {
+
+    // insert errorContext
+    // insert rewriteErrAndLog
+
+    /**
+     * Wrap function catching all exceptions and reporting errors if run in a vm
+     * 
+     * @param f 
+     */
+    function guardFunctionForCallbacks(f: Function) {
+        return (...args: any[]) => {
+            let newargs: any[] = [];
+
+            args.forEach(arg => {
+                newargs.push(
+                    typeof arg === 'function' && !(arg as any).isVMProxy ?
+                        function guardedFunction(...args: any[]) {
+                            try {
+                                arg(...args);
+                            } catch (e) {
+                                rewriteErrAndLog(e, sandbox.scriptFile, sandbox.functionString);
+                            }
+                        } :
+                        arg);
+            });
+
+            return f(...newargs);
+        }
+    }
+
+    Object.keys(sandbox).forEach((k: keyof Sandbox) => {
+        const value = sandbox[k];
+        if (typeof value === 'function') {
+            //console.log('k=', k);
+            switch (k as string) {
+                case 'VMError':
+                case 'Buffer':
+                case 'console': // not a function, in fact
+                case 'require':
+                case 'assert':
+                case 'logger':
+                    break;
+                default:
+                    (sandbox as any)[k] = guardFunctionForCallbacks(value);
+            }
+        }
+    });
+
+    const args = sandbox["args"];
+
+    delete sandbox["args"];
+    delete sandbox["logger"];
+    delete sandbox["scriptFile"];
+    delete sandbox["scriptLine"];
+    delete sandbox["functionString"];
+
+    // code below is a mark to be replaced
+    return 198070496240524;
+}
+
 class ExternalFunction {
-    private script: any; //  instance of VMScript
+    private script: VMScript; //  instance of VMScript
     public fct: Function;
     constructor(public readonly file: string, public readonly line: number, private readonly functionString: string, private readonly sandbox: Sandbox) {
-        this.script = new VMScript("args.result = (" + this.functionString + ")(...args.args)");
+        this.script = new VMScript("args.result = (" + this.functionString + ")(args)");
+        this.script = new VMScript((''
+            + "args.result = ("
+            + guard.toString()
+                .replace('function ' + guard.name, 'function') // anonmyze function
+                .replace('// insert errorContext', errorContext.toString())
+                .replace('// insert rewriteErrAndLog', rewriteErrAndLog.toString())
+            + ")(this);"
+            //+ "console.log('sandbox after call:', Object.keys(this));"
+        )
+            .replace(/\/\/.*/g, '') // remove comments
+            .replace(/[\n|\r]/g, ' ') // put everything on a single line to make sure line numbers are correct
+            .replace('return 198070496240524;', `return (` + this.functionString + `).call(sandbox,...args.args);`) // make call to our function
+        );
         try {
             this.script.compile();
         } catch (err) {
@@ -102,11 +192,11 @@ class ExternalFunction {
 
         function overridden(console_log_function: (...args: any[]) => void): (...args: any[]) => void {
             return (...args: any[]) => {
-                // stack in the form:
+                // stack in the form  (with function)
                 // Error:
                 //      at Console.self.sandbox.console.log.args [as log] (/home/pi/domoja/core/lib/load.ts:117:45)
                 //      at Object.base.apply (/home/pi/domoja/core/node_modules/vm2/lib/contextify.js:620:32)
-                //      at f (vm.js:4:21)
+                // =>   at f (vm.js:4:21)
                 //      at vm.js:329:13
                 //      at Script.runInContext (vm.js:133:20)
                 //      at VM.run (/home/pi/domoja/core/node_modules/vm2/lib/main.js:843:53)
@@ -115,12 +205,36 @@ class ExternalFunction {
                 //      at /home/pi/domoja/core/lib/load_scenarios.ts:264:20
                 //      at /home/pi/domoja/core/node_modules/async/dist/async.js:2154:44
 
-                let [atfunction, vm, lineInFunction, char] = (new Error).stack.split('\n')[3].split(/[\():]/);
+                // other example (unknown function):
+                // stack: Error:
+                //      at Console.log (/home/pi/domoja/core/lib/load.ts:81:37)
+                //      at Object.base.apply (/home/pi/domoja/core/node_modules/vm2/lib/contextify.js:620:32)
+                // =>   at vm.js:8:23
+                //      at Object.base.apply (/home/pi/domoja/core/node_modules/vm2/lib/contextify.js:228:34)
+                //      at /home/pi/domoja/core/lib/load.ts:1512:17
+                //      at /home/pi/domoja/core/persistence/persistence.ts:222:17
+                //      at /home/pi/domoja/core/node_modules/mongodb/lib/utils.js:677:5
+                //      at handleCallback (/home/pi/domoja/core/node_modules/mongodb/lib/utils.js:102:55)
+                //      at /home/pi/domoja/core/node_modules/mongodb/lib/cursor.js:838:66
+                //      at /home/pi/domoja/core/node_modules/mongodb/lib/utils.js:677:5
+
+
+                let [atfunction, vm, lineInFunction, char] = (new Error).stack.split('\n')[3].split(/[\():]/); // with function
+                if (!char) [atfunction, lineInFunction, char] = (new Error).stack.split('\n')[3].split(':'); // with function
+                atfunction = atfunction.replace(/^ *at /, "").replace(' ', '').replace('vm.js', '');
+
                 let newargs: any[] = [];
                 newargs.push("%s" + args[0]);
-                newargs.push(file + ":" + (line + parseInt(lineInFunction) - 1) + " (" + atfunction.replace(/^ *at ([^ ]+) *$/, "$1") + ") ");
+                newargs.push(file + ":" + (line + parseInt(lineInFunction) - 1) + " (" + atfunction + ") ");
                 newargs = newargs.concat(args.slice(1));
-                console_log_function(...newargs);
+                //console_log_function(...newargs);
+                // because of issue https://github.com/patriksimek/vm2/issues/306, we apply the followig workaround:
+                // - create the VM before each run
+                // - create a new console with a new WriteStream for each call to console.log
+                let stream = new WriteStream(1);
+                let cons = new Console(stream);     // workaround
+                (cons as any)[console_log_function.name](...newargs);
+                stream.destroy();
             }
         }
 
@@ -132,6 +246,8 @@ class ExternalFunction {
             // - create in the sandbox a new console with a new WriteStream for each sandbox
             let stream = new WriteStream(1);
             self.sandbox.console = new Console(stream);     // workaround
+            // the above is not sufficient and doesn't work when console.log is called from a callback
+            // hence we will also recreate a console before each console.log call
             self.sandbox.console.log = overridden(self.sandbox.console.log);
             self.sandbox.console.error = overridden(self.sandbox.console.error);
             self.sandbox.console.warn = overridden(self.sandbox.console.warn);
@@ -141,6 +257,7 @@ class ExternalFunction {
 
             self.sandbox.scriptFile = file;
             self.sandbox.scriptLine = line;
+            self.sandbox.functionString = functionString;
 
             //if (true || !self.vm) {                                     // workaround
             const timeout = 2000;
@@ -168,17 +285,7 @@ class ExternalFunction {
 
                 // find the error location
                 logger.warn('=======> err:', err, 'functionString:', self.functionString, 'script:', self.script);
-                if (err) {
-                    let location = /at .*\(vm.js:([0-9]+):([0-9]+)\)/.exec(err.stack);
-                    if (location) {
-                        let linePos = parseInt(location[1]);
-                        let charPos = parseInt(location[2]);
-                        err.message = err.message + "\n\n" + errorContext(self.functionString + '\n', linePos, charPos);
-                    }
-                    logger.error(`In file '${file}': %s\n`, err.message, err.stack);
-                } else {
-                    logger.error(`In file '${file}': ` + 'Error "null" raised while executing', self.functionString.substr(0, 128), new Error("here"));
-                }
+                rewriteErrAndLog(err, file, self.functionString);
 
                 // call the callback if any
                 let lastArg = args && args.length && args[args.length - 1];
@@ -220,13 +327,16 @@ export type Sandbox = {
     getDeviceState: typeof getDeviceState,
     getDevicePreviousState: typeof getDevicePreviousState,
     getDeviceLastUpdateDate: typeof getDeviceLastUpdateDate,
+    getDeviceStateHistory: typeof getDeviceStateHistory,
+    logger: typeof logger,
     msg: {
         emitter: string,
         oldValue: string,
         newValue: string
     },
     scriptFile: string,
-    scriptLine: number
+    scriptLine: number,
+    functionString: string,
 };
 
 type Section = 'ALL' | 'IMPORTS' | 'SOURCES' | 'DEVICES' | 'SCENARIOS' | 'PAGES' | 'USERS';
@@ -263,10 +373,13 @@ export class ConfigLoader extends events.EventEmitter {
         getDeviceState: getDeviceState,
         getDevicePreviousState: getDevicePreviousState,
         getDeviceLastUpdateDate: getDeviceLastUpdateDate,
+        getDeviceStateHistory: getDeviceStateHistory,
+        logger: logger,
         msg: <{ emitter: string, oldValue: string, newValue: string }>new Object(), // new Object needed to access outside of the sandbox
         args: <{ args: any[], result: any }>new Object(), // new Object needed to access outside of the sandbox
         scriptFile: '',
-        scriptLine: undefined
+        scriptLine: undefined,
+        functionString: '',
     }
 
 
@@ -613,7 +726,7 @@ function errorContext(body: string, linePos: number, charPos: number): string {
         return res;
     }
 
-    return body.replace(regexp, "$2") + repeat(" ", charPos - 1) + "^";
+    return regexp.exec(body)[2] + repeat(" ", charPos - 1) + "^";
 }
 
 import assert = require('assert');
@@ -1762,13 +1875,30 @@ function getDeviceLastUpdateDate(path: string): Date {
     return device && device.lastUpdateDate;
 }
 
+function getDeviceStateHistory(path: string, aggregate: "none" | "minute" | "hour" | "day" | "month" | "year", fromDate: Date, toDate: Date, callback: (err: Error, res?: string[]) => void): void {
+    let device = getDevice(path);
+    if (!device) callback(new Error(`Unknown device "${path}"`));
+    else {
+        device.persistence.getHistory(aggregate, fromDate, toDate, (err, results) => {
+            if (err) {
+                logger.error(err);
+                callback(err);
+            } else {
+                callback(null, results);
+            }
+        });
+    }
+}
+
 function getPath<T>(list: { [path: string]: T }, shortPath: string): string {
     logger.debug('Looking for short path %s', shortPath);
-    var len = shortPath.length + 1;
-    for (var path in list) {
-        if (path.substr(path.length - len) == '.' + shortPath) {
-            logger.debug('Found path %s for %s', path, shortPath);
-            return path;
+    if (shortPath) {
+        var len = shortPath.length + 1;
+        for (var path in list) {
+            if (path.substr(path.length - len) == '.' + shortPath) {
+                logger.debug('Found path %s for %s', path, shortPath);
+                return path;
+            }
         }
     }
     return undefined;
