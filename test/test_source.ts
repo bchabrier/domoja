@@ -48,15 +48,15 @@ describe('Module sources', function () {
       it('should release the object', function () {
         let source: Source = derivedSource.prototype.createInstance(null, null, null);
         assert(source);
-        assert.deepStrictEqual(source['devicesByPath'], {});
-        assert.deepStrictEqual(source['devicesByAttribute'], {});
+        assert.deepStrictEqual(source['devicesByPath'], {}, "devicesByPath should be empty");
+        assert.deepStrictEqual(source['devicesByAttribute'], {}, "devicesByAttribute should be empty");
         source.release();
-        assert.deepStrictEqual(source['devicesByPath'], null);
-        assert.deepStrictEqual(source['devicesByAttribute'], null);
+        assert.deepStrictEqual(source['devicesByPath'], null, "devicesByPath should be null");
+        assert.deepStrictEqual(source['devicesByAttribute'], null, "devicesByAttribute should be null");
         Object.keys(source).forEach(element => {
           if ((source as any)[element] != null) {
-            if (typeof ((source as any)[element]) == 'object') console.error((source as any)[element]);
-            assert.notStrictEqual(typeof ((source as any)[element]), 'object');
+            if (typeof ((source as any)[element]) == 'object') console.error(`Element "${element}" should not be an object:`, (source as any)[element]);
+            assert.notStrictEqual(typeof ((source as any)[element]), 'object', `Element "${element}" of source should not be an object after releasing the source."`);
           }
         });
       });
