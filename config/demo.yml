@@ -48,6 +48,7 @@ sources:
       type: astronomy,
       location: "06030"
   }
+  - ESPCommands : {
       type: demo
   }
   - ESPs: {
@@ -210,6 +211,7 @@ devices:
 
   - piscine:
      - controle : { type: variable, widget: "multistate:AUTO,ON,OFF:primary,secondary,danger", tags: 'piscine-page', name: "Programmation filtration"} 
+     - filtration: { type: device, debug: false, widget: toggle, tags: 'piscine-page', source: ESPCommands, id: "04a87b:5", 
         transform: "0=>OFF,1=>ON,OFF=>0,ON=>1",
         persistence: "mongo:piscine_ON_OFF:0:raw",
         name: "Filtration piscine" }
@@ -795,6 +797,7 @@ scenarios:
         actions:
           - { device: home.couleur-telephone, state: this.getDeviceState("home.appel-en-cours")==""?"lightgrey":"#ef473a"}
     - appel-en-cours:
+        debug: false
         triggers:
           - state: home.appel-en-cours
           - at: startup
@@ -1609,6 +1612,7 @@ scenarios:
             }
           }' 
     - filtration-offline:
+        debug: false
         triggers:
           - state: piscine.filtration-status
         conditions:
@@ -1621,6 +1625,7 @@ scenarios:
         else:
           - { scenario: piscine.warn-if-filtration-really-offline, action: stop } 
     - filtration-back-online:
+        debug: false
         triggers:
           - state: piscine.filtration-status
         conditions:
@@ -2505,57 +2510,58 @@ scenarios:
 
           this.setDeviceState("say-volatile", text, callback);
       }'
-    - inclusion:
-        triggers:
-          - state: zwave.controller
-        conditions:
-          - {operator: "=", left: this.msg.newValue, right: "INCLUSION"}
-          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue }
-        actions:
-          - { device: say-volatile, state: "Mode inclusion activé" }
-    - inclusion-non-secure:
-        triggers:
-          - state: zwave.controller
-        conditions:
-          - {operator: "=", left: this.msg.newValue, right: "INCLUSION_NON_SECURE"}
-          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue }
-        actions:
-          - { device: say-volatile, state: "Mode inclusion non sécurisé activé" }
-    - exclusion:
-        triggers:
-          - state: zwave.controller
-        conditions:
-          - {operator: "=", left: this.msg.newValue, right: "EXCLUSION"}
-          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
-        actions:
-          - { device: say-volatile, state: "Mode exclusion activé" }
-    - no-inclusion:
-        triggers:
-          - state: zwave.controller
-        conditions:
-          - {operator: "=", left: this.msg.newValue, right: "NO_INCLUSION_EXCLUSION"}
-          - {operator: "=", left: this.msg.oldValue, right: "INCLUSION"}
-          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
-        actions:
-          - { device: say-volatile, state: "Mode inclusion désactivé" }
-    - no-inclusion-non-secure:
-        triggers:
-          - state: zwave.controller
-        conditions:
-          - {operator: "=", left: this.msg.newValue, right: "NO_INCLUSION_EXCLUSION"}
-          - {operator: "=", left: this.msg.oldValue, right: "INCLUSION_NON_SECURE"}
-          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
-        actions:
-          - { device: say-volatile, state: "Mode inclusion non sécurisé désactivé" }
-    - no-exclusion:
-        triggers:
-          - state: zwave.controller
-        conditions:
-          - {operator: "=", left: this.msg.newValue, right: "NO_INCLUSION_EXCLUSION"}
-          - {operator: "=", left: this.msg.oldValue, right: "EXCLUSION"}
-          - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
-        actions:
-          - { device: say-volatile, state: "Mode exclusion désactivé" }
+  - inclusion:
+      debug: false
+      triggers:
+        - state: zwave.controller
+      conditions:
+        - {operator: "=", left: this.msg.newValue, right: "INCLUSION"}
+        - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue }
+      actions:
+        - { device: say-volatile, state: "Mode inclusion activé" }
+  - inclusion-non-secure:
+      triggers:
+        - state: zwave.controller
+      conditions:
+        - {operator: "=", left: this.msg.newValue, right: "INCLUSION_NON_SECURE"}
+        - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue }
+      actions:
+        - { device: say-volatile, state: "Mode inclusion non sécurisé activé" }
+  - exclusion:
+      triggers:
+        - state: zwave.controller
+      conditions:
+        - {operator: "=", left: this.msg.newValue, right: "EXCLUSION"}
+        - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
+      actions:
+        - { device: say-volatile, state: "Mode exclusion activé" }
+  - no-inclusion:
+      triggers:
+        - state: zwave.controller
+      conditions:
+        - {operator: "=", left: this.msg.newValue, right: "NO_INCLUSION_EXCLUSION"}
+        - {operator: "=", left: this.msg.oldValue, right: "INCLUSION"}
+        - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
+      actions:
+        - { device: say-volatile, state: "Mode inclusion désactivé" }
+  - no-inclusion-non-secure:
+      triggers:
+        - state: zwave.controller
+      conditions:
+        - {operator: "=", left: this.msg.newValue, right: "NO_INCLUSION_EXCLUSION"}
+        - {operator: "=", left: this.msg.oldValue, right: "INCLUSION_NON_SECURE"}
+        - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
+      actions:
+        - { device: say-volatile, state: "Mode inclusion non sécurisé désactivé" }
+  - no-exclusion:
+      triggers:
+        - state: zwave.controller
+      conditions:
+        - {operator: "=", left: this.msg.newValue, right: "NO_INCLUSION_EXCLUSION"}
+        - {operator: "=", left: this.msg.oldValue, right: "EXCLUSION"}
+        - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
+      actions:
+        - { device: say-volatile, state: "Mode exclusion désactivé" }
 
 pages:
   - Home:
