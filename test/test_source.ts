@@ -54,7 +54,7 @@ describe('Module sources', function () {
         assert.deepStrictEqual(source['devicesByPath'], null, "devicesByPath should be null");
         assert.deepStrictEqual(source['devicesByAttribute'], null, "devicesByAttribute should be null");
         Object.keys(source).forEach(element => {
-          if ((source as any)[element] != null) {
+          if (!["tracer", "logger", "debugModeLogger"].includes(element) && (source as any)[element] != null) {
             if (typeof ((source as any)[element]) == 'object') console.error(`Element "${element}" should not be an object:`, (source as any)[element]);
             assert.notStrictEqual(typeof ((source as any)[element]), 'object', `Element "${element}" of source should not be an object after releasing the source."`);
           }

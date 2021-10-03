@@ -98,10 +98,6 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         this.eventEmitter = null;
 
         this.discoveredDevices = null;
-
-        this.tracer = null;
-        this.debugModeLogger = null;
-        this.logger = null;
     }
 
     setDebugMode(debug: boolean) {
