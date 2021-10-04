@@ -26,6 +26,10 @@ describe('Module tempo', function () {
 
     describe('#Update', function () {
       it('should update without error', function (done) {
+        if (process.env.GITHUB_ACTIONS === "true") {
+          this.skip();
+        }
+
         let idTab: string[] = [];
         let a = new tempo('Path');
         let origUpdateAttribute = a.updateAttribute;
@@ -34,7 +38,7 @@ describe('Module tempo', function () {
           if (idTab.indexOf(id) == -1) idTab.push(id);
           assert.equal(attribute, "state");
           if (id == "couleurDuJour") {
-            assert.notEqual([ 'Bleu', 'Blanc', 'Rouge'].indexOf(value), -1, 'Expected value: Bleu | Rouge | Blanc');
+            assert.notEqual(['Bleu', 'Blanc', 'Rouge'].indexOf(value), -1, 'Expected value: Bleu | Rouge | Blanc');
           }
         }
         a.Update((err) => {
@@ -45,7 +49,10 @@ describe('Module tempo', function () {
         });
       });
       it('should provide undetermined colors if in the future', function (done) {
-        let clock = sinon.useFakeTimers(Date.now() + 10 * 24 * 60 * 60 * 1000 ); // now + 10 days
+        if (process.env.GITHUB_ACTIONS === "true") {
+          this.skip();
+        }
+        let clock = sinon.useFakeTimers(Date.now() + 10 * 24 * 60 * 60 * 1000); // now + 10 days
         let idTab: string[] = [];
         let a = new tempo('Path');
         let origUpdateAttribute = a.updateAttribute;
