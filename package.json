@@ -81,6 +81,7 @@
     "watch": ": watch running domoja in demo mode; handler() { kill $PID; exit; } ; trap handler INT; while true; do npm run start$TARGET & PID=$!; inotifywait -q -e modify -e move -e create -e delete -r . @node_modules --exclude 'test|sessions|\\.git|.*\\.yml|bin|www|\\.\\#.*|.*~'; killchildren() { for p in $*; do CIDs=$(pgrep -P $p); [ -z $CIDs ] || (killchildren $CIDs; kill $p); done; }; killchildren $PID; done",
     "watch:config": ": watch running domoja; TARGET=:config npm --scripts-prepend-node-path=auto run watch",
     "report": ": generate coverage report; c8 report",
+    "prepare:report": ": generate coverage report; c8 report --reporter=lcovonly",
     "coverage": ": publish coverage report to coveralls; c8 report --reporter=text-lcov | coveralls",
     "swagger:force": ": run swagger generation - requires typescript-rest-swagger; swaggerGen -c ./swaggerConfig.json",
     "swagger": ": run swagger generation if needed; for f in api/*.ts; do [ ! -f api/swagger.json ] || [ $f -nt api/swagger.json ] && ( npm --scripts-prepend-node-path=auto run swagger:force; break ); done; exit 0",
