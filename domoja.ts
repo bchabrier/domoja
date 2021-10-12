@@ -7,7 +7,6 @@ var logger = require("tracer").colorConsole({
   level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
-import * as core from 'domoja-core';
 import { DomojaServer, checkRoute } from './server';
 
 import * as http from 'http';

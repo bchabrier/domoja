@@ -6,12 +6,17 @@
     "target": "es2017",
     "module": "commonjs",
     //"allowJs": true,
+    "sourceMap": true,
     "rootDir": ".",
+    "declaration": true,
     "outDir": "./dist",
     "types": [
       // add node as an option
       "node"
    ],
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
 },
   "exclude" : [
     "./test",

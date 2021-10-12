@@ -3,17 +3,20 @@
 {
   "compilerOptions": {
     "noImplicitAny": true,
-    "target": "es5",
+    "target": "es2017",
     "module": "commonjs",
     //"allowJs": true,
-    //"esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
+    "sourceMap": true,
+    "declaration": true,
     "rootDir": ".",
     "outDir": "./dist",
     "types": [
       // add node as an option
       "node"
    ],
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
 },
   "exclude" : [
     "./dist",

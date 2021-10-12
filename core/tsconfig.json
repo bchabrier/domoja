@@ -1,24 +1,25 @@
 // tsconfig.json
-
 {
   "compilerOptions": {
     "noImplicitAny": true,
     "target": "es2017",
     "module": "commonjs",
     //"allowJs": true,
+    "sourceMap": true,
     "rootDir": ".",
+    "declaration": true,
     "outDir": "./dist",
     "types": [
       // add node as an option
       "node"
-   ],
-   "experimentalDecorators": true,
-   "emitDecoratorMetadata": true
-},
-  "exclude" : [
+    ],
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
+  "exclude": [
     "./devices/lightTimer.ts",
     "./devices/remote.ts",
-
     "./test",
     "./dist",
     "./build",
