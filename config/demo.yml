@@ -2115,13 +2115,15 @@ scenarios:
                 }
                 if (item.value === "OFF" && prev_OFF === -1) {
                   prev_OFF = pos;
-                  items.push({
-                    start: ary[prev_ON].date,
-                    end: ary[prev_OFF].date,
-                    content: "ON",
-                    style: "overflow:hidden;",
-                    id: pos
-                  });
+                  if (prev_ON != -1) {
+                    items.push({
+                      start: ary[prev_ON].date,
+                      end: ary[prev_OFF].date,
+                      content: "ON",
+                      style: "overflow:hidden;",
+                      id: pos
+                    });
+                  }
                   prev_ON = -1;
                 }
               });
