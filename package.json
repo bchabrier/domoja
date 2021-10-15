@@ -93,6 +93,7 @@
   },
   "files": [
     "dist/**/*",
+    "bin/domoja_server",
     "api/swagger.json",
     "api/swagger.yaml",
     "www/**/*"
