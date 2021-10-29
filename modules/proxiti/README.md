@@ -6,43 +6,33 @@
 
 [//]: # (badges END)
 
+
 [//]: # (moduleName START)
-domoja-voice-google
-===================
+domoja-proxiti
+==============
 [//]: # (moduleName END)
 
-Connect a Freebox to Domoja.
+[//]: # (sourceDoc START)
+This source provides astronomy information from http://www.proxiti.info/horaires_soleil.php?o=06030
 
-# Usage
+This includes sunset, sunrise, dawn, dusk, zenith times, and day duration, at a specific location.
 
+Parameters:
+- location: the code corresponding to your location. Use https://www.proxiti.info/index.php to find it.
+
+Example:
 ```
-imports:
-  - module: voice-google
-    source: VoiceByGoogle
-
 sources:
-  - voice: {
-      type: VoiceByGoogle,
-      language: en,
-      volume: 100
+  - astronomy: {
+    type: astronomy,
+    location: "06030"
   }
 
-
 devices:
-  - say : { type: device, widget: text, source: voice, id: unused, name: "Message parlé"} 
-
-scenarios:
-  - greetings:
-      - init:
-        triggers:
-          - at: startup
-        actions:
-          - {device: say, state: "Hi, starting Domoja" }
-
+  - sunset: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunsetTime, name: "Coucher du soleil" }
 ```
 
-
-
+[//]: # (sourceDoc END)
 
 
 

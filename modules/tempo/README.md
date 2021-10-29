@@ -6,43 +6,27 @@
 
 [//]: # (badges END)
 
+
 [//]: # (moduleName START)
-domoja-voice-google
-===================
+domoja-tempo
+============
 [//]: # (moduleName END)
 
-Connect a Freebox to Domoja.
+[//]: # (sourceDoc START)
+Cette source récupère les informations de couleur de période auprès de l'EDF, pour le jour courant et le lendemain.
 
-# Usage
-
+Exemple:
 ```
-imports:
-  - module: voice-google
-    source: VoiceByGoogle
-
 sources:
-  - voice: {
-      type: VoiceByGoogle,
-      language: en,
-      volume: 100
-  }
-
-
+  - tempo: { type: tempo }
+ 
 devices:
-  - say : { type: device, widget: text, source: voice, id: unused, name: "Message parlé"} 
-
-scenarios:
-  - greetings:
-      - init:
-        triggers:
-          - at: startup
-        actions:
-          - {device: say, state: "Hi, starting Domoja" }
-
+  - tempo:
+  - couleur_du_jour : { type: device, widget: tempo-color, tags: 'tempo', source: tempo, id: couleurDuJour, name: "Couleur du jour" }
+  - couleur_de_demain : { type: device, widget: tempo-color, tags: 'tempo', source: tempo, id: couleurDeDemain, name: "Couleur de demain" }
 ```
 
-
-
+[//]: # (sourceDoc END)
 
 
 

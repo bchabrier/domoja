@@ -5,6 +5,14 @@ var logger = require("tracer").colorConsole({
 	level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
+/**
+ * A source derives from the `Source` class and implements the following methods:
+ * - `createInstance`: create an instance of the source, taking into account the requested configuration
+ * - `getParameters`: describes the parameters supported by the source
+ * - `doSetAttribute`: implements a requested change of value of an attribute of a device managed by the source
+ * - `release`: releases a source to free any used resource
+ * - `registerDeviceTypes`: a static method to declare which device types are supported by the source
+ */
 export class Sample extends Source {
 	
 	constructor(path: string, ipAddr: string, deviceId: string, token: string, callback?: (err: Error) => void) {

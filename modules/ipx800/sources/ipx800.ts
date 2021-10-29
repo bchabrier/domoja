@@ -10,7 +10,21 @@ var logger = require("tracer").colorConsole({
 });
 
 
-
+/**
+ * This source connects to IPX800 devices from GCE Electronics.
+ * 
+ * Example:
+ * ```
+ * sources:
+ * - myIPX800: {
+ *     type: IPX800,
+ *     ip: 192.168.0.17,
+ *     macaddress: 00:04:A3:2D:68:E6,
+ *     update_url: /ipx800/update,
+ *     timeout: 60
+ * }
+ * ```
+ */
 export class IPX800 extends Source {
 
 	static ipxTab: IPX800[] = []

@@ -6,43 +6,20 @@
 
 [//]: # (badges END)
 
+
 [//]: # (moduleName START)
-domoja-voice-google
-===================
+domoja-zibase
+=============
 [//]: # (moduleName END)
 
-Connect a Freebox to Domoja.
 
-# Usage
+[//]: # (sourceDoc START)
+This source connects to a Zibase device.
 
-```
-imports:
-  - module: voice-google
-    source: VoiceByGoogle
-
-sources:
-  - voice: {
-      type: VoiceByGoogle,
-      language: en,
-      volume: 100
-  }
+Not used anymore as Zodianet company is now dead for years...
 
 
-devices:
-  - say : { type: device, widget: text, source: voice, id: unused, name: "Message parlé"} 
-
-scenarios:
-  - greetings:
-      - init:
-        triggers:
-          - at: startup
-        actions:
-          - {device: say, state: "Hi, starting Domoja" }
-
-```
-
-
-
+[//]: # (sourceDoc END)
 
 
 

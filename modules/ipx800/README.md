@@ -6,43 +6,28 @@
 
 [//]: # (badges END)
 
+
 [//]: # (moduleName START)
-domoja-voice-google
-===================
+domoja-ipx800
+=============
 [//]: # (moduleName END)
 
-Connect a Freebox to Domoja.
+[//]: # (sourceDoc START)
+This source connects to IPX800 devices from GCE Electronics.
 
-# Usage
-
+Example:
 ```
-imports:
-  - module: voice-google
-    source: VoiceByGoogle
-
 sources:
-  - voice: {
-      type: VoiceByGoogle,
-      language: en,
-      volume: 100
-  }
-
-
-devices:
-  - say : { type: device, widget: text, source: voice, id: unused, name: "Message parlé"} 
-
-scenarios:
-  - greetings:
-      - init:
-        triggers:
-          - at: startup
-        actions:
-          - {device: say, state: "Hi, starting Domoja" }
-
+- myIPX800: {
+    type: IPX800,
+    ip: 192.168.0.17,
+    macaddress: 00:04:A3:2D:68:E6,
+    update_url: /ipx800/update,
+    timeout: 60
+}
 ```
 
-
-
+[//]: # (sourceDoc END)
 
 
 

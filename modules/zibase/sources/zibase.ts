@@ -9,6 +9,12 @@ var logger = require("tracer").colorConsole({
 	level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
+/**
+ * This source connects to a Zibase device.
+ * 
+ * Not used anymore as Zodianet company is now dead for years...
+ * 
+ */
 export class Zibase extends Source {
 	zibase: ZiBase;
 	private initialEmitEvent: (event: string, arg1: any, arg2: any) => void;
