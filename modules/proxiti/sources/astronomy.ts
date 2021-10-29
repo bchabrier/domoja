@@ -25,6 +25,26 @@ const SOLEIL_AU_ZENITH = 5;
 const DEBUT_DE_L_AUBE = 6;
 const FIN_DU_CREPUSCULE = 7;
 
+/**
+ * This source provides astronomy information from http://www.proxiti.info/horaires_soleil.php?o=06030
+ * 
+ * This includes sunset, sunrise, dawn, dusk, zenith times, and day duration, at a specific location.
+ * 
+ * Parameters:
+ * - location: the code corresponding to your location. Use https://www.proxiti.info/index.php to find it.
+ * 
+ * Example:
+ * ```
+ * sources:
+ *   - astronomy: {
+ *     type: astronomy,
+ *     location: "06030"
+ *   }
+ * 
+ * devices:
+ *   - sunset: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunsetTime, name: "Coucher du soleil" }
+ * ```
+ */
 export class astronomy extends Source {
 	job: any;
 	request: request.Request;

@@ -42,6 +42,51 @@ Domoja collects information from and interacts with devices through sources. You
 
 ### Sources
 
+A source provides information about, and allows controlling a certain set of devices.
+
+To use a source, it is necessary to load its type in Domoja. Some source types are predefined in Domoja, some others can be add by extension modules:
+```
+$ yarn add domoja-<source-module>
+```
+
+Once loaded in Domoja, the module providing the source type needs to be imported in the configuration before a source of this type can be declared and then referenced by a device.
+
+The example below shows how to create the source `myAstronomy` of type `astronomy` from the module `proxity`, to get the sunrise time:
+```
+$ yarn add domoja-proxity
+```
+```
+imports:
+  - module: proxiti
+    source: astronomy
+
+sources:
+  - myAstronomy: {
+      type: astronomy,
+      location: "06030"
+  }
+
+devices:
+  - sunrise: { type: device, widget: text, tags: 'astronomyTag', source: myAstronomy, id: sunriseTime, name: "Lever du soleil" }
+
+```
+
+[//]: # (sourcesList START)
+
+Source type | Module | Description
+----------- | ------ | -----------
+astronomy | [proxiti](https://www.npmjs.com/package/domoja-proxiti) | This source provides astronomy information from http://www.proxiti.info/horaires_soleil.php?o=???<br>This includes sunset, sunrise, dawn, dusk, zenith times, and day duration, at a specific location.<br>Parameters:<ul><li> location: the code corresponding to your location. Use https://www.proxiti.info/index.php to find it.</li><br></ul>Example:<pre><code>sources:</code><br><code>  - astronomy: {</code><br><code>    type: astronomy,</code><br><code>    location: "06030"</code><br><code>  }</code><br><code><br>devices:</code><br><code>  - sunset: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunsetTime, name: "Coucher du soleil" }</code><br><code></code></pre>
+command | core/sources/command | Source implemented with shell commands:<ul><li> parameters define the shell commands to execute when a device takes a given value</li>  Example with parameters `ON` and `OFF` :<pre><code>- sources:</code><br><code>  - robonect-command: {</code><br><code>    type: command,</code><br><code>    ON: "AUTH=\$(grep robonectBasicAuth config/secrets.yml \| sed -e 's!^ *[^:][^:]*: *!!' -e 's/[\\r\\n]//g'); curl 'http://192.168.0.16/xml?cmd=start' -s -u \$AUTH", </code><br><code>    OFF: "AUTH=\$(grep robonectBasicAuth config/secrets.yml \| sed -e 's!^ *[^:][^:]*: *!!' -e 's/[\\r\\n]//g'); curl 'http://192.168.0.16/xml?cmd=stop' -s -u \$AUTH"</code><br><code>  }</code><br><code></code></pre><li> the optional parameter `pushupdates` is a shell command executed once as a daemon at the creation of the source</li><ul><li>   it allows to emit changes of device state values                      </li><li>   it shoud produce stdout output in the form `{"id": "<device_id>", "attribute": "<attribute>", "value": "<value>"}`, e.g. `{"id": "temp", "attribute": "state", "value": "10 °C"}`</li><li>   the daemon will be killed when the source is released, but to avoid zombie processes to be created, it is good to guard a loop by checking the parent process, for example:</li><pre><code>while [ \$(ps -o ppid= \$\$) != 1 ]; do <commands>; sleep 60; done</code><br><code></code></pre><li>   available variables are:</li><ul><li>     ID: id of the device using the source</li><li>     SOURCE: the path of the source</li><li>     DEBUG: debug mode of the source ('0'\|'1') </li><br></ul></ul></ul>Example: <pre><code>sources:</code><br><code>- disk-usage: {</code><br><code>  type: command,</code><br><code>  push-updates:  "</code><br><code>    while [ \$(ps -o ppid= \$\$) != 1 ]</code><br><code>    do </code><br><code>      df -k \| awk '{</code><br><code>          mount=\$6</code><br><code>          percent=\$5</code><br><code>          str=\\"{ \\\\\\"id\\\\\\": \\\\\\"\\"mount\\"\\\\\\", \\\\\\"attribute\\\\\\": \\\\\\"state\\\\\\", \\\\\\"value\\\\\\": \\\\\\"\\"percent\\"\\\\\\"}\\"</code><br><code>          if ('\$DEBUG') print str > \\"/dev/stderr\\" # debug</code><br><code>          print str</code><br><code>      }'</code><br><code>      sleep 60</code><br><code>    done</code><br><code>  "</code><br><code>}</code><br><code></code></pre>
+Freebox | [freebox](https://www.npmjs.com/package/domoja-freebox) | 
+IPX800 | [ipx800](https://www.npmjs.com/package/domoja-ipx800) | 
+Mqtt | [mqtt](https://www.npmjs.com/package/domoja-mqtt) | 
+Openzwave | [openzwave](https://www.npmjs.com/package/domoja-openzwave) | 
+Sample | [sample](https://www.npmjs.com/package/domoja-sample) | 
+tempo | [tempo](https://www.npmjs.com/package/domoja-tempo) | 
+VoiceByGoogle | [voice-google](https://www.npmjs.com/package/domoja-voice-google) | 
+Zibase | [zibase](https://www.npmjs.com/package/domoja-zibase) | 
+
+[//]: # (sourcesList END)
 
 ### Devices
 

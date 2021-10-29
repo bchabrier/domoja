@@ -39,10 +39,172 @@ CLEANUP()
     mv $tmpreadme.FULL $readme
 }
 
+# extract from $1 the comments preceeding the line specified with regex or string $2
+# - the comment signs (/* etc) are removed
+# - the lines are cleaned (removing trailing \r, backslashing \\s etc)
+extract_doc()
+{
+    local file="$1"
+    local linespec="$2"
+    awk '
+        BEGIN { 
+            debug=0
+            incomment=0
+            comment=""
+        }
+        { 
+            gsub(/\r$/,"") 
+        }
+        /^\/\*\*/ { 
+            if (debug==1) print "start comment" > "/dev/stderr"
+            incomment=1
+            next
+        }
+        incomment==1 && /^ \*\// { 
+            if (debug==1) print "end comment" > "/dev/stderr"
+            incomment=0
+            line=NR
+            next
+        }
+        incomment==1 && /^ \* / { 
+            gsub(/^ \* /,"")
+            if (debug==1) print "cleaning $0:", $0 > "/dev/stderr"
+            comment=comment==""?$0:comment"\n"$0
+        }
+        incomment==0 && NR==line+1 && '"$linespec"' { 
+            print comment
+            exit 
+        }
+    ' "$file"
+}
+
+# filter that translates md description into md/html that can fit into a md table
+# (mainly handles blockquotes(```) and lists(-))
+md2htmlmd()
+{
+    awk '
+        BEGIN { 
+            debug=0
+            blockquote=0
+            indent=0
+            indents[indent]=0
+            string=""
+        }
+        /^ *$/ {  # empty line
+            if (debug==1) print "empty line" > "/dev/stderr"
+            string=string"<br>"
+            next
+        }
+        blockquote==0 && /```/ { 
+            if (debug==1) print "start blockquote" > "/dev/stderr"
+            blockquote=1
+            blockquoteindent=index($0, "`")
+            string=string"<pre><code>"
+            next
+        }
+        blockquote==1 && /```/ { 
+            if (debug==1) print "end blockquote" > "/dev/stderr"
+            blockquote=0
+            blockquoteindent=""
+            string=string"</code></pre>"
+            next
+        }
+        blockquote==0 && /^ *- / {  # list
+            if (debug==1) print "list:", $0 > "/dev/stderr"
+            newindent=index($0, "-")
+            gsub(/-/,"")
+            if (debug==1) print "newindent="newindent, "previndent="indents[indent] > "/dev/stderr"
+            if (newindent > indents[indent]) {
+                if (debug==1) print "start list" > "/dev/stderr"
+                indent++
+                indents[indent]=newindent
+                string=string"<ul><li>"$0"</li>"
+            } else if (newindent < indents[indent]) {
+                while (newindent < indents[indent]) {
+                    if (debug==1) print "end list" > "/dev/stderr"
+                    indent--
+                    string=string"</ul>"
+                }
+                comment=comment"<li>"$0"</li>"
+            } else if (newindent == indents[indent]) {
+                if (debug==1) print "inside list" > "/dev/stderr"
+                string=string"<li>"$0"</li>"
+            }
+            next
+        }
+        blockquote==1 {  # simple line in blockquote
+            if (debug==1) print "inside blockquote:", $0 > "/dev/stderr"
+            #gsub(/ /, " `\\&#x200B;`") # zero width space to avoid multiple spaces to be taken as one only
+            # remove leading blanks of the indentation
+            for (i=1; i < blockquoteindent; i++) 
+                if (substr($0, 1, 1) == " ") $0 = substr($0, 2)
+            string=string$0"</code><br><code>"
+            next
+        }
+        blockquote==0 {  # simple line
+            newindent=0
+            while (substr($0, newindent + 1, 1) == " ") newindent++
+            if (newindent < indents[indent]) {
+                while (newindent < indents[indent]) {
+                    if (debug==1) print "end list" > "/dev/stderr"
+                    indent--
+                    string=string"</ul>"
+                }
+            }
+            if (debug==1) print "simple line:", $0 > "/dev/stderr"
+            string=string$0
+            next
+        }
+        END {
+            gsub(/``/, "", string)
+
+            # gsub(/\\/,"\\\\\\", string)
+            # manual treatment of \\
+            newstring=""
+            for (i=1; i<=length(string); i++) {
+                c = substr(string, i, 1)
+                if (c == "\\") {
+                    newstring=newstring"\\\\\\\\"
+                    #i++
+                } else {
+                    newstring=newstring""c
+                }
+            }
+            string=newstring
+            gsub(/[|]/,"\\|", string)
+            gsub(/\$/, "\\$", string) # $ enters math mode in vscode (not in github)
+            printf "%s", string
+        }
+    '
+}
+
 # replacement sections
 if ! $sourced_only
 then
     INIT
+
+    START sourcesList
+    (
+        echo # needed or the sourcesList balise is visible on github
+        echo 'Source type | Module | Description'
+        echo '----------- | ------ | -----------'
+
+        (
+            # list local sources
+            grep -e "export *class *[a-Z0-9_]* *extends *Source" /dev/null core/sources/*.ts | awk -F'[ .:]' '
+                $5 == "DefaultSource" {next} 
+                $5 == "demo" {next}
+                { print $1"."$2, $5, $1}'
+
+            # list local domoja modules
+            grep -e "export *class *[a-Z0-9_]* *extends *Source" /dev/null modules/*/sources/*.ts | awk -F'[ /:]' '{ print $1"/"$2"/"$3"/"$4, $7, "["$2"](https://www.npmjs.com/package/domoja-"$2")"}'
+        ) | sort -f -k 2 | while read file module source
+        do
+            description=$(extract_doc "$file" "/export +class +[a-zA-Z0-9_]+ +extends +Source/" | md2htmlmd)
+            echo $module "|" $source "|" "$description"
+        done
+    ) > $tmpreadme
+    END
 
     START modulesList
     ( 

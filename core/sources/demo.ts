@@ -1,5 +1,9 @@
 import { Source, ConfigLoader, GenericDevice, InitObject, Parameters } from '..';
 
+/**
+ * Source used for the demo mode
+ * 
+ */
 export class demo extends Source {
     createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
         return new demo(path);

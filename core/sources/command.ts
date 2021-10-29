@@ -3,6 +3,51 @@ import { Source, ConfigLoader, GenericDevice, InitObject, Parameters } from '..'
 import * as child_process from 'child_process';
 import * as kill from 'tree-kill';
 
+/**
+ * Source implemented with shell commands:
+ * - parameters define the shell commands to execute when a device takes a given value
+ *   Example with parameters `ON` and `OFF` :
+ *   ```
+ *   - sources:
+ *     - robonect-command: {
+ *       type: command,
+ *       ON: "AUTH=$(grep robonectBasicAuth config/secrets.yml | sed -e 's!^ *[^:][^:]*: *!!' -e 's/[\r\n]//g'); curl 'http://192.168.0.16/xml?cmd=start' -s -u $AUTH", 
+ *       OFF: "AUTH=$(grep robonectBasicAuth config/secrets.yml | sed -e 's!^ *[^:][^:]*: *!!' -e 's/[\r\n]//g'); curl 'http://192.168.0.16/xml?cmd=stop' -s -u $AUTH"
+ *     }
+ *   ```
+ * - the optional parameter `push-updates` is a shell command executed once as a daemon at the creation of the source
+ *   - it allows to emit changes of device state values                      
+ *   - it shoud produce stdout output in the form `{"id": "<device_id>", "attribute": "<attribute>", "value": "<value>"}`, e.g. `{"id": "temp", "attribute": "state", "value": "10 °C"}`
+ *   - the daemon will be killed when the source is released, but to avoid zombie processes to be created, it is good to guard a loop by checking the parent process, for example:
+ *     ```
+ *     while [ $(ps -o ppid= $$) != 1 ]; do <commands>; sleep 60; done
+ *     ```
+ *   - available variables are:
+ *     - ID: id of the device using the source
+ *     - SOURCE: the path of the source
+ *     - DEBUG: debug mode of the source ('0'|'1') 
+ * 
+ * Example: 
+ * ```
+ * sources:
+ * - disk-usage: {
+ *   type: command,
+ *   push-updates:  "
+ *     while [ $(ps -o ppid= $$) != 1 ]
+ *     do 
+ *       df -k | awk '{
+ *           mount=$6
+ *           percent=$5
+ *           str=\"{ \\\"id\\\": \\\"\"mount\"\\\", \\\"attribute\\\": \\\"state\\\", \\\"value\\\": \\\"\"percent\"\\\"}\"
+ *           if ('$DEBUG') print str > \"/dev/stderr\" # debug
+ *           print str
+ *       }'
+ *       sleep 60
+ *     done
+ *   "
+ * }
+ *   ```
+ */
 export class command extends Source {
 
 	stateUpdaterProcess: child_process.ChildProcessWithoutNullStreams;
