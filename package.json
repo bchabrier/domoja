@@ -54,7 +54,7 @@
     "@types/passport-http": "^0.3.8",
     "@types/passport-local": "^1.0.33",
     "@types/rewire": "^2.5.28",
-    "@types/socket.io": "^2.1.0",
+    "@types/socket.io": "^3.0.2",
     "c8": "^7.9.0",
     "coveralls": "^3.0.2",
     "mocha": "^8.2.1",
