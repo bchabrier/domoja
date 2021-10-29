@@ -301,14 +301,16 @@ KEY=`echo $(cat ~/.ssh/id_rsa)`
 # getting source files
 FILES=$(cd $SOURCES_CONFIG_DIR; find . -name '*.yml' ! -name 'demo.yml')
 
-# generate only if a file is newer than the gpg file
+# generate only if sha1sums have changed
 generate=false
+shafile=/tmp/config_files.sha.$$
+( cd $SOURCES_CONFIG_DIR; sha1sum $FILES ) > $shafile
 if [ -f $CONFIG_TAR_ENC ]
 then
-  for f in $FILES
-  do
-    [ $SOURCES_CONFIG_DIR/$f -nt $CONFIG_TAR_ENC ] && generate=true
-  done
+  if [ ! -r $shafile ] || [ ! -r $SOURCES_CONFIG_DIR/config_files.sha ] || ! cmp -s $shafile $SOURCES_CONFIG_DIR/config_files.sha
+  then
+    generate=true
+  fi
 else
   generate=true
 fi
@@ -331,6 +333,8 @@ then
   echo
   echo "For info, $CONFIG_TAR_ENC can be decrypted using:"
   echo \$ echo \$\(cat ~/.ssh/id_rsa\) \| gpg --batch --decrypt --passphrase-fd 0 $CONFIG_TAR_ENC \| tar xzvf -
+
+  mv $shafile $SOURCES_CONFIG_DIR/config_files.sha
 
   # cleanup
   rm -f $CONFIG_TAR
