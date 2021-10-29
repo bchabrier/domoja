@@ -12,7 +12,26 @@ var logger = require("tracer").colorConsole({
 });
 
 
-
+/**
+ * Domoja source to connect to ZWave devices
+ * 
+ * Example:
+ * ```
+ * sources:
+ *   - ZStick: {
+ *       type: Openzwave,
+ *       debug: false,
+ *       driverLogLevel: "silly",
+ *       port: /dev/ttyACM0
+ *   }
+ *
+ * devices:
+ * - zwave:
+ *    - controller : { type: device, widget: "multistate:INCLUSION,INCLUSION_NON_SECURE,EXCLUSION,NO_INCLUSION_EXCLUSION:secondary,secondary,danger,primary:Inclure,Inclure non séc.,Exclure,Stop", tags: 'zwave', source: ZStick, id: "1", attribute: "inclusion_mode", name: "Controleur"} 
+ *    - config : { type: device, widget: "zwave-config", tags: 'zwave', source: ZStick, id: "1", attribute: "zwave_config", name: "ZWave config"} 
+ *    - grand: { type: device, widget: text, tags: 'portails', source: ZStick, id: "16-37-2-currentValue", name: "Petit Portail ouvert en grand", camera: camera_exterieure }
+ * ```
+ */
 export class Openzwave extends Source {
 	driver: Driver;
 	nodes = new Map<string, ZWaveNode>();

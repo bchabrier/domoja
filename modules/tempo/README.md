@@ -8,40 +8,25 @@
 
 
 [//]: # (moduleName START)
-domoja-mqtt
-===========
+domoja-tempo
+============
 [//]: # (moduleName END)
 
-Connect Domoja to an MQTT server.
+[//]: # (sourceDoc START)
+Cette source récupère les informations de couleur de période auprès de l'EDF, pour le jour courant et le lendemain.
 
-# Usage
-
+Exemple:
 ```
-imports:
-  - module: mqtt
-    source: Mqtt
-
 sources:
-  - robonect: {
-      type: Mqtt,
-      url: mqtt://192.168.0.10,
-      user: !secrets mqtt_user,
-      password: !secrets mqtt_password
-  }
-
+  - tempo: { type: tempo }
+ 
 devices:
-    - mode : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/mode", tags: mower, name: "Mode (code)" }
-
+  - tempo:
+  - couleur_du_jour : { type: device, widget: tempo-color, tags: 'tempo', source: tempo, id: couleurDuJour, name: "Couleur du jour" }
+  - couleur_de_demain : { type: device, widget: tempo-color, tags: 'tempo', source: tempo, id: couleurDeDemain, name: "Couleur de demain" }
 ```
 
-
-
-
-
-
-
-
-
+[//]: # (sourceDoc END)
 
 
 

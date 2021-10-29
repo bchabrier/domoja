@@ -10,33 +10,38 @@ fi
 
 INIT()
 {
-    readme=`dirname $0`/../README.md
-    tmpreadme=/tmp/readme.$$
+    if [ -z $1 ]
+    then
+        _README=`dirname $0`/../README.md
+    else
+        _README="$1"
+    fi
+    _TMPREADME=/tmp/readme.$$
 
-    cp $readme $tmpreadme.FULL
+    cp $_README $_TMPREADME.FULL
 }
 
 START ()
 {
     _balise=$1
-    >$tmpreadme
-    awk '{ print } /\[\/\/\]: # \('$_balise' START\)/ { exit }' $tmpreadme.FULL > $tmpreadme.$_balise.START
+    >$_TMPREADME
+    awk '{ print } /\[\/\/\]: # \('$_balise' START\)/ { exit }' $_TMPREADME.FULL > $_TMPREADME.$_balise.START
     echo -----------------------------------------------------------
-    echo Replacing balise \'$_balise\' with:
+    echo Replacing balise \'$_balise\' in \'$(realpath "$_README")\' with:
 }
 
 END ()
 {
-    echo >> $tmpreadme
-    awk '/\[\/\/\]: # \('$_balise' END\)/ { p = 1 } p == 1 { print } ' $tmpreadme.FULL > $tmpreadme.$_balise.END
-    cat $tmpreadme.$_balise.START $tmpreadme $tmpreadme.$_balise.END > $tmpreadme.FULL
-    cat $tmpreadme
+    echo >> $_TMPREADME
+    awk '/\[\/\/\]: # \('$_balise' END\)/ { p = 1 } p == 1 { print } ' $_TMPREADME.FULL > $_TMPREADME.$_balise.END
+    cat $_TMPREADME.$_balise.START $_TMPREADME $_TMPREADME.$_balise.END > $_TMPREADME.FULL
+    cat $_TMPREADME
 }
 
 CLEANUP()
 {
-    mv $readme /tmp/README.md.$$
-    mv $tmpreadme.FULL $readme
+    mv $_README /tmp/README.md.$$
+    mv $_TMPREADME.FULL $_README
 }
 
 # extract from $1 the comments preceeding the line specified with regex or string $2
@@ -206,7 +211,7 @@ then
             description=$(extract_doc "$file" "/export +class +[a-zA-Z0-9_]+ +extends +Source/" | md2htmlmd)
             echo $module "|" $source "|" "$description"
         done
-    ) > $tmpreadme
+    ) > $_TMPREADME
     END
 
     START modulesList
@@ -235,7 +240,7 @@ then
             } 
         }'
     ) | sort | awk -F'\t' ' { printf "- [%s](https://www.npmjs.com/package/%s): %s\n", $1, $1, $2 }
-    ' > $tmpreadme
+    ' > $_TMPREADME
     END
 
     START apiList
@@ -249,8 +254,31 @@ then
         print "- " toupper(operation) " " path ": " description
     }
 
-    ' `dirname $readme`/api/swagger.json > $tmpreadme
+    ' `dirname $_README`/api/swagger.json > $_TMPREADME
     END
 
     CLEANUP
+
+    # update modules' READMEs
+    for readme in modules/*/README.md
+    do
+        INIT $readme
+
+        START badges
+        awk '/\[!\[/ { print; next} /^ *\r?$/ { print; next } { exit }' $(dirname $readme)/../../README.md > $_TMPREADME
+        END
+
+        START moduleName
+        echo $readme | awk -F/ '{ print "domoja-"$(NF-1); for (i=1; i<=length("domoja-"$(NF-1)); i++) printf "=" }' > $_TMPREADME
+        END
+
+        START sourceDoc
+        extract_doc "$(dirname $readme)/sources/"*.ts "/export +class +[a-zA-Z0-9_]+ +extends +Source/" > $_TMPREADME
+        END
+
+
+        CLEANUP
+    done
+
+
 fi

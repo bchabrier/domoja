@@ -8,40 +8,31 @@
 
 
 [//]: # (moduleName START)
-domoja-mqtt
-===========
+domoja-proxiti
+==============
 [//]: # (moduleName END)
 
-Connect Domoja to an MQTT server.
+[//]: # (sourceDoc START)
+This source provides astronomy information from http://www.proxiti.info/horaires_soleil.php?o=06030
 
-# Usage
+This includes sunset, sunrise, dawn, dusk, zenith times, and day duration, at a specific location.
 
+Parameters:
+- location: the code corresponding to your location. Use https://www.proxiti.info/index.php to find it.
+
+Example:
 ```
-imports:
-  - module: mqtt
-    source: Mqtt
-
 sources:
-  - robonect: {
-      type: Mqtt,
-      url: mqtt://192.168.0.10,
-      user: !secrets mqtt_user,
-      password: !secrets mqtt_password
+  - astronomy: {
+    type: astronomy,
+    location: "06030"
   }
 
 devices:
-    - mode : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/mode", tags: mower, name: "Mode (code)" }
-
+  - sunset: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunsetTime, name: "Coucher du soleil" }
 ```
 
-
-
-
-
-
-
-
-
+[//]: # (sourceDoc END)
 
 
 

@@ -28,7 +28,20 @@ function format(d: Date): string {
 	return d.getFullYear() + "-" + (d.getMonth() < 9 ? "0" : "") + (d.getMonth() + 1) + "-" + (d.getDate() < 10 ? "0" : "") + d.getDate();
 }
 
-
+/**
+ * Cette source récupère les informations de couleur de période auprès de l'EDF, pour le jour courant et le lendemain.
+ * 
+ * Exemple:
+ * ```
+ * sources:
+ *   - tempo: { type: tempo }
+ *  
+ * devices:
+ *   - tempo:
+ *   - couleur_du_jour : { type: device, widget: tempo-color, tags: 'tempo', source: tempo, id: couleurDuJour, name: "Couleur du jour" }
+ *   - couleur_de_demain : { type: device, widget: tempo-color, tags: 'tempo', source: tempo, id: couleurDeDemain, name: "Couleur de demain" }
+ * ```
+ */
 export class tempo extends Source {
 	jobUpdateAllColors: CronJob;
 	jobUpdateTomorrowColor: CronJob;

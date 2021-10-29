@@ -8,40 +8,18 @@
 
 
 [//]: # (moduleName START)
-domoja-mqtt
-===========
+domoja-zibase
+=============
 [//]: # (moduleName END)
 
-Connect Domoja to an MQTT server.
 
-# Usage
+[//]: # (sourceDoc START)
+This source connects to a Zibase device.
 
-```
-imports:
-  - module: mqtt
-    source: Mqtt
-
-sources:
-  - robonect: {
-      type: Mqtt,
-      url: mqtt://192.168.0.10,
-      user: !secrets mqtt_user,
-      password: !secrets mqtt_password
-  }
-
-devices:
-    - mode : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/mode", tags: mower, name: "Mode (code)" }
-
-```
+Not used anymore as Zodianet company is now dead for years...
 
 
-
-
-
-
-
-
-
+[//]: # (sourceDoc END)
 
 
 

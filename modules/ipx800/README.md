@@ -8,40 +8,26 @@
 
 
 [//]: # (moduleName START)
-domoja-mqtt
-===========
+domoja-ipx800
+=============
 [//]: # (moduleName END)
 
-Connect Domoja to an MQTT server.
+[//]: # (sourceDoc START)
+This source connects to IPX800 devices from GCE Electronics.
 
-# Usage
-
+Example:
 ```
-imports:
-  - module: mqtt
-    source: Mqtt
-
 sources:
-  - robonect: {
-      type: Mqtt,
-      url: mqtt://192.168.0.10,
-      user: !secrets mqtt_user,
-      password: !secrets mqtt_password
-  }
-
-devices:
-    - mode : { type: sensor, source: robonect, widget: text, id: "/Robonect/mower/mode", tags: mower, name: "Mode (code)" }
-
+- myIPX800: {
+    type: IPX800,
+    ip: 192.168.0.17,
+    macaddress: 00:04:A3:2D:68:E6,
+    update_url: /ipx800/update,
+    timeout: 60
+}
 ```
 
-
-
-
-
-
-
-
-
+[//]: # (sourceDoc END)
 
 
 
