@@ -18,7 +18,7 @@ describe('Module domoja', function () {
       process.argv.pop();
     });
     it('should exit', function (done) {
-      this.timeout(120000);
+      this.timeout(180000);
       console.log("Real execution (through subprocess):")
       child_process.exec("./node_modules/ts-node/dist/bin.js domoja.ts unexistent_file", (err, stdout, stderr) => {
         console.log(stdout);
