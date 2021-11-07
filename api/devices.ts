@@ -92,14 +92,15 @@ export class DevicesService {
     let addrInfo = getDomojaServer().server.address() as net.AddressInfo;
 
     let baseURL = 'http';
-    let port = 80;
+    let port = undefined;
     if (addrInfo.port) {
       if (addrInfo.port == 443) {
         baseURL += 's';
-        port = 443;
       }
+      port = addrInfo.port;
     }
-    baseURL += '://' + res.req.headers.host + ':' + port;
+    baseURL += '://' + res.req.headers.host.split(':')[0];
+    if (port != undefined) baseURL += ':' + port;
 
     return new Promise<{}>((resolve, reject) => {
       method.apply(camera, [baseURL, res.req.headers, function onResponse(response: http.IncomingMessage) {
