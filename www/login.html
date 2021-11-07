@@ -247,7 +247,7 @@
           window.location.href = '/';
         }
       }
-      document.cookie = "DomojaURL=https://domo.bchabrier.com";
+      document.cookie = 'DomojaURL=' + window.location.origin;
       console.log(document.cookie);
       DomojaURL = document.cookie.replace(/.*DomojaURL=([^;]*);?.*/, '$1');
       console.log(DomojaURL + '/login.html');

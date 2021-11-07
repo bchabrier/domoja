@@ -88,12 +88,13 @@ export class DomojaServer {
 
     if (!prod) {
       let whitelist = ['http://192.168.0.10:8100', 'http://raspberrypi:8100', 'https://domo.bchabrier.com']
-      this.app.use(cors({
+      false && this.app.use(cors({
 
         origin: function (origin, callback) {
           if (whitelist.indexOf(origin) !== -1 || !origin) {
             callback(null, true)
           } else {
+            logger.error(`Origin \'${origin}\' not allowed by CORS`);
             callback(new Error(`Origin \'${origin}\' not allowed by CORS`));
           }
         },
@@ -256,7 +257,7 @@ export class DomojaServer {
       loginPath,
       serve,
       store,
-      env == 'development'
+      false && env == 'development' // not used anymore since we use proxy to avoid CORS rejections
     );
 
     // � partir de ce point les services doivent etre autoris�s
