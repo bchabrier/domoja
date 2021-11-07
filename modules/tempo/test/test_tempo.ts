@@ -13,6 +13,8 @@ import { tempo } from '../sources/tempo';
 describe('Module tempo', function () {
   describe('class tempo', function () {
 
+    this.timeout(10000);
+    
     describe('#doSetAttribute', function () {
       it('should return an error', function (done) {
         let a = new tempo('Path');
