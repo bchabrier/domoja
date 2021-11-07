@@ -15,6 +15,9 @@
   "bugs": {
     "url": "https://github.com/bchabrier/domoja/issues"
   },
+  "bin": {
+    "domoja": "./bin/domoja_server"
+  },
   "dependencies": {
     "async": "^3.1.0",
     "basic-auth": "^2.0.0",
@@ -38,7 +41,11 @@
     "shitty-peg": "^0.0.5",
     "socket.io": "2",
     "tracer": "^1.1.2",
+    "@types/node": "^14.0.13",
+    "typescript": "^4.0.2",
+    "ts-node": "^10.4.0",
     "typescript-rest": "^3.0.1",
+    "typescript-cached-transpile": "^0.0.6",
     "vm2": "^3.6.3"
   },
   "devDependencies": {
@@ -50,7 +57,6 @@
     "@types/express-session": "^1.17.0",
     "@types/mocha": "^8.2.0",
     "@types/mongodb": "^3.1.20",
-    "@types/node": "^14.0.13",
     "@types/passport-http": "^0.3.8",
     "@types/passport-local": "^1.0.33",
     "@types/rewire": "^2.5.28",
@@ -62,10 +68,7 @@
     "passport-http": "^0.3.0",
     "rewire": "^5.0.0",
     "sinon": "^9.0.2",
-    "ts-mocha": "^8.0.0",
-    "ts-node": "^10.2.1",
-    "typescript": "^4.0.2",
-    "typescript-cached-transpile": "^0.0.6"
+    "ts-mocha": "^8.0.0"
   },
   "engines": {
     "node": ">=0.10.0"

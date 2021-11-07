@@ -1,6 +1,26 @@
 #!/bin/sh
 
-cd `dirname $0`/..
+case $(dirname $0) in 
+*/node_modules/.bin)
+	# launched with yarn $0
+	package_dir=$(realpath $(dirname $(realpath $0))/..)
+	config_dir=$(pwd)
+	;;
+*)
+	# launched from domoja package
+	package_dir=$(dirname $(realpath $0))/..
+	config_dir=$package_dir
+	;;
+esac
+
+case "$npm_execpath" in
+ */yarn.*)
+	PMGR_RUN=yarn
+ 	;;
+ *)
+	PMGR_RUN=npx
+	;;
+esac
 
 if [ "$(which authbind)" = "" ]
 then
@@ -25,12 +45,13 @@ then
 fi
 
 usage () {
-	echo "Usage: `basename $0` [--install | [-h | --help]  [-d] [--dev] [<config>]]" >&2
-	echo "  --install  : installs domoja with pm2" >&2
-	echo "  -h | --help: this usage help" >&2
-	echo "  -d         : run in debug mode" >&2
-	echo "  --dev      : run in dev mode" >&2
-	echo "  <config>   : path to config file or directory (./config by default)" >&2
+	echo "Usage: `basename $0` [--install | [-h | --help] | [-p | --port <port> ] [-d] [--dev] [<config>]]" >&2
+	echo "  --install         : installs domoja with pm2" >&2
+	echo "  -h | --help       : this usage help" >&2
+	echo "  -p | --port <port>: specify port (443 by default)" >&2
+	echo "  -d                : run in debug mode" >&2
+	echo "  --dev             : run in dev mode" >&2
+	echo "  <config>          : path to config file or directory (./config by default)" >&2
 	exit 2 
 }
 
@@ -49,20 +70,28 @@ case "$1" in
 		debug=true
 		shift
 		;;
+	"-p"|"--port")
+		[ -z $PORT ] || usage
+		shift
+		PORT="$1"
+		shift
+		;;
 	"-h"|"--help")
 		usage
 		shift
 		;;
 	*)
 		[ ! -z $config_path ] && usage
-		config_path="$1"
+		config_path="$(realpath "$1")"
 		shift
 		;;
 esac
 done
 
-[ -z $config_path ] && config_path=./config
+[ -z $config_path ] && [ -r "$config_dir/config" ] && config_path="$config_dir/config"
+[ -z $config_path ] && echo "Warning: '$config_dir/config' not found, using '$package_dir/config/demo.yml'." && config_path="$package_dir/config/demo.yml"
 
+[ -z $PORT ] && PORT=443
 
 # check that mongodb is running
 if [ "`sudo systemctl status mongodb | grep 'active (running)'`" != "" ]
@@ -127,19 +156,13 @@ then
 	options="$options --dev"
 fi
 
-main=$(awk -F\" '$2 == "main" { print $4}' package.json)
+main=$(awk -F\" '$2 == "main" { print $4}' "$package_dir/package.json")
 
-case "$main" in 
-domoja.ts)
-	if $debug
-	then
-#		PORT=443 exec authbind --deep node --inspect=0.0.0.0 --require ts-node/register --require tsconfig-paths/register domoja.ts "$config_path"
-		PORT=443 exec authbind --deep nodemon --ext ts --watch . --ignore node_modules,www --exec node --inspect=0.0.0.0 --require ts-node/register domoja.ts "$config_path" $options
-	else
-		PORT=443 TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER=typescript-cached-transpile exec authbind --deep ts-node domoja.ts "$config_path" $options
-	fi
-	;;
-*domoja.js)
-	PORT=443 exec authbind --deep node dist/domoja.js "$config_path" $options
-	;;
-esac
+cd $package_dir
+if $debug
+then
+	PORT=$PORT exec authbind --deep nodemon --ext ts --watch . --ignore node_modules,www --exec node --inspect=0.0.0.0 --require ts-node/register $main "$config_path" $options
+else
+	PORT=$PORT TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER=typescript-cached-transpile exec authbind --deep $PMGR_RUN ts-node $main "$config_path" $options
+#	PORT=$PORT TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER=typescript-cached-transpile exec authbind --deep node --require ts-node/register $main "$config_path" $options
+fi
