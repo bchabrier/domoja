@@ -169,7 +169,9 @@ export class DomojaServer {
     }
     this.server = http_https.createServer(options, this.app);
 
-    this.ws = socketio.listen(this.server);
+    this.ws = new socketio.Server(this.server, {
+      allowEIO3: true
+    });
     this.ws.use(core.socketIoAuthorize());
     this.ws.sockets.on('connection', socket => {
       let request: http.IncomingMessage = socket.request;
