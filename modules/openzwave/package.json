@@ -1,7 +1,7 @@
 {
   "name": "domoja-openzwave",
   "author": "Bruno Chabrier",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "private": false,
   "license": "GPL-3.0",
   "description": "Openzwave source for Domoja",
