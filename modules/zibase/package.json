@@ -1,7 +1,7 @@
 {
   "name": "domoja-zibase",
   "author": "Bruno Chabrier",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "private": false,
   "license": "GPL-3.0",
   "description": "ZiBase source for Domoja",
