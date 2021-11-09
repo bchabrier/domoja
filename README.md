@@ -1,6 +1,6 @@
 [![NPM](https://nodei.co/npm/domoja.png?downloads=true&downloadRank=true&stars=true)](https://nodei.co/npm/domoja/)
 
-[![Build Status](https://travis-ci.org/bchabrier/domoja.svg?branch=master)](https://travis-ci.org/bchabrier/domoja) [![NPM version](http://img.shields.io/npm/v/domoja.svg)](https://www.npmjs.org/package/domoja) [![Dependency Status](https://david-dm.org/bchabrier/domoja.svg)](https://david-dm.org/bchabrier/domoja) [![Coverage Status](https://coveralls.io/repos/github/bchabrier/domoja/badge.svg?branch=master)](https://coveralls.io/github/bchabrier/domoja?branch=master)
+[![NPM version](http://img.shields.io/npm/v/domoja.svg)](https://www.npmjs.org/package/domoja) [![Node.js CI](https://github.com/bchabrier/domoja/actions/workflows/node.js.yml/badge.svg)](https://github.com/bchabrier/domoja/actions/workflows/node.js.yml) [![CodeQL](https://github.com/bchabrier/domoja/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/bchabrier/domoja/actions/workflows/codeql-analysis.yml) [![Coverage Status](https://coveralls.io/repos/github/bchabrier/domoja/badge.svg?branch=master)](https://coveralls.io/github/bchabrier/domoja?branch=master)
 
 domoja
 ======
@@ -195,11 +195,12 @@ Persistence
 
 Device states can be persisted using MongoDB. By default, all states that are numbers are persisted.
 Persistence can be specified through the `persistence` attribute:
+
 `persistence: "<persistence-module>:<id>:0:<aggregation mode>:<keep>"`
-`<persistence-module>` is `mongo` by default.
-`<id>` specifies the id of the device to be persisted. If not specified, then the path of the device is used. Specifying the id is useful if you want to be sure to keep the persisted states even if you change the path of the device.
-`<aggregation mode>`: one of `year`, `month`, `day`, `hour`, `minute`, `none`
-`<keep>`: duration to persist the states, in seconds.
+* `<persistence-module>` is `mongo` by default.
+* `<id>` specifies the id of the device to be persisted. If not specified, then the path of the device is used. Specifying the id is useful if you want to be sure to keep the persisted states even if you change the path of the device.
+* `<aggregation mode>`: one of `year`, `month`, `day`, `hour`, `minute`, `none`
+* `<keep>`: duration to persist the states, in seconds.
 
 User Interface
 --------------
