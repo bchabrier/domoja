@@ -18,7 +18,6 @@ This source connects to a Zibase device.
 
 Not used anymore as Zodianet company is now dead for years...
 
-
 [//]: # (sourceDoc END)
 
 
