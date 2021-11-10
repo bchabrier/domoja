@@ -70,7 +70,7 @@
     "swagger": ": run swagger generation if needed; for f in api/*.ts; do [ ! -f api/swagger.json ] || [ $f -nt api/swagger.json ] && ( npm --scripts-prepend-node-path=auto run swagger:force; break ); done; exit 0",
     "generate:demo": ": generate demo.yml; ./tools/generate_demo",
     "publish": ": publish to npm; npm --scripts-prepend-node-path=auto run generate:demo; npm --scripts-prepend-node-path=auto run swagger; ./tools/update_readme; ./tools/publish",
-    "publish:all": ": publish all packages to npm; yarn run publish; cur=$(pwd); ./tools/cascade --below $cur/tools/publish --notest",
+    "publish:all": ": publish all packages to npm; export REQUESTED_PACKAGE_VERSION=\"$(./tools/ask_version)\"; yarn run publish; cur=$(pwd); ./tools/cascade --below $cur/tools/publish --notest",
     "outdated": ": check outdated packages; ./tools/cascade yarn outdated",
     "upgrade": ": upgrade packages; ./tools/cascade yarn upgrade"
   },
