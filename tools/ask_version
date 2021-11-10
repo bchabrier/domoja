@@ -1,0 +1,44 @@
+#!/bin/sh
+
+package_dir=$(realpath `dirname $0`/..)
+
+echo Current package versions: >&2
+grep '"version":' $package_dir/package.json $package_dir/modules/*/package.json | awk -F '[/"]' '
+    function hline () 
+    {
+        for (i = 1; i <= maxlength + 1 + 6; i++) printf "-"
+        print ""        
+    }
+    {
+        module[NR]=$(NF-5)
+        if (module[NR] != "domoja") module[NR]="domoja-"module[NR]
+
+        version[NR]=$(NF-1)
+
+        if (length(module[NR]) > maxlength) maxlength = length(module[NR])
+    }
+    END {
+        hline()
+        for (i in module) {
+            printf "%-"(maxlength+1)"s %s\n", module[i]":", version[i]
+        }
+        hline()
+    }
+' >&2
+
+echo 'Do you want to define a version for all packages?' >&2
+echo 'Enter "patch", "minor", "major", or a version to apply to all packages,' >&2
+echo 'or return to be asked for each package, or ^C to abort.' >&2
+while true
+do
+    read -p 'Version? ' version >&2
+    check=$(echo "$version" | awk '
+        /^(patch|minor|major|[0-9]+\.[0-9]+\.[0-9]+|)$/ { print "OK"; next }
+        { print "KO" }
+    ')
+    if [ "$check" = "OK" ]
+    then
+        echo $version
+        exit
+    fi
+done

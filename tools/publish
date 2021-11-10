@@ -111,11 +111,16 @@ echo "Checking version..."
 npm_version=$(npm view -json $package | awk -F\" '/"_id":/ { print $4 }' | awk -F@ '{ print $2}')
 version=$(awk -F\" '/"version": / { print $4}' ./package.json)
 if [ "$npm_version" = "$version" ]; then
-    echo "Warning: version '$version' in package.json is the same as in npm registry."
-    echo "=> Enter new version (major, minor, or patch) to the next question below <="
+    [ "$REQUESTED_PACKAGE_VERSION" = "" ] && echo "Warning: version '$version' in package.json is the same as in npm registry."
+    [ "$REQUESTED_PACKAGE_VERSION" = "" ] && echo "=> Enter new version (major, minor, or patch) to the next question below <="
     yarn config set version-tag-prefix "$package.v"
     yarn config set version-git-message "$package.v%s"
-    yarn version
+    if [ "$REQUESTED_PACKAGE_VERSION" = "" ]
+    then
+        yarn version
+    else
+        echo "$REQUESTED_PACKAGE_VERSION" | yarn version
+    fi
     yarn config set version-tag-prefix "v"
     yarn config set version-git-message "v%s"
 fi
