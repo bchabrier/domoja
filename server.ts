@@ -460,7 +460,7 @@ export class DomojaServer {
 
   getApp() {
     return {
-      demoMode: /(.*\/)*config\/demo.yml/.test(this.currentFile),
+      demoMode: /([^\/]*\/)*config\/demo.yml/.test(this.currentFile),
       nbWebsockets: this.getNbWebsockets(),
       nbWebsocketsHTTP: this.getNbWebsockets('HTTP'),
       nbWebsocketsHTTPS: this.getNbWebsockets('HTTPS'),

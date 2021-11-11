@@ -471,7 +471,7 @@ export class ConfigLoader extends events.EventEmitter {
             }
 
             if (dir === fileOrDir) {
-                let files = fs.readdirSync(dir).filter(f => f.match(/^.*\.yml$/) && !f.match(/^(.*\/)*demo\.yml$/));
+                let files = fs.readdirSync(dir).filter(f => f.match(/^.*\.yml$/) && !f.match(/^([^\/]*\/)*demo\.yml$/));
 
                 let sections: Section[] = [
                     'IMPORTS',
