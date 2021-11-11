@@ -1,7 +1,7 @@
 {
   "name": "domoja-sample",
   "author": "Bruno Chabrier",
-  "version": "1.4.3",
+  "version": "1.4.5",
   "private": false,
   "license": "GPL-3.0",
   "description": "A sample Domoja module skeleton",
