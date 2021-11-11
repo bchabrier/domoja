@@ -126,7 +126,7 @@ The following modules are currently available:
 - [domoja-core](https://www.npmjs.com/package/domoja-core): Core components of Domoja
 - [domoja-freebox](https://www.npmjs.com/package/domoja-freebox): The Freebox domoja module
 - [domoja-ipx800](https://www.npmjs.com/package/domoja-ipx800): IPX800 source for Domoja
-- [domoja-mqtt](https://www.npmjs.com/package/domoja-mqtt): The Freebox domoja module
+- [domoja-mqtt](https://www.npmjs.com/package/domoja-mqtt): The MQTT domoja module
 - [domoja-openzwave](https://www.npmjs.com/package/domoja-openzwave): Openzwave source for Domoja
 - [domoja-proxiti](https://www.npmjs.com/package/domoja-proxiti): Astronomy source for Domoja from http://www.proxiti.info/
 - [domoja-sample](https://www.npmjs.com/package/domoja-sample): A sample Domoja module skeleton
