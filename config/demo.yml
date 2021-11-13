@@ -2623,7 +2623,9 @@ pages:
             label: "Tempo"           
           - tondeuse:
             widget: dashboard-icon
-            icon: "https://hqvcdn3.azureedge.net/qs_ver=20200901T111258&hcsh=521DD67B7F6A78F2B9520C4778134371/_$$_/media/aprimo/gardena/robotic%20lawnmowers/photos/studio/ga310-05xxxx/ga310-0592.png"
+            # no more reachable - icon: "https://hqvcdn3.azureedge.net/qs_ver=20200901T111258&hcsh=521DD67B7F6A78F2B9520C4778134371/_$$_/media/aprimo/gardena/robotic%20lawnmowers/photos/studio/ga310-05xxxx/ga310-0592.png"
+            icon: "https://www.leclub-bricolage.fr/media/catalog/product/cache/e4d64343b1bc593f1c5348fe05efa4a6/1/5/15002-26-4078500032636-visuel_produit_base-ga310-0592%20(1).png"
+            # icon: "https://hqvcdn3.azureedge.net/qs_mh=470&mw=750&ver=20211110T110512&hcsh=4C51BC5BCE426DE276FCEF6E614F4ABF/_$$_/media/aprimo/gardena/robotic%20lawnmowers/photos/studio/bl-31xxxx/bl-318426.png"
             linkPage: Tondeuse
             label: "${tondeuse.status-plain}"
             active: "${tondeuse.start}"
