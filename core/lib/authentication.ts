@@ -17,6 +17,8 @@ import * as socketio from 'socket.io';
 let passportSocketIo = require('passport.socketio');
 import * as session from 'express-session';
 import * as bodyParser from 'body-parser';
+import * as fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
 
 import * as rateLimit from 'express-rate-limit';
 
@@ -149,7 +151,7 @@ export function configure(app: express.Application,
   app.use(cookieParser());
   app.use(bodyParser.urlencoded({ extended: true }));
   app.use(session({
-    secret: getSecret(),
+    secret: getSecrets(),
     store: _store,
     resave: false,
     saveUninitialized: false,
@@ -292,7 +294,7 @@ export function socketIoAuthorize(): (socket: socketio.Socket, next: (err?: any)
       authenticateBasicAndApiKey(req, response, (err?) => {
         if (req.isAuthenticated()) return next();
         return passportSocketIo.authorize({
-          secret: getSecret(),
+          secret: getSecrets(),
           store: _store,
         })(socket, next);
       });
@@ -300,8 +302,62 @@ export function socketIoAuthorize(): (socket: socketio.Socket, next: (err?: any)
   }
 }
 
-function getSecret() {
-  return 'my own passphrase';
+// the secrets passed to express-session
+let secrets: string[] = [];
+
+const SECRETS_FILE = './sessions/secrets';
+
+function rollSecrets() {
+  // generate a uuid
+  const newsecret = uuidv4();
+
+  // get existing secrets
+  const now = new Date;
+  const limitDate = new Date(
+    now.getFullYear() - 5, now.getMonth(), now.getDate(),
+    now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds()
+  );
+
+  const existingSecrets: { date: Date, id: string }[] = fs.existsSync(SECRETS_FILE) ? fs.readFileSync(SECRETS_FILE).toString().split('\n').map(line => {
+    return {
+      date: new Date(line.substr(0, 24)),
+      id: line.replace(/\r$/, '').substr(25)
+    }
+  }).filter( // filter to keep only 5 year old max sessions
+    v => v.date > limitDate
+  ) : [];
+
+  // write secrets file
+  fs.writeFileSync(SECRETS_FILE, (new Date()).toISOString() + " " + newsecret + "\n"
+    + existingSecrets.map(v => v.date.toISOString() + " " + v.id + "\n").join(''));
+  fs.chmodSync(SECRETS_FILE, '600'); // rw-------
+}
+
+function loadSecrets() {
+  secrets.length = 0;
+
+  // format: 2021-11-14T19:43:01.050Z <uid>
+  fs.readFileSync(SECRETS_FILE).toString().split('\n').forEach(line => {
+    const secret = line.replace(/\r$/, '').substr(25);
+    if (secret !== '') secrets.push(secret);
+  });
+}
+
+let rollNewSecretJob: NodeJS.Timeout;
+
+function getSecrets() {
+  if (secrets.length === 0) {
+    rollSecrets();
+    loadSecrets();
+  }
+  if (!rollNewSecretJob) {
+    // roll a new secret every month
+    rollNewSecretJob = setInterval(() => {
+      rollSecrets();
+      loadSecrets();
+    }, 30 * 24 * 60 * 1000);
+  }
+  return secrets;
 }
 
 function authenticateBasicAndApiKey(req: express.Request, res: express.Response, next: (err?: any) => void) {
