@@ -18,10 +18,14 @@ let passportSocketIo = require('passport.socketio');
 import * as session from 'express-session';
 import * as bodyParser from 'body-parser';
 
+import * as rateLimit from 'express-rate-limit';
+
 var logger = require("tracer").colorConsole({
   dateformat: "dd/mm/yyyy HH:MM:ss.l",
   level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
+
+var runWithMocha = /.*mocha$/.test(process.argv[1]);
 
 class User {
   id: string
@@ -156,7 +160,10 @@ export function configure(app: express.Application,
   // session.
   app.use(passport.initialize());
   app.use(passport.session());
-  app.use(authenticateBasicAndApiKey);
+  app.use(rateLimit({
+    windowMs: 1000, // 1 second
+    max: runWithMocha ? 0 : 20 // limit each IP to 20 requests per windowMs
+  }), authenticateBasicAndApiKey);
 
   app.use(passport.authenticate('remember-me'));
 

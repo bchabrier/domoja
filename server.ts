@@ -28,6 +28,8 @@ import * as fs from 'fs';
 
 import * as async from 'async';
 
+import * as rateLimit from 'express-rate-limit';
+
 
 var module_dir = __dirname;
 // remove trailing /dist if any
@@ -69,6 +71,8 @@ export function checkRoute(req: express.Request) {
   }
   return !bad;
 }
+
+var runWithMocha = /.*mocha$/.test(process.argv[1]);
 
 export class DomojaServer {
   app: express.Application;
@@ -290,15 +294,27 @@ export class DomojaServer {
 
 
     // / is not forbidden, as it goes to login page
-    app.get('/', core.ensureAuthenticated, function (req, res) {
+    app.get('/', rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: runWithMocha? 0 : 100 // limit each IP to 100 requests per windowMs
+    }), core.ensureAuthenticated, function (req, res) {
       res.sendFile(path.join(module_dir, staticPath, indexHTML), cacheOptions);
     });
 
-    app.get(indexHTML, core.ensureAuthenticated, serve);
+    app.get(indexHTML, rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: runWithMocha? 0 : 100 // limit each IP to 100 requests per windowMs
+    }), core.ensureAuthenticated, serve);
 
-    app.all('/manifest-auth.json', function (req, res) { res.sendStatus(403) });
+    app.all('/manifest-auth.json', rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: runWithMocha? 0 : 100 // limit each IP to 100 requests per windowMs
+    }), function (req, res) { res.sendStatus(403) });
 
-    app.all(/^(.*)$/, function (req, res, next) {
+    app.all(/^(.*)$/, rateLimit({
+      windowMs: runWithMocha? 100000 : 1000, // 1 second
+      max: runWithMocha ? 0 : 50
+    }), function (req, res, next) {
       if (alwaysAuthorizedRoutes.some((p) => { let r = new RegExp(p); return r.test(req.path); })) {
         next();
       } else {
@@ -407,7 +423,6 @@ export class DomojaServer {
   }
 
   reloadConfig(done: (err: Error) => void) {
-    var runWithMocha = /.*mocha$/.test(process.argv[1]);
     core.setDemoMode(runWithMocha || this.getApp().demoMode);
     core.reloadConfig(this.currentFile, err => {
       if (err) return done(err);

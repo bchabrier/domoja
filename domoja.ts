@@ -19,6 +19,8 @@ import * as express from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
 
+import * as rateLimit from 'express-rate-limit';
+
 
 var runWithMocha = /.*mocha$/.test(process.argv[1]);
 //var refreshData = require('./routes/refreshData')
@@ -79,7 +81,10 @@ if (!fs.existsSync(CONFIG_FILE)) {
         app80.use(require('morgan')('dev')); // logger
 
         // serve certbot
-        app80.get('/.well-known/acme-challenge/*', (req, res) => {
+        app80.get('/.well-known/acme-challenge/*', rateLimit({
+          windowMs: 15 * 60 * 1000, // 15 minutes
+          max: runWithMocha? 0 : 100 // limit each IP to 100 requests per windowMs
+        }), (req, res) => {
           res.sendFile(path.join(module_dir, '/www', req.path));
         });
         app80.all(/^.*$/, (req, res) => {
