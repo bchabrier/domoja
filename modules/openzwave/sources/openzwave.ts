@@ -405,10 +405,10 @@ export class Openzwave extends Source {
 	}
 
 	private sendControllerConfig(config: string, callback: (err: Error) => void): void {
-		this.debugModeLogger.error("Controller config command:", JSON.parse(config).command);
 		const command = JSON.parse(config).command;
 		const node = this.nodes.get(command.nodeId);
 		const commandName = command.command;
+		this.debugModeLogger.error(`Controller config command '${commandName}' on node '${node.id}'`);
 		switch (commandName) {
 			case "setValue":
 				node.setValue(command.valueID, command.value).then((res) => {
