@@ -50,8 +50,8 @@ export class astronomy extends Source {
 	request: request.Request;
 	location: string;
 
-	constructor(path: string, location: string) {
-		super(path);
+	constructor(path: string, location: string, initObject: InitObject) {
+		super(path, initObject);
 		this.location = location;
 		let self = this;
 		this.job = new CronJob({
@@ -67,7 +67,7 @@ export class astronomy extends Source {
 	}
 
 	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-		return new astronomy(path, initObject.location);
+		return new astronomy(path, initObject.location, initObject);
 	}
 
 	getParameters(): Parameters {

@@ -41,8 +41,8 @@ export class Openzwave extends Source {
 	} = { nodes: [] };
 	neighbors: { [id: number]: readonly number[] } = {};
 
-	constructor(path: string, driverPort: string, driverLogLevel: string, callback?: (err: Error) => void) {
-		super(path);
+	constructor(path: string, driverPort: string, driverLogLevel: string, initObject: InitObject, callback?: (err: Error) => void) {
+		super(path, initObject);
 
 		this.watcher = chokidar.watch(driverPort, {
 			ignoreInitial: true,
@@ -534,7 +534,7 @@ export class Openzwave extends Source {
 	}
 
 	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-		return new Openzwave(path, initObject.port, initObject.driverLogLevel);
+		return new Openzwave(path, initObject.port, initObject.driverLogLevel, initObject);
 	}
 
 	getParameters(): Parameters {

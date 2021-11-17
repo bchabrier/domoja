@@ -15,13 +15,13 @@ var logger = require("tracer").colorConsole({
  */
 export class Sample extends Source {
 	
-	constructor(path: string, ipAddr: string, deviceId: string, token: string, callback?: (err: Error) => void) {
-		super(path);
+	constructor(path: string, ipAddr: string, deviceId: string, token: string, initObject: InitObject, callback?: (err: Error) => void) {
+		super(path, initObject);
 		callback && callback(null);
 	}
 
 	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-		return new Sample(path, initObject.ip, initObject.device_id, initObject.token);
+		return new Sample(path, initObject.ip, initObject.device_id, initObject.token, initObject);
 	}
 
 	getParameters(): Parameters {

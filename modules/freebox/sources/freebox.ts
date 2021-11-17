@@ -50,8 +50,8 @@ export class Freebox extends Source {
     } = {};
     private polling = false;
 
-    constructor(path: string, private URL: string, private app_token: string, callback?: (err: Error) => void) {
-        super(path);
+    constructor(path: string, private URL: string, private app_token: string, initObject: InitObject, callback?: (err: Error) => void) {
+        super(path, initObject);
         this.host = this.URL.replace(/http(s?):\/\/([^\/]+)\/?/, "$2");
         // make a request, to connect and initiate polling
         this.requestFromFreebox('/call/log/', null, (err, res) => {
@@ -88,7 +88,7 @@ export class Freebox extends Source {
 
     public startPolling() {
         if (this.polling) return;
-        
+
         this.polling = true;
         let poll = (api: string, interval: number) => {
             this.requestFromFreebox(api, null, (err, res) => {
@@ -365,7 +365,7 @@ S27oDfFq04XSox7JM9HdTt2hLK96x1T7FpFrBTnALzb7vHv9MhXqAT90fPR/8A==
     }
 
     createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-        return new Freebox(path, initObject.URL, initObject.app_token);
+        return new Freebox(path, initObject.URL, initObject.app_token, initObject);
     }
 
     getParameters(): Parameters {

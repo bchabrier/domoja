@@ -19,8 +19,8 @@ export class Zibase extends Source {
 	zibase: ZiBase;
 	private initialEmitEvent: (event: string, arg1: any, arg2: any) => void;
 
-	constructor(path: string, ipAddr: string, deviceId: string, token: string, timeout: number, callback?: (err: Error) => void) {
-		super(path);
+	constructor(path: string, ipAddr: string, deviceId: string, token: string, timeout: number, initObject: InitObject, callback?: (err: Error) => void) {
+		super(path, initObject);
 		this.zibase = new ZiBase(ipAddr, deviceId, token, callback);
 		this.to = timeout;
 
@@ -111,7 +111,7 @@ export class Zibase extends Source {
 		if (isNaN(timeout)) {
 			logger.warning(`Source "${path}" of type "zibase": timeout "${initObject.timeout}" is not a number.`);
 		}
-		return new Zibase(path, initObject.ip, initObject.device_id, initObject.token, timeout);
+		return new Zibase(path, initObject.ip, initObject.device_id, initObject.token, timeout, initObject);
 	}
 
 	getParameters(): Parameters {
