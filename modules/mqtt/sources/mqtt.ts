@@ -9,12 +9,12 @@ export class Mqtt extends Source {
     pushedDos: Function[] = [];
     creatingClient = false;
 
-    constructor(path: string, private url: string, private user: string, private password: string) {
-        super(path);
+    constructor(path: string, private url: string, private user: string, private password: string, initObject: InitObject) {
+        super(path, initObject);
     }
 
     createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-        return new Mqtt(path, initObject.url, initObject.user, initObject.password);
+        return new Mqtt(path, initObject.url, initObject.user, initObject.password, initObject);
     }
 
     private connectAndDo(f: () => void): void {

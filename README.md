@@ -299,7 +299,6 @@ To do
 - support other attribute than 'state' in devices // normalement ca marche (ex tem avec temp piscine). L'utiliser pour le stick etc
 - support for dev: reload module when changed
 - authentication cookies seem not persisted: when restarting the server, we need to relogin
-- debugMode should be taken into account when creating the source
 
 Issues
 ------

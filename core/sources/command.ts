@@ -52,9 +52,8 @@ export class command extends Source {
 
 	stateUpdaterProcess: child_process.ChildProcessWithoutNullStreams;
 
-	constructor(path: string, public VALUES: { [value: string]: string }, public pushUpdates: string, debug: boolean) {
-		super(path);
-		this.debugMode = debug; // need to capture debugMode early to start pushUpdates process correctly
+	constructor(path: string, public VALUES: { [value: string]: string }, public pushUpdates: string, initObject: InitObject) {
+		super(path, initObject);
 		if (this.pushUpdates) {
 			this.stateUpdaterProcess = child_process.exec(this.pushUpdates, { env: { 'DEBUG': this.debugMode ? '1' : '0', SOURCE: this.path } });
 			let data = '';
@@ -86,7 +85,7 @@ export class command extends Source {
 	}
 
 	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-		return new command(path, initObject.VALUES, initObject['push-updates'], initObject['debug'] === 'true');
+		return new command(path, initObject.VALUES, initObject['push-updates'], initObject);
 	}
 
 	getParameters(): Parameters {

@@ -37,8 +37,8 @@ export class IPX800 extends Source {
 	client: Socket;
 	timeout: number;
 
-	constructor(path: string, macaddress: string, ip: string, port?: number, timeout?: number) {
-		super(path);
+	constructor(path: string, macaddress: string, ip: string, initObject: InitObject, port?: number, timeout?: number) {
+		super(path, initObject);
 		this.macAddress = macaddress;
 		this.ip = ip;
 		this.port = port || 80;

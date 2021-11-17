@@ -6,7 +6,7 @@ import { Source, ConfigLoader, GenericDevice, InitObject, Parameters } from '..'
  */
 export class demo extends Source {
     createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-        return new demo(path);
+        return new demo(path, initObject);
     }
     getParameters(): Parameters {
         return {};

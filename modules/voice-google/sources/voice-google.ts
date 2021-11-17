@@ -9,12 +9,12 @@ var logger = require("tracer").colorConsole({
 
 export class VoiceByGoogle extends Source {
 
-	constructor(path: string, private language: string, private volume: number = 100) {
-		super(path);
+	constructor(path: string, private language: string, private volume: number = 100, initObject: InitObject) {
+		super(path, initObject);
 	}
 
 	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-		return new VoiceByGoogle(path, initObject.language, initObject.volume);
+		return new VoiceByGoogle(path, initObject.language, initObject.volume, initObject);
 	}
 
 	getParameters(): Parameters {

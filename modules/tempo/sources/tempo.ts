@@ -48,8 +48,8 @@ export class tempo extends Source {
 	tomorrowColorUpdated: boolean = false;
 	request: request.Request;
 
-	constructor(path: string) {
-		super(path);
+	constructor(path: string, initObject: InitObject) {
+		super(path, initObject);
 		let self = this;
 		this.jobUpdateAllColors = new CronJob({
 			cronTime: '00 01 * * *', // Runs every day at 1:00 AM.
@@ -74,7 +74,7 @@ export class tempo extends Source {
 	}
 
 	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-		return new tempo(path);
+		return new tempo(path, initObject);
 	}
 
 	getParameters(): Parameters {

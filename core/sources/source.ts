@@ -56,11 +56,12 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         error: (...data: any[]) => void,
     }
 
-    constructor(path: string) {
+    constructor(path: string, initObject: InitObject) {
         this.eventEmitter = new events.EventEmitter();
         this.devicesByAttribute = {};
         this.devicesByPath = {};
         this.path = path;
+        this.debugMode = initObject && initObject.debug && initObject.debug.includes("true") || false;
         this.type = require('util').inspect(this).split(" ")[0]; // hack to retrieve the source type
 
         const rewriteFunction = (logFunction: (...data: any[]) => void, force: boolean = false) => {
@@ -286,7 +287,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
 
 export class DefaultSource extends Source {
     constructor() {
-        super('default');
+        super('default', null);
     }
 
     createInstance(configLoader: ConfigLoader, id: string, initObject: InitObject): Source {
