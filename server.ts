@@ -62,13 +62,56 @@ export function checkRoute(req: express.Request) {
   });
 
   if (bad) {
-    logger.warn("Url:", req.protocol + "://" + req.hostname + req.url);
-    if (req.query && req.query != {}) logger.warn("Query:", req.query);
-    if (req.method == "POST") logger.warn("Body:", req.body);
-    logger.warn("Referer:", req.headers.referer);
-    logger.warn("User-agent:", req.headers["user-agent"]);
-    logger.warn("IP:", req.ip);
+
+    function dumpInfo() {
+      logger.warn("Url:", req.protocol + "://" + req.hostname + req.url);
+      if (req.query && req.query != {}) logger.warn("Query:", req.query);
+      if (req.method == "POST") logger.warn("Body:", req.body);
+      logger.warn("Referer:", req.headers.referer);
+      logger.warn("User-agent:", req.headers["user-agent"]);
+      logger.warn("IP:", req.ip);
+    }
+
+    http.get(`http://ip-api.com/json/${req.ip}?fields=message,continent,country,regionName,city,isp,org,as`, (res) => {
+      const { statusCode } = res;
+      const contentType = res.headers['content-type'];
+
+      let error;
+      // Any 2xx status code signals a successful response but
+      // here we're only checking for 200.
+      if (statusCode !== 200) {
+        error = new Error('Request Failed.\n' +
+          `Status Code: ${statusCode}`);
+      } else if (!/^application\/json/.test(contentType)) {
+        error = new Error('Invalid content-type.\n' +
+          `Expected application/json but received ${contentType}`);
+      }
+      if (error) {
+        console.error(error.message);
+        // Consume response data to free up memory
+        res.resume();
+        return;
+      }
+
+      res.setEncoding('utf8');
+      let rawData = '';
+      res.on('data', (chunk) => { rawData += chunk; });
+      res.on('end', () => {
+        try {
+          const parsedData = JSON.parse(rawData);
+          dumpInfo();
+          logger.warn(parsedData);
+        } catch (e) {
+          logger.error(e.message);
+          dumpInfo();
+        }
+      });
+    }).on('error', (e) => {
+      logger.error(`Got error: ${e.message}`);
+      dumpInfo();
+    });
   }
+
   return !bad;
 }
 
@@ -296,23 +339,23 @@ export class DomojaServer {
     // / is not forbidden, as it goes to login page
     app.get('/', rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: runWithMocha? 0 : 100 // limit each IP to 100 requests per windowMs
+      max: runWithMocha ? 0 : 100 // limit each IP to 100 requests per windowMs
     }), core.ensureAuthenticated, function (req, res) {
       res.sendFile(path.join(module_dir, staticPath, indexHTML), cacheOptions);
     });
 
     app.get(indexHTML, rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: runWithMocha? 0 : 100 // limit each IP to 100 requests per windowMs
+      max: runWithMocha ? 0 : 100 // limit each IP to 100 requests per windowMs
     }), core.ensureAuthenticated, serve);
 
     app.all('/manifest-auth.json', rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: runWithMocha? 0 : 100 // limit each IP to 100 requests per windowMs
+      max: runWithMocha ? 0 : 100 // limit each IP to 100 requests per windowMs
     }), function (req, res) { res.sendStatus(403) });
 
     app.all(/^(.*)$/, rateLimit({
-      windowMs: runWithMocha? 100000 : 1000, // 1 second
+      windowMs: runWithMocha ? 100000 : 1000, // 1 second
       max: runWithMocha ? 0 : 50
     }), function (req, res, next) {
       if (alwaysAuthorizedRoutes.some((p) => { let r = new RegExp(p); return r.test(req.path); })) {
