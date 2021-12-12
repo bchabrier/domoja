@@ -26,7 +26,7 @@
   "homepage": "https://github.com/bchabrier/domoja/modules/openzwave#readme",
   "dependencies": {
     "tracer": "^1.1.2",
-    "zwave-js": "8.4"
+    "zwave-js": "8.7.5"
   },
   "devDependencies": {
     "@types/mocha": "<=8",

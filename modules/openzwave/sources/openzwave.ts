@@ -4,7 +4,7 @@ import { createLogMessagePrinter, CommandClasses, allCCs, TranslatedValueID } fr
 import * as winston from "winston";
 import * as chokidar from 'chokidar';
 import * as assert from 'assert'
-
+import { exit } from 'process';
 
 var logger = require("tracer").colorConsole({
 	dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -82,6 +82,7 @@ export class Openzwave extends Source {
 
 			// Tell the driver which serial port to use
 			this.driver = new Driver(driverPort, {
+				enableSoftReset: false,
 				logConfig: {
 					enabled: true,
 					level: level,
@@ -98,6 +99,13 @@ export class Openzwave extends Source {
 					]
 				}
 			});
+
+			// the driver catches SIGINT which prevents the process to exit on the first ^C
+			// this issue has been submitted: https://github.com/zwave-js/node-zwave-js/issues/3657
+			this.logger.warn("The line below should be removed when issue 'https://github.com/zwave-js/node-zwave-js/issues/3657' is solved.")
+			process.off("SIGINT", exit);
+			process.on("SIGINT", exit);
+
 			// You must add a handler for the error event before starting the driver
 			this.driver.on("error", (e) => {
 				// Do something with it
