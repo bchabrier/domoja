@@ -31,3 +31,4 @@ dist/
 .nyc_output/
 /sessions/
 /.vscode/
+www/

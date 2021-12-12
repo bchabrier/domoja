@@ -30,6 +30,8 @@ import * as async from 'async';
 
 import * as rateLimit from 'express-rate-limit';
 
+import * as url from 'url';
+import { createProxyMiddleware, responseInterceptor } from 'http-proxy-middleware';
 
 var module_dir = __dirname;
 // remove trailing /dist if any
@@ -348,6 +350,75 @@ export class DomojaServer {
       windowMs: 15 * 60 * 1000, // 15 minutes
       max: runWithMocha ? 0 : 100 // limit each IP to 100 requests per windowMs
     }), core.ensureAuthenticated, serve);
+
+    //process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
+
+    app.use('/carmaint', express.static(path.join(module_dir, '/www/carmaint'), cacheOptions));
+    app.use('/carmaint/tab*', (req, res) => res.sendFile(path.join(module_dir, '/www/carmaint/index.html')));
+    app.use('/carmaint', createProxyMiddleware({
+      target: 'http://192.168.0.10:3000',
+      changeOrigin: true,
+      pathRewrite: {
+        '^/carmaint': '',
+      },
+    }));
+    // strangely, images in assets are broken when using responseInterceptor,
+    // hence we create a specific proxy for them
+    false && app.use('/carmaint/assets', createProxyMiddleware({
+      target: 'http://192.168.0.10:8100',
+      changeOrigin: true,
+      pathRewrite: {
+        '^/carmaint': '',
+      },
+    }));
+    false && app.use('/carmaint', createProxyMiddleware({
+      target: 'http://192.168.0.10:8100',
+      changeOrigin: true,
+      pathRewrite: {
+        '^/carmaint': '',
+      },
+      selfHandleResponse: true, // res.end() will be called internally by responseInterceptor()
+      onProxyRes: responseInterceptor(async (responseBuffer, proxyRes, req, res) => {
+        const response = responseBuffer.toString('utf8'); // convert buffer to string
+        //console.log('proxyRes:', proxyRes);
+        //console.log('req:', req);
+        return response
+          .replace(/src="\//g, 'src="/carmaint/')
+          .replace(/script\.src = jsonpScriptSrc\(/g, 'script.src = "/carmaint" + jsonpScriptSrc(')
+          .replace(/\/sync/g, '/carmaint/sync')
+          .replace(/\/assets/g, '/carmaint/assets')
+          .replace(/([hH]ref|path): "\//g, '$1: "/carmaint/')
+          ;
+      }),
+      //logLevel: 'debug',
+    }));
+
+    false && app.all('/carmaint/*', (sreq, sres) => {
+
+      const { pathname } = url.parse(sreq.url);
+      const opts: https.RequestOptions = {
+        hostname: '192.168.0.10',
+        port: 8100,
+        path: pathname,
+        method: sreq.method,
+        headers: sreq.headers,
+      }
+      opts.headers.host = opts.hostname;
+
+      //process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
+
+      logger.error(opts);
+
+      const creq = http.request(opts, (cres) => {
+        // passthrough status code and headers
+        logger.warn('received response, piping')
+        //sres.writeHead(cres.statusCode, cres.headers);
+        cres.pipe(sres, { end: true });
+      });
+
+      logger.warn('sending request, piping')
+      sreq.pipe(creq, { end: true });
+    });
 
     app.all('/manifest-auth.json', rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
