@@ -199,8 +199,16 @@ Persistence can be specified through the `persistence` attribute:
 `persistence: "<persistence-module>:<id>:0:<aggregation mode>:<keep>"`
 * `<persistence-module>` is `mongo` by default.
 * `<id>` specifies the id of the device to be persisted. If not specified, then the path of the device is used. Specifying the id is useful if you want to be sure to keep the persisted states even if you change the path of the device.
-* `<aggregation mode>`: one of `year`, `month`, `day`, `hour`, `minute`, `none`
-* `<keep>`: duration to persist the states, in seconds.
+* `<aggregation mode>`: one of `raw` or  `aggregate`.
+* `<keep>`: One or two comma-separated durations indicating how long to persist the states. In case `aggregate` mode is specified, the field contains 2 durations, the first one applies to raw data, while the second one applies to the aggregated data. Durations can be a number (or calculation) of minutes, or a specification of years, months, weeks, days, hours, minutes. A duration of 0 means that data is kept indefinitely.
+
+  Example of durations:
+  - `5 years`
+  - `1 month 2 weeks`
+  - `(2 * 5 + 3) hours + 10 minutes`
+  - `30` 
+
+  By default, raw data is kept 1 year and aggregated data 5 years. 
 
 User Interface
 --------------
@@ -294,7 +302,6 @@ yarn add $(ls -t /tmp/domoja.*.tar.gz | head -1)
 To do
 -----
 
-- Use KEEP for persistence
 - Ajouter un status general couplé avec Siri: "donne moi le statut de la maison/piscine/tondeuse..."
 - support other attribute than 'state' in devices // normalement ca marche (ex tem avec temp piscine). L'utiliser pour le stick etc
 - support for dev: reload module when changed

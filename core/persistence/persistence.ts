@@ -1,9 +1,12 @@
 import * as assert from 'assert';
 import { MongoClient } from 'mongodb';
 import { message } from '../sources/source';
+import { parseDuration } from './durationParser';
 import * as async from 'async';
 
-const logger = require("tracer").colorConsole({
+import { colorConsole } from 'tracer';
+
+const logger = colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
     level: 3
     // 0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
@@ -26,20 +29,35 @@ export abstract class persistence {
     ttl: number;
     strategy: Strategy;
     keep: number;
+    keepAggregation: number;
     cleanJob: NodeJS.Timeout;
 
-    constructor(id: string, ttl?: number, strategy?: Strategy, keep?: number) {
+    constructor(id: string, ttl?: number, strategy?: Strategy, keep?: string) {
         this.strategy = strategy || "raw";
         this.id = id;
         this.ttl = ttl > 0 ? ttl : 1 * 60; // 1h by default
-        this.keep = keep || 5 * 365 * 24 * 60; // 5 years by default
+
+        if (keep) {
+            if (this.strategy === 'aggregate') {
+                const keepTab = keep.split(',');
+                this.keep = keepTab[0] && parseDuration(keepTab[0]);
+                this.keepAggregation = keepTab[1] && parseDuration(keepTab[1]);
+            } else {
+                this.keep = parseDuration(keep);
+                this.keepAggregation = undefined;
+            }
+        }
+
+        if (strategy) {
+            if (this.keep === undefined) this.keep = 1 * 365 * 24 * 60; // 1 year by default
+            if (this.keepAggregation === undefined) this.keepAggregation = 5 * 365 * 24 * 60; // 5 years by default
+        }
 
         this.cleanJob = setInterval(() => {
             this.cleanOldData((err) => {
                 if (err) logger.warn('Could not clean history of "%s":', this.id, err);
             });
         }, 24 * 60 * 60 * 1000);
-
     }
     insert(record: { date: Date, state: any }, callback: (err: Error, doc: Object) => void): void {
         if (demoMode) return callback(null, undefined);
@@ -76,7 +94,7 @@ export class mongoDB extends persistence {
     static mongoClient: MongoClient;
     static connecting: boolean = false;
 
-    constructor(id: string, ttl?: number, strategy?: Strategy, keep?: number) {
+    constructor(id: string, ttl?: number, strategy?: Strategy, keep?: string) {
         super(id, ttl, strategy, keep);
     }
 
@@ -261,17 +279,40 @@ export class mongoDB extends persistence {
             }
             var db = client.db();
             var collection = this.id;
-            let collectionStore = db.collection(collection);
-            collectionStore.deleteMany(
-                {
-                    'date': { $lt: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000) }, // 1 month old
-                },
-                (err, result) => {
-                    if (err) logger.error('Could not remove old data!');
-                    else logger.info('Removed %d old data in collection "%s".', result.deletedCount, collection);
-                    callback(err);
-                }
-            );
+            if (this.keep) {
+                let collectionStore = db.collection(collection);
+                collectionStore.deleteMany(
+                    {
+                        'date': { $lt: new Date(new Date().getTime() - this.keep * 60 * 1000) },
+                    },
+                    (err, result) => {
+                        if (err) logger.error(`Could not remove old data from collection '${collection}'!`);
+                        else logger.info('Removed %d old data from collection "%s".', result.deletedCount, collection);
+                        callback(err);
+                    }
+                );
+
+            }
+            if (this.strategy === 'aggregate' && this.keepAggregation) {
+                async.every(ALL_AGGREGATION_TYPES.values(),
+                    (aggregate: AggregationType, callback) => {
+                        const collectionName = aggregate == "none" ? collection : collection + " by " + aggregate;
+                        const collectionStore = db.collection(collectionName);
+                        collectionStore.deleteMany(
+                            {
+                                'date': { $lt: new Date(new Date().getTime() - this.keepAggregation * 60 * 1000) },
+                            },
+                            (err, result) => {
+                                if (err) logger.error(`Could not remove old data from collection '${collectionName}'!`);
+                                else logger.info('Removed %d old data from collection "%s".', result.deletedCount, collectionName);
+                                callback(err);
+                            }
+                        );
+                    },
+                    (err) => {
+                        callback(err);
+                    });
+            }
         });
     }
 

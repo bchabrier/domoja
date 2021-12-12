@@ -72,7 +72,7 @@ devices:
     - pompes_start : { type: variable, widget: text, tags: 'aquarium-page', name: "Heure démarrage pompes aquarium" }
     - pompes_end : { type: variable, widget: text, tags: 'aquarium', name: "Heure arrêt pompes aquarium" }
 
-  - sunset: { type: device, persistence: "mongo:sunset:1200:aggregate", widget: text, tags: 'astronomy', source: astronomy, id: sunsetTime, name: "Coucher du soleil" }
+  - sunset: { type: device, persistence: "mongo:sunset:1200:raw", widget: text, tags: 'astronomy', source: astronomy, id: sunsetTime, name: "Coucher du soleil" }
   - sunset_plus_30mn: { type: variable, debug: true, widget: text, tags: 'astronomy', name: "Coucher du soleil + 30mn" }
   - sunrise: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: sunriseTime, name: "Lever du soleil" }
   - zenith: { type: device, widget: text, tags: 'astronomy', source: astronomy, id: zenithTime, name: "Zénith" }
@@ -146,11 +146,11 @@ devices:
       //console.log("<<<<<",tab.length,tab.length && tab[0],">>>>>"); 
       return tab.map(lh => lh.primary_name).join(", ");
     }', 
-      persistence: "mongo:hosts_connected_semeria:0:raw",
+      persistence: "mongo:hosts_connected_semeria:0:raw:5 years",
       name: "Connectés Séméria" }
         #id:TTL:raw|aggregate:KEEP    
         # TTL: 0=default, 1h
-        # KEEP: in minutes. default = 5 years (not implemented)
+        # KEEP: raw duration (default: 1 year), aggregation duration (default: 5 years)
     - presence : { type: variable, widget: text, tags: 'semeria', name: "Présence au Séméria"} 
     - presence-couleur : { type: variable, widget: color, tags: 'semeria', name: "Couleur icon"} 
     - presence-message : { type: variable, widget: text, tags: 'semeria', name: "Message présence"} 
@@ -217,18 +217,18 @@ devices:
         name: "Filtration piscine" }
         #id:TTL:raw|aggregate:KEEP    
         # TTL: 0=default, 1h
-        # KEEP: in minutes. default = 5 years (not implemented)
+        # KEEP: raw duration (default: 1 year), aggregation duration (default: 5 years)
      #- filtration-status: { type: device, debug: false, widget: text, tags: 'piscine-page', source: myESPs-status, id: "04a87b", name: "Status filtration piscine" }
      - filtration-status: { type: device, debug: false, widget: text, tags: 'piscine-page', source: ESPs, id: "/WiFi/ESPRouter_04a87b/system/status", name: "Status filtration piscine" }
      - pieuvre: { type: device, widget: toggle, tags: 'piscine-page', source: myZibase, id: "ZP8", name: "Pieuvre" }
      - chlore_plus: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZA14", name: "Chlore +" }
      - chlore_moins: { type: device, widget: toggle, tags: 'piscine', source: myZibase, id: "ZO14", name: "Chlore -" }
      - temperature: { type: sensor, widget: "text!{value, number, :: .# } °C", tags: 'piscine-page, piscine-temp-page', source: ZStick, id: "12-49-3-Air temperature", 
-        persistence: "mongo:temperature_piscine:0:aggregate:120000", 
+        persistence: "mongo:temperature_piscine:0:aggregate:3 months, 5 years", 
         name: "Température" }
         #id:TTL:raw|aggregate:KEEP    
         # TTL: 0=default, 1h
-        # KEEP: in minutes. default = 5 years (not implemented)
+        # KEEP: raw duration (default: 1 year), aggregation duration (default: 5 years)
      - temperature-graph : { type: variable, widget: temp-graph:piscine.temperature, tags: 'piscine-temp-page', name: "Courbe de température"} 
      # - couleur : { type: variable, widget: color, tags: 'piscine', name: "Couleur de la température"} 
      - couleur : { type: variable, widget: 'text!<span style="background-color:%s;color:black">%s</span>', tags: 'piscine', name: "Couleur de la température"} 
@@ -1451,7 +1451,7 @@ scenarios:
                 }
               }
             }
-            // avidunwanted stop/start
+            // avoid unwanted stop/start
             if (duree > 23 + 50/60) duree=24;
             this.setDeviceState("piscine.filtration-duration", duree, callback);
           }'        
