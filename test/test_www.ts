@@ -58,6 +58,7 @@ describe('Repository www', function () {
         const UIdir = './www';
         const UIdirLength = UIdir.length;
         const alwaysAuthorizedRoutes = [
+            "/carmaint/*",
             "/login.html",
             "/build/main.css",
             "/assets/fonts/.*",
