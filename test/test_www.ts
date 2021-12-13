@@ -19,7 +19,8 @@ describe('Repository www', function () {
                 null,
                 '',
                 (req, resp) => { },
-                null
+                null,
+                true
             );
             done();
         });

@@ -27,7 +27,8 @@ describe('Module api', function () {
                 null,
                 '',
                 (req, resp) => { },
-                null
+                null,
+                true
             );
             done();
         });

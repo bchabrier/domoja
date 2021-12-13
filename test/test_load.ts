@@ -21,7 +21,7 @@ describe('Module load', function () {
 
     }) : undefined;
 
-    function passToSandbox(done: MochaDone) {
+    function passToSandbox(done: Mocha.Done) {
         grammar.__set__('sandbox.done', function <T>(old: T, val: T) {
             done();
         });

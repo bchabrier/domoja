@@ -8,14 +8,14 @@ type Source = ToMock.Source;
 
 import * as assert from 'assert';
 import { Source, Parameters, ConfigLoader, InitObject, GenericDevice } from '../core';
-import { device } from '../core/devices/device';
+import { device } from 'domoja-core/devices/device';
 
 describe('Module sources', function () {
   describe('class Source', function () {
 
     class derivedSource extends Source {
       createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-        return new derivedSource(path);
+        return new derivedSource(path, {});
       }
       getParameters(): Parameters {
         return {
