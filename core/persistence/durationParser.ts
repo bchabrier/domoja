@@ -1,5 +1,6 @@
 import { Source, Parse, parse, token } from 'shitty-peg';
-
+import { Duration } from 'luxon';
+export { Duration } from 'luxon';
 import { colorConsole, setLevel } from 'tracer';
 
 const logger = colorConsole({
@@ -18,147 +19,205 @@ function getId() {
 function duration() {
     indent = 0;
     id = 0;
-    return instrument((c: Parse) => parseInt(c.pushWhitespaceInsignificant().oneOf(
+    return instrument((c: Parse) => <Duration><unknown>c.pushWhitespaceInsignificant().oneOf(
         calcDurationString(),
-        calcMath(true),
-        calcMath(false),
-    )));
+        calcMathWithUnit(),
+        (c: Parse) => Duration.fromMillis(c.one(calcMath()) * 60 * 1000),
+    ));
 }
 
+// always longer unit first inside (|)
 function unitMinutes() {
-    return instrument((c: Parse) => { c.one(token(/^(minutes|minute|min|mn|)/, '"minutes"')); return 1; });
+    return instrument((c: Parse) => { c.one(token(/^(minutes|minute|min|mn|)/, '"minutes"')); return Duration.fromObject({ minutes: 1 }); });
 }
 
 function unitHours() {
-    return instrument((c: Parse) => { c.one(token(/^(hours|hour|hr|h)/, '"hours"')); return 60; });
+    return instrument((c: Parse) => { c.one(token(/^(hours|hour|hr|h)/, '"hours"')); return Duration.fromObject({ hours: 1 }); });
 }
 
 function unitDays() {
-    return instrument((c: Parse) => { c.one(token(/^(days|day|d)/, '"days"')); return 24 * 60; });
+    return instrument((c: Parse) => { c.one(token(/^(days|day|d)/, '"days"')); return Duration.fromObject({ days: 1 }); });
 }
 
 function unitWeeks() {
-    return instrument((c: Parse) => { c.one(token(/^(weeks|week|wk|w)/, '"weeks"')); return 7 * 24 * 60; });
+    return instrument((c: Parse) => { c.one(token(/^(weeks|week|wk|w)/, '"weeks"')); return Duration.fromObject({ days: 7 }); });
 }
 
 function unitMonths() {
-    return instrument((c: Parse) => { c.one(token(/^(months|month|m)/, '"months"')); return 30 * 24 * 60; });
+    return instrument((c: Parse) => { c.one(token(/^(months|month|m)/, '"months"')); return Duration.fromObject({ months: 1 }); });
 }
 
 function unitYears() {
-    return instrument((c: Parse) => { c.one(token(/^(years|year|yr|y)/, '"years"')); return 365 * 24 * 60; });
+    return instrument((c: Parse) => { c.one(token(/^(years|year|yr|y)/, '"years"')); return Duration.fromObject({ years: 1 }); });
 }
 
 function unit() {
     return instrument((c: Parse) => {
-        return parseInt(c.oneOf(
-            // always longer unit first inside (|)
+        return <Duration><unknown>c.oneOf(
             unitMinutes(),
             unitHours(),
             unitDays(),
             unitWeeks(),
             unitMonths(),
             unitYears(),
-        ));
+        );
+    });
+}
+
+function multiply(mult: number, duration: Duration): Duration;
+function multiply(duration: Duration, mult: number): Duration;
+function multiply(arg1: number | Duration, arg2: number | Duration): Duration | number {
+    if (typeof arg2 === 'number' && typeof arg1 === 'object') return multiply(arg2, arg1);
+    if (typeof arg2 === 'object' && typeof arg1 === 'number') {
+        const mult = arg1;
+        const duration = arg2;
+        return Duration.fromObject({
+            years: mult * duration.years,
+            months: mult * duration.months,
+            days: mult * duration.days,
+            hours: mult * duration.hours,
+            minutes: mult * duration.minutes,
+        });
+    }
+    throw undefined;
+}
+
+function divide(duration: Duration, denom: number): Duration {
+    return Duration.fromObject({
+        years: duration.years / denom,
+        months: duration.months / denom,
+        days: duration.days / denom,
+        hours: duration.hours / denom,
+        minutes: duration.minutes / denom,
     });
 }
 
 function calcDurationString() {
     return instrument((c: Parse) => {
-        const years = c.optional((c: Parse) => c.one(calcParenOrNumber(false)) * c.one(unitYears()));
-        const months = c.optional((c: Parse) => c.one(calcParenOrNumber(false)) * c.one(unitMonths()));
-        const weeks = c.optional((c: Parse) => c.one(calcParenOrNumber(false)) * c.one(unitWeeks()));
-        const days = c.optional((c: Parse) => c.one(calcParenOrNumber(false)) * c.one(unitDays()));
-        const hours = c.optional((c: Parse) => c.one(calcParenOrNumber(false)) * c.one(unitHours()));
-        const minutes = c.optional((c: Parse) => c.one(calcParenOrNumber(false)) * c.one(unitMinutes()));
+        let duration = Duration.fromObject({});
+        const years = c.optional((c: Parse) => multiply(c.one(calcParenOrNumber()), c.one(unitYears())));
+        if (years) duration = duration.plus(years);
+        const months = c.optional((c: Parse) => multiply(c.one(calcParenOrNumber()), c.one(unitMonths())));
+        if (months) duration = duration.plus(months);
+        const weeks = c.optional((c: Parse) => multiply(c.one(calcParenOrNumber()), c.one(unitWeeks())));
+        if (weeks) duration = duration.plus(weeks);
+        const days = c.optional((c: Parse) => multiply(c.one(calcParenOrNumber()), c.one(unitDays())));
+        if (days) duration = duration.plus(days);
+        const hours = c.optional((c: Parse) => multiply(c.one(calcParenOrNumber()), c.one(unitHours())));
+        if (hours) duration = duration.plus(hours);
+        const minutes = c.optional((c: Parse) => multiply(c.one(calcParenOrNumber()), c.one(unitMinutes())));
+        if (minutes) duration = duration.plus(minutes);
         c.end();
 
-        return (isNaN(years) ? 0 : years) +
-            (isNaN(months) ? 0 : months) +
-            (isNaN(weeks) ? 0 : weeks) +
-            (isNaN(days) ? 0 : days) +
-            (isNaN(hours) ? 0 : hours) +
-            (isNaN(minutes) ? 0 : minutes);
+        return duration;
     });
 }
 
-function calcMath(withUnit: boolean) {
-    return instrument(`calcMath(${withUnit})`, (c: Parse) => c.one(calcAdd(withUnit)));
+function calcMath() {
+    return instrument((c: Parse) => c.one(calcAdd()));
 }
 
-function calcAdd(withUnit: boolean) {
-    return instrument(`calcAdd(${withUnit})`, (c: Parse) => {
-        const left = c.one(calcMul(withUnit));
+function calcMathWithUnit() {
+    return instrument((c: Parse) => c.one(calcAddWithUnit()));
+}
+
+function calcAdd(): (c: Parse) => number {
+    return instrument((c: Parse) => {
+        const left = c.one(calcMul());
         return parseInt(c.oneOf(
-            (c: Parse) => left + c.skip('+').one(calcAdd(withUnit)),
-            (c: Parse) => left - c.skip('-').one(calcAdd(withUnit)),
+            (c: Parse) => left + c.skip('+').one(calcAdd()),
+            (c: Parse) => left - c.skip('-').one(calcAdd()),
             (c: Parse) => left
-        ))
+        ));
     });
 }
 
-function calcMul(withUnit: boolean) {
-    return instrument(`calcMul(${withUnit})`, (c: Parse) => parseInt(withUnit ?
+function calcAddWithUnit(): (c: Parse) => Duration {
+    return instrument((c: Parse) => {
+        const left = c.one(calcMulWithUnit());
+        return <Duration><unknown>c.oneOf(
+            (c: Parse) => left.plus(c.skip('+').one(calcAddWithUnit())),
+            (c: Parse) => left.minus(c.skip('-').one(calcAddWithUnit())),
+            (c: Parse) => left
+        );
+    });
+}
+
+function calcMul(): (c: Parse) => number {
+    return instrument((c: Parse) => parseInt(c.oneOf(
+        (c: Parse) => c.one(calcParenOrNumber()) * c.skip('*').one(calcMul()),
+        (c: Parse) => c.one(calcParenOrNumber()) / c.skip('/').one(calcMul()),
+        calcParenOrNumber()
+    )));
+}
+
+function calcMulWithUnit(): (c: Parse) => Duration {
+    return instrument((c: Parse) => <Duration><unknown>(
         c.oneOf(
-            (c: Parse) => c.one(calcParenOrNumber(false)) * c.skip('*').one(calcMul(true)),
-            (c: Parse) => c.one(calcParenOrNumber(true)) * c.skip('*').one(calcMul(false)),
-            (c: Parse) => c.one(calcParenOrNumber(false)) / c.skip('/').one(calcMul(true)),
-            (c: Parse) => c.one(calcParenOrNumber(true)) / c.skip('/').one(calcMul(false)),
-            calcParenOrNumber(true)
-        ) :
-        c.oneOf(
-            (c: Parse) => c.one(calcParenOrNumber(false)) * c.skip('*').one(calcMul(false)),
-            (c: Parse) => c.one(calcParenOrNumber(false)) / c.skip('/').one(calcMul(false)),
-            calcParenOrNumber(false)
+            (c: Parse) => multiply(c.one(calcParenOrNumber()), c.skip('*').one(calcMulWithUnit())),
+            (c: Parse) => multiply(c.one(calcParenOrNumberWithUnit()), c.skip('*').one(calcMul())),
+            (c: Parse) => divide(c.one(calcParenOrNumberWithUnit()), c.skip('/').one(calcMul())),
+            calcParenOrNumberWithUnit()
         )));
 }
 
 var NUM_RX = token(/^[+-]?\d+/, 'number');
 
-function calcNumber(withUnit: boolean) {
-    return instrument(`calcNumber(${withUnit})`, (c: Parse) => parseInt(c.one(NUM_RX)) * (withUnit ? c.one(unit()) : 1));
+function calcNumber() {
+    return instrument((c: Parse) => parseInt(c.one(NUM_RX)));
 }
 
-function calcParen(withUnit: boolean) {
-    return instrument(`calcParen(${withUnit})`, (c: Parse) => parseInt(
-        withUnit ?
-            c.oneOf(
-                (c: Parse) => {
-                    c.skip('(');
-                    var m = c.one(calcMath(false));
-                    c.skip(')');
-                    const factor = c.one(unit());
-                    return m * factor;
-                },
-                (c: Parse) => {
-                    c.skip('(');
-                    var m = c.one(calcMath(true));
-                    c.skip(')');
-                    return m;
-                })
-            :
-            c.oneOf(
-                (c: Parse) => {
-                    c.skip('(');
-                    var m = c.one(calcMath(false));
-                    c.skip(')');
-                    return m;
-                })));
+function calcNumberWithUnit() {
+    return instrument((c: Parse) => multiply(c.one(calcNumber()), c.one(unit())));
 }
 
-function calcParenOrNumber(withUnit: boolean) {
-    return instrument(`calcParenOrNumber(${withUnit})`, (c: Parse) => parseInt(c.oneOf(
-        calcNumber(withUnit),
-        calcParen(withUnit),
-        (c: Parse) => -c.skip('-').one(calcParenOrNumber(withUnit))
+function calcParen() {
+    return instrument((c: Parse) => parseInt(c.oneOf(
+        (c: Parse) => {
+            c.skip('(');
+            var m = c.one(calcMath());
+            c.skip(')');
+            return m;
+        })));
+}
+
+function calcParenWithUnit() {
+    return instrument((c: Parse) => <Duration><unknown>c.oneOf(
+        (c: Parse) => {
+            c.skip('(');
+            const m = c.one(calcMath());
+            c.skip(')');
+            const factor = c.one(unit());
+            return multiply(m, factor);
+        },
+        (c: Parse) => {
+            c.skip('(');
+            var m = c.one(calcMathWithUnit());
+            c.skip(')');
+            return m;
+        }));
+}
+
+
+function calcParenOrNumber() {
+    return instrument((c: Parse) => parseInt(c.oneOf(
+        calcNumber(),
+        calcParen(),
+        (c: Parse) => -c.skip('-').one(calcParenOrNumber())
     )));
+}
+
+function calcParenOrNumberWithUnit() {
+    return instrument((c: Parse) => <Duration><unknown>c.oneOf(
+        calcNumberWithUnit(),
+        calcParenWithUnit(),
+        (c: Parse) => -c.skip('-').one(calcParenOrNumberWithUnit())
+    ));
 }
 
 function startOfSource(c: Parse) {
     const MAXLEN = 10;
-    console.log('before')
     const str = c.source.body ? c.source.body.substr(c.location().offset, MAXLEN) : "<undefined>";
-    console.log('after')
 
     return `"${str}${str.length < MAXLEN ? "" : "..."}"`;
 }
@@ -200,10 +259,10 @@ function instrument<T>(arg1: string | ((c: Parse) => T), arg2?: (c: Parse) => T)
     }
 }
 
-export function parseDuration(source: string): number | undefined {
+export function parseDuration(source: string): Duration | undefined {
     setLevel(3);
     try {
-        return parse(new Source(source||'undefined'), duration());
+        return parse(new Source(source || 'undefined'), duration());
     } catch (e) {
         // in case of failure, reexecute parsing in debug mode
         if (isDebugActive()) {
