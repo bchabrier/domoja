@@ -303,7 +303,6 @@ export class mongoDB extends persistence {
                     now.getSeconds() - this.keep.seconds,
                     now.getMilliseconds() - this.keep.milliseconds
                 );
-                logger.info(`Removed ${'result.deletedCount'} old data older than ${limit} (${this.keepString}) from collection "${collection}".`);
                 collectionStore.deleteMany(
                     {
                         'date': { $lt: limit },
