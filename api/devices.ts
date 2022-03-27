@@ -105,6 +105,7 @@ export class DevicesService {
     return new Promise<{}>((resolve, reject) => {
       method.apply(camera, [baseURL, res.req.headers, function onResponse(response: http.IncomingMessage) {
         if (!response) return reject();
+        res.statusCode = response.statusCode;
         if (res.req.query && res.req.query.t) {
           // if ?t=, then we cache the query
           res.setHeader("Cache-Control", "private, max-age=999999"); // max-age is needed for Safari
