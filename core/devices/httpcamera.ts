@@ -5,6 +5,7 @@ import * as http from 'http';
 import * as https from 'https';
 import { InitObject, Parameters } from '../lib/module';
 import { ConfigLoader } from '../lib/load';
+import * as urllib from 'urllib';
 
 const logger = require("tracer").colorConsole({
   dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -16,6 +17,7 @@ export class httpCamera extends camera {
 
   videoUrl: string;
   snapshotUrl: string;
+  authorizationHeader: string;
 
   constructor(source: Source, url: string, instanceFullname: string, name: string, initObject: InitObject, options?: DeviceOptions) {
     super(source, instanceFullname, url, 'unused', name, initObject, options);
@@ -35,7 +37,60 @@ export class httpCamera extends camera {
       options.headers = headers;
     }
 
-    module.get(url.href, options, callback).on('error', (e) => {
+    if (this.authorizationHeader && this.authorizationHeader !== '') {
+      options.headers['Authorization'] = this.authorizationHeader;
+    }
+
+    module.get(url.href, options, (response) => {
+      if (response.statusCode === 401) {
+        // need authentication, or authentication failed
+        // let's see if Basic or Digest are needed
+        const WWWAuthenticateHeader = response.headers['www-authenticate'];
+        logger.debug('unauthorized request. response header www.authenticate:', WWWAuthenticateHeader);
+        const authenticateMethod = WWWAuthenticateHeader && WWWAuthenticateHeader.split(' ')[0];
+        switch (authenticateMethod.toLowerCase()) {
+          case 'digest':
+            logger.debug('method digest');
+            urllib.request(url.href, {
+              headers: headers,
+              digestAuth: url.username + ':' + url.password,
+              streaming: true,
+            }, (err, data, res) => {
+              if (err) {
+                logger.warn('Cannot get snapshot for camera "%s":', this.name, err);
+                callback(null);
+              } else {
+                this.authorizationHeader = res.headers['authorization'];
+                callback(res);
+              }
+            });
+            break;
+            /*
+          case 'basic':
+            logger.error('method basic');
+            urllib.request(url.href, {
+              headers: headers,
+              auth: url.username + ':' + url.password,
+              streaming: true,
+            }, (err, data, res) => {
+              if (err) {
+                logger.warn('Cannot get snapshot for camera "%s":', this.name, err);
+                callback(null);
+              } else {
+                this.authorizationHeader = res.headers['authorization'];
+                callback(res);
+              }
+            });
+            break;
+            */
+          default:
+            logger.warn(`Unsupported authentication method '${authenticateMethod}' used by camera "${this.name}" with url '${url.href}'.`);
+            callback(response);
+        }
+      } else {
+        callback(response);
+      }
+    }).on('error', (e) => {
       logger.warn('Cannot get snapshot for camera "%s":', this.name, e);
       callback(null);
     });
