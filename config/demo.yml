@@ -1881,7 +1881,7 @@ scenarios:
                 //              start2 ----- stop2
                 debug && console.log("complete overlap, start2-stop2 inid start1-stop1");
                 if (d24 <= stop1) {
-                  // ON at idight
+                  // ON at midnight
                   if (now < prev_stop1) {
                     _data = [
                       [ {v: 0, f: formatHour(0)}, null, null, ON, true ],
@@ -1914,7 +1914,7 @@ scenarios:
                     ];
                   }
                 } else {
-                  // OFF at idight
+                  // OFF at midnight
                   if (now < start1) {
                     _data = [
                       [ {v: 0, f: formatHour(0)}, null, null, OFF, true ],
