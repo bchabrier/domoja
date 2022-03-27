@@ -1,7 +1,7 @@
 import { Source, Parse, parse, token } from 'shitty-peg';
 import { Duration } from 'luxon';
 export { Duration } from 'luxon';
-import { colorConsole, setLevel } from 'tracer';
+import { colorConsole, getLevel, setLevel } from 'tracer';
 
 const logger = colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -260,7 +260,7 @@ function instrument<T>(arg1: string | ((c: Parse) => T), arg2?: (c: Parse) => T)
 }
 
 export function parseDuration(source: string): Duration | undefined {
-    setLevel(3);
+    const level = getLevel();
     try {
         return parse(new Source(source || 'undefined'), duration());
     } catch (e) {
@@ -270,6 +270,9 @@ export function parseDuration(source: string): Duration | undefined {
             try {
                 parse(new Source(source), duration())
             } catch (err) { }
+            finally {
+                setLevel(level);
+            }
         }
 
         const col = parseInt(e.message.replace(/^.*:(\d+)$/, '$1'));
