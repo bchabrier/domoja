@@ -7,7 +7,9 @@ import { InitObject, Parameters } from '../lib/module';
 import { ConfigLoader } from '../lib/load';
 import * as urllib from 'urllib';
 
-const logger = require("tracer").colorConsole({
+import { colorConsole } from 'tracer';
+
+const logger = colorConsole({
   dateformat: "dd/mm/yyyy HH:MM:ss.l",
   level: 3
   // 0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
@@ -38,6 +40,8 @@ export class httpCamera extends camera {
     }
 
     if (this.authorizationHeader && this.authorizationHeader !== '') {
+      logger.debug(`Camera "${this.name}": authorizationHeader used:`, this.authorizationHeader);
+      if (!options.headers) options.headers = {};
       options.headers['Authorization'] = this.authorizationHeader;
     }
 
@@ -46,11 +50,11 @@ export class httpCamera extends camera {
         // need authentication, or authentication failed
         // let's see if Basic or Digest are needed
         const WWWAuthenticateHeader = response.headers['www-authenticate'];
-        logger.debug('unauthorized request. response header www.authenticate:', WWWAuthenticateHeader);
+        logger.debug(`Camera "${this.name}": unauthorized request. response header www.authenticate:`, WWWAuthenticateHeader);
         const authenticateMethod = WWWAuthenticateHeader && WWWAuthenticateHeader.split(' ')[0];
         switch (authenticateMethod.toLowerCase()) {
           case 'digest':
-            logger.debug('method digest');
+            logger.debug(`Camera "${this.name}": using method digest`);
             urllib.request(url.href, {
               headers: headers,
               digestAuth: url.username + ':' + url.password,
@@ -58,9 +62,13 @@ export class httpCamera extends camera {
             }, (err, data, res) => {
               if (err) {
                 logger.warn('Cannot get snapshot for camera "%s":', this.name, err);
+                logger.debug(`Camera "${this.name}": got error, resetting authorizationHeader for next time`);
+                this.authorizationHeader = res.headers['authorization'];
                 callback(null);
               } else {
-                this.authorizationHeader = res.headers['authorization'];
+                const request = ((<any>res).req as http.ClientRequest);
+                this.authorizationHeader = request.getHeader('authorization') as string;
+                logger.debug(`Camera "${this.name}": got result, keeping authorization header for next time:`, this.authorizationHeader);
                 callback(res);
               }
             });
