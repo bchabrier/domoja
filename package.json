@@ -58,6 +58,8 @@
   "main": "domoja.ts",
   "scripts": {
     "build": "tsc",
+    "commit:www": ": propagate domoja-ui commits; ./tools/propagate_commits ~/domoja-ui www",
+    "commit:config": ": propagate domoja-config commits; \"$npm_execpath\" run generate:demo; ./tools/propagate_commits ~/domoja-config ./config/demo.yml",
     "start": ": run domoja; TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER=typescript-cached-transpile ts-node domoja.ts",
     "start:config": ": run domoja; TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER=typescript-cached-transpile ts-node domoja.ts ./config",
     "test": ": run test coverage; trap 'tput cnorm' INT; c8 --extension .ts npm --scripts-prepend-node-path=auto run test:only",
