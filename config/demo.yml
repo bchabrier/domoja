@@ -144,7 +144,7 @@ devices:
       //console.log("<<<<<",JSON.parse(value).length,JSON.parse(value)[0],">>>>>"); 
       let tab = JSON.parse(value).filter(lh => lh.active && lh.reachable && lh.vendor_name != "Freebox SAS");
       //console.log("<<<<<",tab.length,tab.length && tab[0],">>>>>"); 
-      return tab.map(lh => lh.primary_name).join(", ");
+      return tab.map(lh => lh.primary_name).sort().join(", ");
     }', 
       persistence: "mongo:hosts_connected_semeria:0:raw:5 years",
       name: "Connectés Séméria" }
@@ -547,16 +547,17 @@ scenarios:
 
   - semeria:
     - nb_connected_calculation:
+        debug: false
         triggers:
           - state: semeria.hosts-connected
         actions:
           - !!js/function 'function f(callback) {
             let list = this.getDeviceState("semeria.hosts-connected");
-            //console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>", list);
+            //console.log("hosts-connected:", list);
             let tab = [];
             if (list) {
               tab = list.split(", ");
-              //console.log(">>>>>>>>>>>>>>>>>>>>>>>>", tab);
+              //console.log("hosts-connected:", tab);
             }
             this.setDeviceState("semeria.nb_connected", tab.length, callback);
           }'   
@@ -568,6 +569,7 @@ scenarios:
           - {operator: "!=", left: this.msg.newValue, right: this.msg.oldValue}
         actions:
           - !!js/function 'function f(callback) {
+              console.log("appel de hosts-connected_changed avec oldValue:", this.msg.oldValue, "et newValue:", this.msg.newValue);
               let newlist = this.getDeviceState("semeria.hosts-connected");
               let newtab = [];
               if (newlist) newtab = newlist.split(", ");
@@ -721,19 +723,33 @@ scenarios:
               let id = 0;
               let itemColors = [];
 
+              function hhmm(date) {
+                let hhmmss = (new Date(date)).toLocaleTimeString().split(":"); 
+                return hhmmss[0] + ":" + hhmmss[1];
+              }
+
               function record(start, end, content) {
                 return {
                       start: start,
                       end: end,
-                      content: content,
-                      //group: content,
-                      style: `overflow: visible;${itemColors[content]}`,
+                      //content: content,
+                      //style: `overflow: visible;${itemColors[content]}`,
+                      content: "",
+                      style: `${itemColors[content]}`,
+                      group: content,
+                      title: hhmm(start) + "-" + hhmm(end),
                       id: id++
                 }
               }
 
+              let presence = "Présence";
+              let groups = [{content: presence, id: presence}];
+              itemColors[presence] = getColor();
+
               let items = [];
               let startTab = [];
+              let presenceTab = [];
+              let presenceStartTab = [];
               tab.forEach((item, pos, ary) => {
 
                 let newlist = item.value;
@@ -745,6 +761,8 @@ scenarios:
                 if (oldlist) oldtab = oldlist.split(", ");
 
                 oldtab.forEach(n => {
+                  if (groups.findIndex(e => e.content === n) === -1) groups.push({content: n, id: n});
+
                   if (newtab.indexOf(n) == -1) {
                     // end of presence detected
                     items.push(new record (ary[startTab[n]].date, ary[pos].date, n));
@@ -758,6 +776,15 @@ scenarios:
                     if (itemColors[n] === undefined) itemColors[n] = getColor();
                   }
                 });
+
+                // add presence info (all groups together)
+                if (newtab.length !== 0 && oldtab.length === 0) {
+                  // new presence
+                  presenceStart = item.date;
+                } else if (newtab.length === 0 && oldtab.length !== 0) {
+                  // end of presence
+                presenceTab.push(new record(presenceStart, item.date, presence));
+                }
               });
 
               Object.keys(startTab).forEach(n => {
@@ -766,25 +793,32 @@ scenarios:
                 }
               });
 
+              debug && console.log("groups:", groups);
               debug && console.log("items:", items);
 
               let lastPresenceDate = items.length>0?new Date(items[items.length - 1].end):new Date();
               let now = new Date();
 
               let data = {
-                items: items,
+                items: presenceTab.concat(items),
+                groups: groups,
                 options: {
                       orientation: "top",
                       width: "400px",
                       editable: false,
-                      stack: true,
+                      stack: false,
                       groupEditable: false,
                       selectable: false,
                       zoomMin: 60 * 60 * 1000, // 1 hour
                       start: new Date(lastPresenceDate.getFullYear(), lastPresenceDate.getMonth(), 1, 0, 0, 0, 0).toISOString(),
                       end: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0).toISOString(),
+                      tooltip: {
+                        followMouse: true,
+                        overflowMethod: "cap",
+                      },
                     },
               }
+              debug && console.log(data);
 
               this.setDeviceState("semeria.presence-timeline", JSON.stringify(data), callback);
             });
