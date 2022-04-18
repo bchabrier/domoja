@@ -51,7 +51,7 @@ usage () {
 	echo "  -p | --port <port>: specify port (443 by default)" >&2
 	echo "  -d                : run in debug mode" >&2
 	echo "  --dev             : run in dev mode" >&2
-	echo "  <config>          : path to config file or directory (./config by default)" >&2
+	echo "  <config>          : path to config file or directory (./config or ~/domoja-config by default)" >&2
 	exit 2 
 }
 
@@ -88,8 +88,12 @@ case "$1" in
 esac
 done
 
-[ -z $config_path ] && [ -r "$config_dir/config" ] && config_path="$config_dir/config"
-[ -z $config_path ] && echo "Warning: '$config_dir/config' not found, using '$package_dir/config/demo.yml'." && config_path="$package_dir/config/demo.yml"
+if [ -z $config_path ]
+then
+	[ -r "$HOME/domoja-config" ] && config_path="$HOME/domoja-config"
+	[ -r "$config_dir/config" ] && [ -r "$(ls "$config_dir/config/"*.yml 2>/dev/null | grep -v demo.yml | head -1)" ] && config_path="$config_dir/config"
+fi
+[ -z $config_path ] && echo "Warning: '$config_dir/config' not found or empty, using '$package_dir/config/demo.yml'." && config_path="$package_dir/config/demo.yml"
 
 [ -z $PORT ] && PORT=443
 

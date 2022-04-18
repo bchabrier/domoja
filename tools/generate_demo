@@ -4,7 +4,7 @@ DEBUG=false
 DEBUG_SECTION=scenarios
 DEBUG_FILE=zwave.yml
 
-SOURCES_CONFIG_DIR=`dirname $0`/../config
+SOURCES_CONFIG_DIR=`dirname $0`/../../domoja-config
 DEMO_CONFIG=`dirname $0`/../config/demo.yml
 SECTIONS="imports sources devices scenarios pages"
 
@@ -290,6 +290,9 @@ users:
     macaddress: 'B1:A2:E7:83:96:CB'
     avatar: ...
 EOF
+
+# do not keep/encrypt original files since they are now in a private repo
+exit
 
 #
 # now create an encrypted file containing the original files
