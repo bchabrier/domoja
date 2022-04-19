@@ -783,7 +783,8 @@ scenarios:
                   presenceStart = item.date;
                 } else if (newtab.length === 0 && oldtab.length !== 0) {
                   // end of presence
-                presenceTab.push(new record(presenceStart, item.date, presence));
+                  presenceTab.push(new record(presenceStart, item.date, presence));
+                  presenceStart = undefined;
                 }
               });
 
@@ -792,6 +793,10 @@ scenarios:
                     items.push(new record (tab[startTab[n]].date, (new Date()).toISOString(), n));
                 }
               });
+
+              if (presenceStart !== undefined) {
+                items.push(new record (presenceStart, (new Date()).toISOString(), presence));
+              }
 
               debug && console.log("groups:", groups);
               debug && console.log("items:", items);
