@@ -11,8 +11,8 @@ import * as kill from 'tree-kill';
  *   - sources:
  *     - robonect-command: {
  *       type: command,
- *       ON: "AUTH=$(grep robonectBasicAuth config/secrets.yml | sed -e 's!^ *[^:][^:]*: *!!' -e 's/[\r\n]//g'); curl 'http://192.168.0.16/xml?cmd=start' -s -u $AUTH", 
- *       OFF: "AUTH=$(grep robonectBasicAuth config/secrets.yml | sed -e 's!^ *[^:][^:]*: *!!' -e 's/[\r\n]//g'); curl 'http://192.168.0.16/xml?cmd=stop' -s -u $AUTH"
+ *       ON: "bash -c \"curl 'http://192.168.0.16/xml?cmd=start' -s -K- <<< \\\"--user $(grep robonectBasicAuth config/secrets.yml | sed -e 's!^ *[^:][^:]*: *!!' -e 's/[\r\n]//g')\\\"\"",
+ *       OFF: "bash -c \"curl 'http://192.168.0.16/xml?cmd=stop' -s -K- <<< \\\"--user $(grep robonectBasicAuth config/secrets.yml | sed -e 's!^ *[^:][^:]*: *!!' -e 's/[\r\n]//g')\\\"\""
  *     }
  *   ```
  * - the optional parameter `push-updates` is a shell command executed once as a daemon at the creation of the source
