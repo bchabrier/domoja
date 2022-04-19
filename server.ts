@@ -450,6 +450,9 @@ export class DomojaServer {
     this.watcher = chokidar.watch(configPath, { ignoreInitial: true, awaitWriteFinish: true });
     this.watcher.on('all',
       (event, path) => {
+        // ignore changes in git repository
+        if (path.indexOf('/.git/') !== -1) return;
+
         console.log("Change detected:", event, path);
 
         if (watchTimeout) {
