@@ -1,0 +1,38 @@
+#!/bin/sh
+
+SRC="$1"
+TARGET="$2"
+
+TARGET=$(realpath $TARGET)
+
+TARGET_DIR=$(dirname "$TARGET")
+
+[ ! -d $SRC ] && echo $SRC is not a directory && exit 1
+
+# get last commit date of TARGET
+last_commit_date=$(cd "$TARGET_DIR"; git log -1 --format=%ct "$TARGET")
+
+# check there SRC is committed
+modified="$(cd $SRC; git status . | grep "modified:")"
+if [ ! -z "$modified" ]
+then
+    echo "WARNING! Git working directory is not clean:"
+    echo "$modified"
+    echo "Type return to continue, or ^C to cancel"
+    read ans
+fi
+
+# get commit messages from SRC
+messages=$(cd $SRC; git log --since $last_commit_date --format='%s')
+[ -z "$messages" ] && echo 'No changes to propagate...' && exit
+echo 'Changes:'
+echo '---------------------'
+echo $messages
+echo '---------------------'
+
+# commit the changed TARGET with the messages
+cd "$TARGET_DIR"
+dir=$(basename $SRC)
+git commit -m "$(echo "$dir:"; echo "$messages")" -e "$TARGET"
+
+
