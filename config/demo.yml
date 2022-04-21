@@ -82,7 +82,7 @@ devices:
   - camera_interieure: { type: httpCamera, widget: camera, tags: 'aquarium-page', video-url: /assets/imgs/demo_camera_interieure.jpg, snapshot-url: /assets/imgs/demo_camera_interieure.jpg, name: "Caméra intérieure" }
   #- camera_exterieure: { type: httpCamera, widget: camera, tags: 'portails, entrée', video-url: /assets/imgs/demo_camera_exterieure.jpg, snapshot-url: /assets/imgs/demo_camera_exterieure.jpg, name: "Caméra extérieure" }
   #- camera_exterieure: { type: httpCamera, widget: camera, tags: 'portails, entrée', video-url: /assets/imgs/demo_camera_exterieure.jpg, snapshot-url: /assets/imgs/demo_camera_exterieure.jpg, name: "Caméra extérieure" }
-  - camera_exterieure: { type: httpCamera, widget: camera, tags: 'portails, entrée', video-url: /assets/imgs/demo_camera_exterieure.jpg, snapshot-url: /assets/imgs/demo_camera_exterieure.jpg, name: "Caméra extérieure" }
+  - camera_exterieure: { type: httpCamera, widget: camera:16/9, tags: 'portails, entrée', video-url: /assets/imgs/demo_camera_exterieure.jpg, snapshot-url: /assets/imgs/demo_camera_exterieure.jpg, name: "Caméra extérieure" }
   - camera_piscine: { type: httpCamera, widget: camera, tags: 'piscine-page', video-url: /assets/imgs/demo_camera_piscine.jpg, snapshot-url: /assets/imgs/demo_camera_piscine.jpg, name: "Caméra piscine" }
   - alarme:
     - en_route: { type: device , widget: toggle, tags: 'alarme', source: myZibase, id: A1, name: "Alarme en route" }
