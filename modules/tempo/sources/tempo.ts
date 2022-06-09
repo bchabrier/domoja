@@ -13,7 +13,7 @@ import { CronJob } from 'cron';
 
 
 // URL de la page du site EDF
-var tempoURLCouleurDuJour = "https://particulier.edf.fr/bin/edf_rc/servlets/ejptemponew?TypeAlerte=TEMPO&Date_a_remonter="
+var tempoURLCouleurDuJour = "https://particulier.edf.fr/services/rest/referentiel/searchTempoStore?dateRelevant="
 
 // numéros des scénarios Zibase définissant les couleurs
 var Tempo_Bleu = 24;
@@ -131,22 +131,25 @@ export class tempo extends Source {
 		}, function (err, response, bodyString) {
 
 			//returns a JSON object similar to:
-			// {"JourJ":{"Tempo":"BLEU"},"JourJ1":{"Tempo":"ND"}}
-			let obj: any;
+			// {"couleurJourJ":"TEMPO_BLEU","couleurJourJ1":"NON_DEFINI"}
+			let obj: {
+				"couleurJourJ": "TEMPO_BLEU" | "TEMPO_BLANC" | "TEMPO_ROUGE" | "NON_DEFINI",
+				"couleurJourJ1": "TEMPO_BLEU" | "TEMPO_BLANC" | "TEMPO_ROUGE" | "NON_DEFINI"
+			};
+			let success = 0;
 			try {
 				obj = JSON.parse(bodyString);
-				if (obj.JourJ.Tempo != undefined)
-					obj.success = 1;
+				if (obj.couleurJourJ != undefined)
+					success = 1;
 				else
-					obj.success = 0;
+					success = 0;
 			} catch (e) {
 				logger.error(e);
-				obj = { success: 0 };
 			}
 			let now = new Date;
 			self.updateAttribute('lastUpdateDate', 'state', now.toString());
-			if (obj.success == 1) {
-				switch (obj.JourJ.Tempo) {
+			if (success == 1) {
+				switch (obj.couleurJourJ) {
 					case "TEMPO_BLEU":
 						self.updateAttribute('couleurDuJour', 'state', "Bleu", now);
 						break;
@@ -156,15 +159,15 @@ export class tempo extends Source {
 					case "TEMPO_ROUGE":
 						self.updateAttribute('couleurDuJour', 'state', "Rouge", now);
 						break;
-					case "ND":
+					case "NON_DEFINI":
 						self.updateAttribute('couleurDuJour', 'state', "Indéterminé", now);
 						break;
 					default:
 						self.updateAttribute('couleurDuJour', 'state', "Indéterminé", now);
-						logger.error("Couleur du jour '" + obj.JourJ.Tempo + "' non connue.");
+						logger.error("Couleur du jour '" + obj.couleurJourJ + "' non connue.");
 				}
 				self.tomorrowColorUpdated = true;
-				switch (obj.JourJ1.Tempo) {
+				switch (obj.couleurJourJ1) {
 					case "TEMPO_BLEU":
 						self.updateAttribute('couleurDeDemain', 'state', "Bleu", now);
 						break;
@@ -174,14 +177,14 @@ export class tempo extends Source {
 					case "TEMPO_ROUGE":
 						self.updateAttribute('couleurDeDemain', 'state', "Rouge", now);
 						break;
-					case "ND":
-							self.tomorrowColorUpdated = false;
-							self.updateAttribute('couleurDeDemain', 'state', "Indéterminé", now);
+					case "NON_DEFINI":
+						self.tomorrowColorUpdated = false;
+						self.updateAttribute('couleurDeDemain', 'state', "Indéterminé", now);
 						break;
 					default:
 						self.tomorrowColorUpdated = false;
 						self.updateAttribute('couleurDeDemain', 'state', "Indéterminé", now);
-						logger.error("Couleur de demain '" + obj.JourJ1.Tempo + "' non connue.");
+						logger.error("Couleur de demain '" + obj.couleurJourJ1 + "' non connue.");
 				}
 				callback(null);
 			} else {
