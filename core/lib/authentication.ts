@@ -20,7 +20,7 @@ import * as bodyParser from 'body-parser';
 import * as fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-import * as rateLimit from 'express-rate-limit';
+import { rateLimit, Options, AugmentedRequest } from 'express-rate-limit';
 
 var logger = require("tracer").colorConsole({
   dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -162,9 +162,16 @@ export function configure(app: express.Application,
   // session.
   app.use(passport.initialize());
   app.use(passport.session());
+
+  const limitHandler: Options["handler"] = (request: AugmentedRequest, response, next, options) => {
+    logger.warn(`Too many requests received, limit is ${request.rateLimit.limit}!!`);
+    response.status(options.statusCode).send(options.message);
+  }
+
   app.use(rateLimit({
     windowMs: 1000, // 1 second
-    max: runWithMocha ? 0 : 20 // limit each IP to 20 requests per windowMs
+    max: runWithMocha ? 0 : 40, // limit each IP to 40 requests per windowMs
+    handler: limitHandler,
   }), authenticateBasicAndApiKey);
 
   app.use(passport.authenticate('remember-me'));

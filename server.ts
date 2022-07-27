@@ -28,7 +28,7 @@ import * as fs from 'fs';
 
 import * as async from 'async';
 
-import * as rateLimit from 'express-rate-limit';
+import { rateLimit, Options, AugmentedRequest } from 'express-rate-limit';
 
 
 var module_dir = __dirname;
@@ -335,28 +335,36 @@ export class DomojaServer {
     */
 
 
+    const limitHandler: Options["handler"] = (request: AugmentedRequest, response, next, options) => {
+      logger.warn(`Too many requests received, limit is ${request.rateLimit.limit}!!`);
+      response.status(options.statusCode).send(options.message);
+    }
 
     // / is not forbidden, as it goes to login page
     app.get('/', rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: runWithMocha ? 0 : 100 // limit each IP to 100 requests per windowMs
+      max: runWithMocha ? 0 : 100, // limit each IP to 100 requests per windowMs
+      handler: limitHandler,
     }), core.ensureAuthenticated, function (req, res) {
       res.sendFile(path.join(module_dir, staticPath, indexHTML), cacheOptions);
     });
 
     app.get(indexHTML, rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: runWithMocha ? 0 : 100 // limit each IP to 100 requests per windowMs
+      max: runWithMocha ? 0 : 100, // limit each IP to 100 requests per windowMs
+      handler: limitHandler,
     }), core.ensureAuthenticated, serve);
 
     app.all('/manifest-auth.json', rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: runWithMocha ? 0 : 100 // limit each IP to 100 requests per windowMs
+      max: runWithMocha ? 0 : 100, // limit each IP to 100 requests per windowMs
+      handler: limitHandler,
     }), function (req, res) { res.sendStatus(403) });
 
     app.all(/^(.*)$/, rateLimit({
       windowMs: runWithMocha ? 100000 : 1000, // 1 second
-      max: runWithMocha ? 0 : 50
+      max: runWithMocha ? 0 : 50,
+      handler: limitHandler,
     }), function (req, res, next) {
       if (alwaysAuthorizedRoutes.some((p) => { let r = new RegExp(p); return r.test(req.path); })) {
         next();
