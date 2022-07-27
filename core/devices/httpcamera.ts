@@ -52,7 +52,7 @@ export class httpCamera extends camera {
         const WWWAuthenticateHeader = response.headers['www-authenticate'];
         logger.debug(`Camera "${this.name}": unauthorized request. response header www.authenticate:`, WWWAuthenticateHeader);
         const authenticateMethod = WWWAuthenticateHeader && WWWAuthenticateHeader.split(' ')[0];
-        switch (authenticateMethod.toLowerCase()) {
+        switch (authenticateMethod?.toLowerCase()) {
           case 'digest':
             logger.debug(`Camera "${this.name}": using method digest`);
             urllib.request(url.href, {
@@ -63,7 +63,8 @@ export class httpCamera extends camera {
               if (err) {
                 logger.warn('Cannot get snapshot for camera "%s":', this.name, err);
                 logger.debug(`Camera "${this.name}": got error, resetting authorizationHeader for next time`);
-                this.authorizationHeader = res.headers['authorization'];
+                if (res) this.authorizationHeader = res.headers['authorization'];
+                else this.authorizationHeader = undefined;
                 callback(null);
               } else {
                 const request = ((<any>res).req as http.ClientRequest);
