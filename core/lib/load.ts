@@ -22,7 +22,7 @@ import { VM, VMScript } from 'vm2';
 
 import * as Parser from "shitty-peg/dist/Parser";
 
-import { currentSource, removeQuotes, eatCommentsBlock, eatComments, trim, sortedDeviceList, debugSetting, TRUE, FALSE } from './load_helpers';
+import { currentSource, removeQuotes, eatCommentsBlock, eatComments, trim, sortedDeviceList, debugSetting, TRUE, FALSE, globalDebugSetting } from './load_helpers';
 import { condition, actions, elseActions } from './load_scenarios';
 import * as  colors from 'colors/safe';
 
@@ -368,7 +368,21 @@ export class ConfigLoader extends events.EventEmitter {
     rootModule: Module;
 
     currentParsedFile: string;
-    currentGlobalDebugMode: boolean;
+
+    /**
+     * Current debug mode in the current file
+     */
+    currentDebugMode: boolean;
+
+    /**
+     * Global debug mode (forced or default)
+     */
+    forceDefaultDebugMode: 'force-true' | 'force-false' | 'default-true' | undefined;
+
+    /**
+     * Location where global debug mode (forced or default) is defined first
+     */
+    forceDefaultDebugModeLocation: Parser.Location;
 
     private sandbox: Sandbox = {
         isReleased: () => { return this.released },
@@ -458,6 +472,7 @@ export class ConfigLoader extends events.EventEmitter {
             this.comments = []
             let dir = fileOrDir;
             prevContext = {};
+            this.forceDefaultDebugMode = undefined;
 
             if (!fs.lstatSync(fileOrDir).isDirectory()) {
                 dir = path.dirname(fileOrDir);
@@ -473,7 +488,8 @@ export class ConfigLoader extends events.EventEmitter {
             if (dir === fileOrDir) {
                 let files = fs.readdirSync(dir).filter(f => f.match(/^.*\.yml$/) && !f.match(/^([^\/]*\/)*demo\.yml$/));
 
-                let sections: Section[] = [
+                let sections: (Section | 'FORCE_DEFAULT_DEBUG')[] = [
+                    'FORCE_DEFAULT_DEBUG',
                     'IMPORTS',
                     'SOURCES',
                     'DEVICES',
@@ -491,6 +507,7 @@ export class ConfigLoader extends events.EventEmitter {
                 });
             } else {
                 logger.info("Loading config file '%s'...", fileOrDir)
+                this.parseSingleFile(fileOrDir, configDoc, 'FORCE_DEFAULT_DEBUG');
                 this.parseSingleFile(fileOrDir, configDoc, 'ALL');
             }
         } catch (e) {
@@ -512,6 +529,7 @@ export class ConfigLoader extends events.EventEmitter {
 
                 // create the initObject
                 let initObject: InitObject = objectToInitObject(this, device.object);
+                initObject.debug = computeDebugMode(initObject.debug, this) ? "true" : "false";
 
                 let instance = this.createInstance(e,
                     this.imports['devices.' + device.object.type].class,
@@ -565,7 +583,7 @@ export class ConfigLoader extends events.EventEmitter {
         }
     }
 
-    private parseSingleFile(file: string, parser: (c: Parser.Parse, section: Section) => void, section: Section) {
+    private parseSingleFile(file: string, parser: (c: Parser.Parse, section: Section | 'FORCE_DEFAULT_DEBUG') => void, section: Section | 'FORCE_DEFAULT_DEBUG') {
         let str = fs.readFileSync(file, "utf8");
 
         str = str.replace(/\r\n/g, '\n');
@@ -827,16 +845,67 @@ export let FUNCTION_EXT = Parser.token(/^!!js\/function +'([^']|\n)*' */, '"!!js
 
 let prevContext = {};
 
+/**
+ * Process the debug configuration
+ * @param c 
+ * @param debugMode 
+ * @param document 
+ */
+function processForceDefaultDebugMode(c: Parser.Parse, debugMode: undefined | boolean | 'force-true' | 'force-false' | 'default-true', document: importedConfigLoader) {
+    switch (debugMode) {
+        case true:
+        case false:
+            document.currentDebugMode = debugMode;
+            break;
+        case 'force-true':
+        case 'force-false':
+        case 'default-true':
+            if (document.forceDefaultDebugMode !== undefined && document.forceDefaultDebugModeLocation.toString() !== c.location().toString()) {
+                logger.warn(`Global debug mode already specified here: ${document.forceDefaultDebugModeLocation}`);
+            } else {
+                document.forceDefaultDebugMode = debugMode;
+                document.forceDefaultDebugModeLocation = c.location();
+            }
+            break;
+        case undefined:
+            break;
+        default:
+            let n: never = debugMode;
+            logger.error(`Unsupported debug mode "${debugMode}"!`);
+    }
+}
 
-function configDoc(c: Parser.Parse, section: Section): void {
+function computeDebugMode(debugMode: boolean | undefined, document: importedConfigLoader) {
+    switch (document.forceDefaultDebugMode) {
+        case 'force-true':
+            return true;
+        case 'force-false':
+            return false;
+        case 'default-true':
+            if (document.currentDebugMode === undefined && debugMode === undefined) return true;
+            break;
+        case undefined:
+            break;
+        default:
+            let n: never = document.forceDefaultDebugMode;
+            logger.error(`Unsupported forceDefaultDebugMode mode "${n}"!`);
+    }
+    return debugMode == undefined ? document.currentDebugMode : debugMode.toString().includes("true");
+}
+
+function configDoc(c: Parser.Parse, section: Section | 'FORCE_DEFAULT_DEBUG'): void {
 
     let document = <ConfigLoader>c.context().doc;
 
     Object.assign(c.context(), prevContext);
 
     eatCommentsBlock(c);
-    let d = c.optional(debugSetting);
-    document.currentGlobalDebugMode = d == undefined ? false : d;
+    let d = c.optional(globalDebugSetting); // global debug setting only allowed at the start of a file
+    if (section == 'ALL' || section == 'FORCE_DEFAULT_DEBUG') {
+        processForceDefaultDebugMode(c, d, document);
+    } else {
+        if (d === true || d === false) document.currentDebugMode = d;
+    }
 
     eatCommentsBlock(c);
     let imports;
@@ -849,10 +918,10 @@ function configDoc(c: Parser.Parse, section: Section): void {
 
     eatCommentsBlock(c);
     d = c.optional(debugSetting);
-    if (d != undefined) document.currentGlobalDebugMode = d;
+    if (d != undefined) document.currentDebugMode = d;
 
     eatCommentsBlock(c);
-    let sources;
+    let sources: ReturnType<typeof sourcesSection>;
     if (section == 'ALL' || section == 'SOURCES')
         sources = c.optional(sourcesSection);
     else {
@@ -862,10 +931,10 @@ function configDoc(c: Parser.Parse, section: Section): void {
 
     eatCommentsBlock(c);
     d = c.optional(debugSetting);
-    if (d != undefined) document.currentGlobalDebugMode = d;
+    if (d != undefined) document.currentDebugMode = d;
 
     eatCommentsBlock(c);
-    let devices;
+    let devices: ReturnType<typeof devicesSection>;
     if (section == 'ALL' || section == 'DEVICES')
         devices = c.optional(devicesSection);
     else {
@@ -875,10 +944,10 @@ function configDoc(c: Parser.Parse, section: Section): void {
 
     eatCommentsBlock(c);
     d = c.optional(debugSetting);
-    if (d != undefined) document.currentGlobalDebugMode = d;
+    if (d != undefined) document.currentDebugMode = d;
 
     eatCommentsBlock(c);
-    let scenarios: { comment: string, scenarios: Map<scenarioItem> }
+    let scenarios: ReturnType<typeof scenariosSection>;
     if (section == 'ALL' || section == 'SCENARIOS')
         scenarios = c.optional(scenariosSection);
     else {
@@ -888,7 +957,7 @@ function configDoc(c: Parser.Parse, section: Section): void {
 
     eatCommentsBlock(c);
     d = c.optional(debugSetting);
-    if (d != undefined) document.currentGlobalDebugMode = d;
+    if (d != undefined) document.currentDebugMode = d;
 
     eatCommentsBlock(c);
     let pages;
@@ -901,7 +970,7 @@ function configDoc(c: Parser.Parse, section: Section): void {
 
     eatCommentsBlock(c);
     d = c.optional(debugSetting);
-    if (d != undefined) document.currentGlobalDebugMode = d;
+    if (d != undefined) document.currentDebugMode = d;
 
     eatCommentsBlock(c);
     let users;
@@ -914,7 +983,7 @@ function configDoc(c: Parser.Parse, section: Section): void {
 
     eatCommentsBlock(c);
     d = c.optional(debugSetting);
-    if (d != undefined) document.currentGlobalDebugMode = d;
+    if (d != undefined) document.currentDebugMode = d;
 
     if (users) {
         //document.importsComment = imports.comment;
@@ -1109,7 +1178,7 @@ function sourceItem(c: Parser.Parse): sourceItem {
     let instance = document.createInstance(obj.name, klass, initObject);
     if (instance instanceof Source) {
         source = instance;
-        source.setDebugMode(initObject.debug == undefined ? document.currentGlobalDebugMode : initObject.debug.toString().includes("true"));
+        source.setDebugMode(computeDebugMode(initObject.debug, document));
         if (klass.registerDeviceTypes) {
             klass.registerDeviceTypes();
         } else {
@@ -1239,7 +1308,7 @@ function deviceItem(c: Parser.Parse): deviceItem {
     let obj = c.one(namedObject);
     c.popContext();
 
-    if (document.currentGlobalDebugMode && obj.object.debug == undefined) {
+    if (document.currentDebugMode && obj.object.debug == undefined) {
         obj.object.debug = "true";
     }
 
@@ -1293,7 +1362,7 @@ function scenarioItem(c: Parser.Parse): scenarioItem {
     let debug = c.optional(debugSetting);
     eatCommentsBlock(c);
     let scenario = c.optional(trigger);
-    scenario.setDebugMode(debug == undefined ? document.currentGlobalDebugMode : debug);
+    scenario.setDebugMode(computeDebugMode(debug, document));
     c.context().scenarioUnderConstruction = scenario;
     eatCommentsBlock(c);
     let cond = c.optional(condition);

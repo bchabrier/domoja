@@ -81,11 +81,23 @@ export function sortedDeviceList(c: Parser.Parse): string[] {
 }
 
 let DEBUG = Parser.token(/^debug: */, "debug:");
-export let TRUE = Parser.token(/^ *true */, "true");
-export let FALSE = Parser.token(/^ *false */, "false");
+export let TRUE = Parser.token(/^ *true */, "true");                        // locally set to true
+export let FALSE = Parser.token(/^ *false */, "false");                     // locally set to false
+export let FORCETRUE = Parser.token(/^ *("force-true"|'force-true') */, "\"force-true\"");       // forced to true, cannot be overridden
+export let FORCEFALSE = Parser.token(/^ *("force-false"|'force-false') */, "\"force-false\"");       // forced to false cannot be overridden
+export let DEFAULTTRUE = Parser.token(/^ *("default-true"|'default-true') */, "\"default-true\"");  // defaults to true at start of each config file, can be overridden
 
 export function debugSetting(c: Parser.Parse): boolean {
     c.one(DEBUG);
     let v = c.oneOf(TRUE, FALSE);
+    return v.includes("true");
+}
+
+export function globalDebugSetting(c: Parser.Parse): boolean | 'force-true' | 'force-false' | 'default-true' | undefined {
+    c.one(DEBUG);
+    let v = c.oneOf(TRUE, FALSE, FORCETRUE, FORCEFALSE, DEFAULTTRUE);
+    if (v.includes("default-true")) return 'default-true';
+    if (v.includes("force-true")) return 'force-true';
+    if (v.includes("force-false")) return 'force-false';
     return v.includes("true");
 }
