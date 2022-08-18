@@ -21,7 +21,7 @@ export function setDemoMode(mode: boolean) {
 
 type Strategy = "raw" | "aggregate";
 
-const ALL_AGGREGATION_TYPES = ["year", "month", "week", "day", "hour", "minute", "none"] as const;
+const ALL_AGGREGATION_TYPES = ["year", "month", "week", "day", "hour", "minute", "change", "none"] as const;
 type AggregationType = (typeof ALL_AGGREGATION_TYPES)[number];
 
 export abstract class persistence {
@@ -167,7 +167,7 @@ export class mongoDB extends persistence {
             var db = client.db();
             var collection = this.id;
             async.every(!isNaN(parseFloat(record.state)) ? ALL_AGGREGATION_TYPES.values() : ["none"],
-                (aggregate: AggregationType, callback) => {
+                (aggregate: Exclude<AggregationType, 'change'>, callback) => {
                     if (aggregate == "none") {
                         var collectionStore = db.collection(collection);
                         collectionStore.insertOne(record, (err, result) => {
@@ -272,7 +272,7 @@ export class mongoDB extends persistence {
         this.getMongoClient((err, client) => {
             var db = client.db();
             var collection = this.id;
-            if (aggregate != "none") {
+            if (aggregate != "none" && aggregate != "change") {
                 collection += " by " + aggregate;
             }
             let collectionStore = db.collection(collection);
@@ -287,9 +287,13 @@ export class mongoDB extends persistence {
                 if (err) {
                     callback(err, null);
                 } else {
-                    callback(null, aggregate != "none"
-                        ? results.map(r => { return { date: r.date, value: (r.sum as number) / (r.count as number) } })
-                        : results.map(r => { return { date: r.date, value: r.state } })
+                    callback(null, aggregate === "none"
+                        ? results.map(r => { return { date: r.date, value: r.state } })
+                        : aggregate === "change"
+                            ? results.map(r => { return { date: r.date, value: r.state } }).filter(
+                                (elt, i, tab) => i === 0 || i === tab.length - 1 ||
+                                    tab[i].value !== tab[i - 1].value || tab[i].value != tab[i + 1].value)
+                            : results.map(r => { return { date: r.date, value: (r.sum as number) / (r.count as number) } })
                     );
                 }
             });
@@ -363,7 +367,7 @@ export class mongoDB extends persistence {
         });
     }
 
-    devRebuildData(target: AggregationType, from: AggregationType, callback: (err: Error) => void) {
+    devRebuildData(target: Exclude<AggregationType, 'change'>, from: Exclude<AggregationType, 'change'>, callback: (err: Error) => void) {
         this.getMongoClient((err, client) => {
             if (err != null) {
                 logger.error("Cannot connect to Mongo:", err);
