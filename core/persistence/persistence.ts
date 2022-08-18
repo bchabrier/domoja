@@ -170,6 +170,10 @@ export class mongoDB extends persistence {
                 (aggregate: Exclude<AggregationType, 'change'>, callback) => {
                     if (aggregate == "none") {
                         var collectionStore = db.collection(collection);
+                        const indexName = "Index for " + collection;
+                        collectionStore.createIndex({ date: 1 }, { name: indexName }, (err, results) => {
+                            if (err) logger.error(`Could not create index "${indexName}"`);
+                        });
                         collectionStore.insertOne(record, (err, result) => {
                             if (err != null) {
                                 logger.error("Error while storing in Mongo:", err)
@@ -205,6 +209,10 @@ export class mongoDB extends persistence {
                                 let n: never = aggregate;
                         }
                         var collectionStore = db.collection(collection + " by " + aggregate);
+                        const indexName = "Index for " + collection + " by " + aggregate;
+                        collectionStore.createIndex({ date: 1 }, { name: indexName }, (err, results) => {
+                            if (err) logger.error(`Could not create index "${indexName}"`);
+                        });
                         collectionStore.updateOne(
                             {
                                 date: d
@@ -248,6 +256,10 @@ export class mongoDB extends persistence {
             if (err) return callback(err);
             var db = client.db();
             var collection = db.collection('Backup states');
+            const indexName = "Index for Backup states";
+            collection.createIndex({ 'id': 1 }, { name: indexName }, (err, results) => {
+                if (err) logger.error(`Could not create index "${indexName}"`);
+            });
 
             collection.findOneAndReplace(
                 {
