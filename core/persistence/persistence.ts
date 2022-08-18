@@ -105,9 +105,24 @@ export abstract class persistence {
 export class mongoDB extends persistence {
     static mongoClient: MongoClient;
     static connecting: boolean = false;
+    static statsJob: NodeJS.Timeout;
+    static nbInstances = 0;
 
     constructor(id: string, ttl?: number, strategy?: Strategy, keep?: string) {
         super(id, ttl, strategy, keep);
+
+        if (mongoDB.nbInstances === 0) mongoDB.statsJob = setInterval(() => {
+            this.getMongoClient((err, client) => {
+                logger.trace("Getting stats from Mongo...")
+                var db = client.db();
+                db.stats((err, results) => {
+                    if (err) logger.error(`Could not retrieve stats from mongoDB!`, err);
+                    logger.info("MongoDB stats:", results);
+                });
+            });
+        }, 24 * 60 * 60 * 1000);
+
+        mongoDB.nbInstances++;
     }
 
     private getMongoClient(callback: (err: Error, client: MongoClient) => void): void {
@@ -504,6 +519,12 @@ export class mongoDB extends persistence {
 
     release() {
         super.release();
-        mongoDB.mongoClient && mongoDB.mongoClient.close();
+        mongoDB.nbInstances--;
+        if (mongoDB.nbInstances === 0) {
+            clearInterval(mongoDB.statsJob);
+            mongoDB.statsJob = null;
+            mongoDB.mongoClient.close();
+            mongoDB.mongoClient = null;
+        }
     }
 }
