@@ -42,7 +42,7 @@
     "@types/express": "^4.16.0",
     "@types/express-session": "^1.17.0",
     "@types/mocha": "<=8",
-    "@types/node": "^16.11.7",
+    "@types/node": "^20.3.1",
     "@types/rewire": "^2.5.28",
     "c8": "^7.10.0",
     "coveralls": "^3.1.1",
