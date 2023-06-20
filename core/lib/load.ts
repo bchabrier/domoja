@@ -174,7 +174,7 @@ class ExternalFunction {
     private script: VMScript; //  instance of VMScript
     public fct: Function;
     constructor(public readonly file: string, public readonly line: number, private readonly functionString: string, private readonly sandbox: Sandbox) {
-        this.script = new VMScript("args.result = (" + this.functionString + ")(args)");
+        //this.script = new VMScript("args.result = (" + this.functionString + ")(args)");
         this.script = new VMScript((''
             + "args.result = ("
             + guard.toString()
