@@ -11,12 +11,14 @@ const logger = require("tracer").colorConsole({
   // 0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
+type groupFunction = (newValues: Array<{ id: string, state: string, transformedState: string, previousState: string }>, callback: (error: Error, value: string) => void) => void;
+
 export class group extends GenericDevice {
   configLoader: ConfigLoader;
   tagList: string;
   devices: Array<GenericDevice>;
   recomputeStateHandler = (event: message) => this.recomputeState();
-  function: (newValues: Array<string>, callback: (error: Error, value: string) => void) => void;
+  function: groupFunction;
 
 
   constructor(source: Source, path: string, name: string, configLoader: ConfigLoader, tagList: string, func: string | Function, initObject: InitObject) {
@@ -28,15 +30,15 @@ export class group extends GenericDevice {
     if (typeof func === 'string') {
       switch (func) {
         case 'count':
-          this.function = (newValues: Array<string>, callback: (error: Error, value: string) => void) => callback(null, newValues.length.toString());
+          this.function = (newValues, callback) => callback(null, newValues.length.toString());
           break;
         default:
           logger.warning(`Function '${func}' not supported in group '${this.path}'.`);
-          this.function = (newValues: Array<string>, callback: (error: Error, value: string) => void) => callback(null, undefined);
+          this.function = (newValues, callback) => callback(null, undefined);
           break;
       }
     } else {
-      this.function = (newValues: Array<string>, callback: (error: Error, value: string) => void) => func(newValues, (error: Error, value: string) => callback(error, value.toString()));
+      this.function = (newValues, callback) => func(newValues, (error: Error, value: string) => callback(error, value.toString()));
     }
 
     configLoader.on('startup', event => {
@@ -64,7 +66,7 @@ export class group extends GenericDevice {
 
     this.devices = Object.keys(this.configLoader.devices).map(d => this.configLoader.devices[d].device).filter(
       d => {
-        for (var t of this.tagList.split(/, */)) {
+        for (var t of this.tagList.split(/ +| *, */)) {
           if (d.matchTag(t)) {
             return true;
           }
@@ -77,7 +79,12 @@ export class group extends GenericDevice {
   }
 
   recomputeState() {
-    this.function(this.devices.map(d => d.getState()), (error, newValue) => {
+    this.function(this.devices.map(d => ({
+      id: d.id,
+      state: d.getState(),
+      transformedState: d.transform ? d.transform(d.getState()) : d.getState(),
+      previousState: d.getPreviousState(),
+    })), (error, newValue) => {
       if (error) logger.error(error);
       else if (newValue != this.state) {
         // avoid looping indefinitely if the group has a tag in the taglist

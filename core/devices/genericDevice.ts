@@ -126,6 +126,8 @@ export abstract class GenericDevice implements DomoModule {
         this.type = type;
         this.widget = initObject && initObject.widget;
         this.tags = initObject && initObject.tags;
+        // normalize tags
+        this.tags = this.tags && this.tags != '' ? ' ' + this.tags.split(/ +| *, */).join(', ') + ', ' : '';
         this.debugMode = initObject && initObject.debug && initObject.debug.includes("true") || false;
 
         if (options !== undefined) {
@@ -408,7 +410,7 @@ export abstract class GenericDevice implements DomoModule {
     }
 
     matchTag(tag: string): boolean {
-        return (' ' + this.tags + ' ').indexOf(' ' + tag + ' ') >= 0;
+        return this.tags.indexOf(' ' + tag + ',') >= 0;
     }
 }
 
