@@ -446,20 +446,6 @@ export class ConfigLoader extends events.EventEmitter {
 
             this.DEFAULT_SOURCE.release();
 
-            /*
-                    let id = require.resolve(path.resolve(__dirname, '..', moduleName));
-                    // remove previous modules from rootModule
-                    rootModule.children = rootModule.children.filter(m => {
-                        if (m.id === id) {
-                            // and disconnect them to make sure they are freed in memory
-                            for (let i in m.children) {
-                                m.children[i].parent = null;
-                            }
-                            m.children = [];
-                        }
-                        return m.id !== id
-                    })
-                    delete require.cache[id]; // to make sure the file is reloaded*/
             this.rootModule = null;
             this.comments = [];
             this.userMgr.clearUsers();
@@ -469,6 +455,13 @@ export class ConfigLoader extends events.EventEmitter {
     parse(fileOrDir: string, done: (err?: Error) => void) {
         try {
             this.rootModule = new Module("sandbox module");
+
+            // remove the modules from the require cache to make sure they are reloaded
+            // we do not remove the dependencies, only the true modules entries
+            const mainDir = path.dirname(require.main.filename);
+            const cachedModulesEntries = Object.keys(require.cache).filter(n => n.startsWith(mainDir + '/modules/') && !n.includes('/node_modules/'));
+            cachedModulesEntries.forEach(e => delete require.cache[e]);
+
             this.comments = []
             let dir = fileOrDir;
             prevContext = {};
