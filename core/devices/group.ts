@@ -11,13 +11,13 @@ const logger = require("tracer").colorConsole({
   // 0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
-type groupFunction = (newValues: Array<{ id: string, state: string, transformedState: string, previousState: string }>, callback: (error: Error, value: string) => void) => void;
+type groupFunction = (newValues: Array<{ name: string, state: string, transformedState: string, previousState: string, isTrigger: boolean }>, callback: (error: Error, value: string) => void) => void;
 
 export class group extends GenericDevice {
   configLoader: ConfigLoader;
   tagList: string;
   devices: Array<GenericDevice>;
-  recomputeStateHandler = (event: message) => this.recomputeState();
+  recomputeStateHandler = (event: message) => this.recomputeState(event.emitter)
   function: groupFunction;
 
 
@@ -69,12 +69,13 @@ export class group extends GenericDevice {
     this.devices.forEach(d => d.on('change', this.recomputeStateHandler));
   }
 
-  recomputeState() {
+  recomputeState(emitter?: GenericDevice) {
     this.function(this.devices.map(d => ({
-      id: d.id,
+      name: d.name,
       state: d.getState(),
       transformedState: d.transform ? d.transform(d.getState()) : d.getState(),
       previousState: d.getPreviousState(),
+      isTrigger: emitter && d === emitter
     })), (error, newValue) => {
       if (error) logger.error(error);
       else if (newValue != this.state) {
