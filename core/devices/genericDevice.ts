@@ -113,6 +113,7 @@ export abstract class GenericDevice implements DomoModule {
     tags: string;
     debugMode: boolean;
     transform?: (value: any) => any;
+    eventListenerCache: Map<(msg: message) => void, (msg: message) => void> = new Map();
 
     stateHasBeenSet = false;
 
@@ -384,22 +385,24 @@ export abstract class GenericDevice implements DomoModule {
     */
 
     private eventListener(callback: (msg: message) => void): (msg: message) => void {
-        let self = this;
+        if (!this.eventListenerCache.get(callback)) {
+            let self = this;
 
-        return function (msg: message) {
-            msg.emitter = self;
-            transformFunction(callback, self.transform)(msg);
+            this.eventListenerCache.set(callback, function (msg: message) {
+                msg.emitter = self;
+                transformFunction(callback, self.transform)(msg);
+            });
         }
+        return this.eventListenerCache.get(callback);
+
     }
 
     on(event: EventType, callback: (msg: message) => void) {
-        var self = this;
         this.source.on(event, this.path, this.eventListener(callback));
         return this;
     }
 
     once(event: EventType, callback: (msg: message) => void) {
-        var self = this;
         this.source.once(event, this.path, this.eventListener(callback));
         return this;
     };
