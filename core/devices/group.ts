@@ -64,16 +64,7 @@ export class group extends GenericDevice {
   initialize() {
     this.releaseListeners();
 
-    this.devices = Object.keys(this.configLoader.devices).map(d => this.configLoader.devices[d].device).filter(
-      d => {
-        for (var t of this.tagList.split(/ +| *, */)) {
-          if (d.matchTag(t)) {
-            return true;
-          }
-        }
-        return false;
-      }
-    );
+    this.devices = this.configLoader.getDevicesFromTagList(this.tagList);
 
     this.devices.forEach(d => d.on('change', this.recomputeStateHandler));
   }

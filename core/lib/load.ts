@@ -666,7 +666,19 @@ export class ConfigLoader extends events.EventEmitter {
         return devTab;
     }
 
-
+    public getDevicesFromTagList(tagList: string): GenericDevice[] {
+        logger.debug('getting devices with tag in:', tagList);
+        return Object.keys(this.devices).map(d => this.devices[d].device).filter(
+            d => {
+                for (var t of tagList.split(/ +| *, */)) {
+                    if (d.matchTag(t)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        );
+    }
 
     private getModuleClass(moduleName: string, className: string): new () => DomoModule {
         const mainDir = path.dirname(require.main.filename);
