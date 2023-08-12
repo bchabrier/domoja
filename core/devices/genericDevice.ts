@@ -106,7 +106,9 @@ export abstract class GenericDevice implements DomoModule {
     type: DeviceType;
     widget: WidgetType;
     state: string;
+    rawState?: string;
     previousState: string;
+    previousRawState?: string;
     persistence: persistence.mongoDB;
     persistStates = false;
     lastUpdateDate: Date;
@@ -196,7 +198,7 @@ export abstract class GenericDevice implements DomoModule {
                 });
 
                 this.persistStates && this.persistence.insert({
-                    state: this.transform ? this.transform(this.state) : this.state,
+                    state: this.state,
                     date: d
                 }, (err: Error, docs: message[]) => {
                     if (err != null) {
@@ -297,7 +299,7 @@ export abstract class GenericDevice implements DomoModule {
 
         logger.debug('setState of device "%s" from "%s" to "%s"', this.path, this.state, newState);
         this.stateHasBeenSet = true;
-        this.source.setAttribute(this.id, this.attribute, newState, callback);
+        this.source.setAttribute(this.id, this.attribute, this.transform ? this.transform(newState) : newState, callback);
     }
 
     getState() {
@@ -390,7 +392,7 @@ export abstract class GenericDevice implements DomoModule {
 
             this.eventListenerCache.set(callback, function (msg: message) {
                 msg.emitter = self;
-                transformFunction(callback, self.transform)(msg);
+                callback(msg);
             });
         }
         return this.eventListenerCache.get(callback);

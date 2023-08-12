@@ -11,7 +11,8 @@ const logger = require("tracer").colorConsole({
   // 0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
-type groupFunction = (newValues: Array<{ name: string, state: string, transformedState: string, previousState: string, isTrigger: boolean }>, callback: (error: Error, value: string) => void) => void;
+type groupFunction = (newValues: Array<{ name: string, state: string, previousState: string, isTrigger: boolean }>, callback: (error: Error, value: string) => void) => void;
+type internalGroupFunction = (newValues: Array<{ name: string, state: string, previousState: string, isTrigger: boolean }>, callback: (error: Error, value: string) => void) => void;
 
 export class group extends GenericDevice {
   configLoader: ConfigLoader;
@@ -73,7 +74,6 @@ export class group extends GenericDevice {
     this.function(this.devices.map(d => ({
       name: d.name,
       state: d.getState(),
-      transformedState: d.transform ? d.transform(d.getState()) : d.getState(),
       previousState: d.getPreviousState(),
       isTrigger: emitter && d === emitter
     })), (error, newValue) => {

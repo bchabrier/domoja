@@ -148,7 +148,12 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
                 devices.forEach(device => {
                     let oldValue = device.getState();
                     device.previousState = device.getState();
-                    device.state = value;
+                    if (device.transform) {
+                        device.state = device.transform(value);
+                        device.rawState = value;
+                    } else {
+                        device.state = value;
+                    }
                     device.stateHasBeenSet = true;
                     device.lastUpdateDate = new Date;
                     logger.debug('emitting change event for', device.path, oldValue, "=>", value);

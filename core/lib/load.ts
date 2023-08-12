@@ -1949,17 +1949,13 @@ function getDeviceState(path: string): string {
     let res: string;
     if (device) {
         res = device.getState();
-        if (device.transform) {
-            res = device.transform(res);
-        }
     }
     return res;
 }
 
 function getDevicePreviousState(path: string): string {
     let device = getDevice(path);
-    if (device && device.transform) return device.transform(device.getPreviousState());
-    else return device && device.getPreviousState();
+    return device && device.getPreviousState();
 }
 
 

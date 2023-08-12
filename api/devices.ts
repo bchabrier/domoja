@@ -34,7 +34,7 @@ function deviceAsJSON(device: GenericDevice) {
   return {
     id: device.id,
     path: device.path,
-    state: device.transform ? device.transform(device.getState()) : device.getState(),
+    state: device.getState(),
     lastUpdateDate: device.lastUpdateDate,
     name: device.name,
     type: device.type,
@@ -80,8 +80,7 @@ export class DevicesService {
   sendCommand(@PathParam('id') name: string, @FormParam('command') command: string) {
     let device = core.getDevices().find(device => device.path == name);
     return new Promise<string>((resolve, reject) => {
-      let transformedCommand = device.transform ? device.transform(command) : command;
-      device.setState(transformedCommand, err => { err ? reject(err) : resolve('OK') })
+      device.setState(command, err => { err ? reject(err) : resolve('OK') })
     });
   }
 

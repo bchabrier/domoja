@@ -344,7 +344,7 @@ function stateAction(c: Parser.Parse): ActionFunction {
         let self = this as Sandbox;
         value((err, result) => {
             const d = self.getDevice(device)
-            d && d.setState(d.transform?d.transform(result):result, cb);
+            d && d.setState(result, cb);
         });
     }
 
