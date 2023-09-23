@@ -2,6 +2,7 @@ import { Errors, Path, PreProcessor, GET, POST, PathParam, FormParam, QueryParam
 import * as express from 'express';
 import * as net from 'net';
 import * as http from 'http';
+import * as zlib from 'zlib';
 
 import { GenericDevice } from 'domoja-core';
 import * as core from 'domoja-core';
@@ -105,13 +106,21 @@ export class DevicesService {
       method.apply(camera, [baseURL, res.req.headers, function onResponse(response: http.IncomingMessage) {
         if (!response) return reject();
         res.statusCode = response.statusCode;
+        res.setHeader('content-encoding', 'gzip');
         if (res.req.query && res.req.query.t) {
           // if ?t=, then we cache the query
           res.setHeader("Cache-Control", "private, max-age=999999"); // max-age is needed for Safari
         }
-        response.pipe(res);
-        response.on('end', () => resolve(Return.NoResponse));
-        response.on('aborted', () => reject());
+        response.pipe(zlib.createGzip()).pipe(res)
+          .on('finish', () => {
+            resolve(Return.NoResponse)
+          })
+          .on('aborted', () => {
+            reject()
+          })
+          .on('error', () => {
+            reject()
+          });
       }]);
     });
   }
