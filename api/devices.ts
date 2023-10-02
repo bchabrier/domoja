@@ -45,6 +45,15 @@ function deviceAsJSON(device: GenericDevice) {
   }
 }
 
+const callsCache: Map<string, {
+  reqs: {
+    res: express.Response,
+    resolve: (value: {} | PromiseLike<{}>) => void,
+    reject: (reason?: any) => void,
+  }[],
+  bytesRead: Buffer
+}> = new Map();
+
 @Path('/devices')
 export class DevicesService {
   /**
@@ -103,23 +112,80 @@ export class DevicesService {
     if (port != undefined) baseURL += ':' + port;
 
     return new Promise<{}>((resolve, reject) => {
+
+      // check if a request is already ongoing for this URL
+      let firstCall = false;
+      let identifier = camera.path + ' ' + (method === camera['getSnapshot'] ? 'getSnaphot' : 'getStream');
+      if (!callsCache.get(identifier)) {
+        logger.debug(`First call to "${identifier}"!`)
+        firstCall = true;
+        callsCache.set(identifier, {
+          reqs: [],
+          bytesRead: Buffer.of(),
+        });
+      } else {
+        logger.debug(`Additional call to "${identifier}", using cache!`)
+      }
+      const cachedRequest = callsCache.get(identifier);
+      // keep track of res, resolve and reject of the request
+      cachedRequest.reqs.push({ res, resolve, reject });
+      logger.debug(`Cache of "${identifier}" now contains ${cachedRequest.reqs.length} calls`)
+      // set the header of the response
+      res.setHeader('content-encoding', 'gzip');
+      if (res.req.query && res.req.query.t) {
+        // if ?t=, then we cache the query
+        res.setHeader("Cache-Control", "private, max-age=999999"); // max-age is needed for Safari
+      }
+      // send any byte that was already received so far
+      if (cachedRequest.bytesRead.length > 0) {
+        logger.debug(`Call to "${identifier}": writing ${cachedRequest.bytesRead.length} bytes already read`)
+        res.write(cachedRequest.bytesRead);
+      }
+
+      if (!firstCall) {
+        logger.debug(`Call to "${identifier}": waiting for first call to return`)
+        return;
+      }
+
+      logger.debug(`Call to "${identifier}": doing the real request...`)
       method.apply(camera, [baseURL, res.req.headers, function onResponse(response: http.IncomingMessage) {
         if (!response) return reject();
-        res.statusCode = response.statusCode;
-        res.setHeader('content-encoding', 'gzip');
-        if (res.req.query && res.req.query.t) {
-          // if ?t=, then we cache the query
-          res.setHeader("Cache-Control", "private, max-age=999999"); // max-age is needed for Safari
-        }
-        response.pipe(zlib.createGzip()).pipe(res)
+
+        //response.pipe(zlib.createGzip()).pipe(ws)
+
+        response.pipe(zlib.createGzip())
+          .on("data", (data: Buffer) => {
+            logger.debug(`Call to "${identifier}": got data, writing to ${cachedRequest.reqs.length} calls`);
+            cachedRequest.reqs.forEach(r => r.res.write(data));
+            // keeping data for subsequent requests
+            //cachedRequest.bytesRead = Buffer.from([...cachedRequest.bytesRead, ...data]);
+            cachedRequest.bytesRead = Buffer.concat([cachedRequest.bytesRead, data]);
+          })
+          .on("end", () => {
+            logger.debug(`Call to "${identifier}": got end, ending ${cachedRequest.reqs.length} calls`);
+            cachedRequest.reqs.forEach(r => {
+              r.res.statusCode = response.statusCode;
+              r.res.end();
+            });
+            logger.debug(`Call to "${identifier}": deleting the cache`);
+            callsCache.delete(identifier);
+            //res.statusCode = response.statusCode;
+          })
+
+          //.pipe(res)
           .on('finish', () => {
-            resolve(Return.NoResponse)
+            logger.debug(`Call to "${identifier}": got finish, resolving for ${cachedRequest.reqs.length} calls`);
+            cachedRequest.reqs.forEach(r => r.resolve(Return.NoResponse));
           })
           .on('aborted', () => {
-            reject()
+            logger.error(`Call to "${identifier}": got aborted, rejecting for ${cachedRequest.reqs.length} calls`);
+            cachedRequest.reqs.forEach(r => r.reject("Aborted"));
+            callsCache.delete(identifier);
           })
-          .on('error', () => {
-            reject()
+          .on('error', (err) => {
+            logger.error(`Call to "${identifier}": got error, rejecting for ${cachedRequest.reqs.length} calls`);
+            cachedRequest.reqs.forEach(r => r.reject(err));
+            callsCache.delete(identifier);
           });
       }]);
     });
