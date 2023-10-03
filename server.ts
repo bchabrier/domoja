@@ -453,7 +453,7 @@ export class DomojaServer {
     }
     if (this.watcher) this.watcher.close();
 
-    let watchTimeout: NodeJS.Timer;
+    let watchTimeout: NodeJS.Timeout;
 
     this.watcher = chokidar.watch(configPath, { ignoreInitial: true, awaitWriteFinish: true });
     this.watcher.on('all',

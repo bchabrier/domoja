@@ -52,7 +52,7 @@ export class Openzwave extends Source {
 
 		let attempt = 0;
 
-		let watchTimeout: NodeJS.Timer;
+		let watchTimeout: NodeJS.Timeout;
 		this.watcher.on('add', (event, path) => {
 			this.debugModeLogger.warn(`Device inserted on port ${driverPort}, initializing OpenZWave driver...`);
 			attempt = 0;

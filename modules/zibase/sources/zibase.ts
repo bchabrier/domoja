@@ -55,7 +55,7 @@ export class Zibase extends Source {
 		}
 	}
 
-	private timeout: NodeJS.Timer = undefined;
+	private timeout: NodeJS.Timeout = undefined;
 
 	private reconnectToZibase() {
 		var response = {
