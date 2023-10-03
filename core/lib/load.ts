@@ -340,6 +340,8 @@ export type Sandbox = {
     getDevicePreviousState: typeof getDevicePreviousState,
     getDeviceLastUpdateDate: typeof getDeviceLastUpdateDate,
     getDeviceStateHistory: typeof getDeviceStateHistory,
+    getDevicesFromTagList: typeof sandboxedGetDevicesFromTagList,
+
     logger: typeof logger,
     msg: {
         emitter: string,

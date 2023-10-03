@@ -2,7 +2,7 @@ import { GenericDevice, DeviceOptions, WidgetType } from '..'
 import { Source, message, ID, DefaultSource } from '..'
 import * as assert from 'assert';
 import { InitObject, Parameters } from '..';
-import { ConfigLoader } from '..';
+import { ConfigLoader, getDevicesFromTagList } from '..';
 import * as persistence from '../persistence/persistence';
 
 const logger = require("tracer").colorConsole({
@@ -12,7 +12,38 @@ const logger = require("tracer").colorConsole({
 });
 
 type groupFunction = (newValues: Array<{ name: string, state: string, previousState: string, isTrigger: boolean }>, callback: (error: Error, value: string) => void) => void;
-type internalGroupFunction = (newValues: Array<{ name: string, state: string, previousState: string, isTrigger: boolean }>, callback: (error: Error, value: string) => void) => void;
+type internalGroupFunction = (newValues: Array<{ name: string, state: string, previousState: string, isTrigger: boolean }>, args: string[], callback: (error: Error, value: string) => void) => void;
+
+const functions: { name: string, nargs: number, argsDescription: string, description: string, func: internalGroupFunction }[] = [
+  {
+    name: "count",
+    nargs: 0,
+    argsDescription: "",
+    description: "Counts the number of devices in the group",
+    func: (newValues, args, callback) => callback(null, newValues.length.toString())
+  },
+  {
+    name: "count-if",
+    nargs: 1,
+    argsDescription: "",
+    description: "Counts the number of devices having a value in the group",
+    func: (newValues, args, callback) => callback(null, newValues.filter(v => v.state === args[0]).length.toString())
+  },
+  {
+    name: "some",
+    nargs: 3,
+    argsDescription: "<= value>:<if value>:<else value>",
+    description: "If some devices have a value in the group",
+    func: (newValues, args, callback) => callback(null, newValues.some(v => v.state === args[0]) ? args[1] : args[2])
+  },
+  {
+    name: "some-different",
+    nargs: 3,
+    argsDescription: "<!= value>:<if value>:<else value>",
+    description: "If some devices have a different value in the group",
+    func: (newValues, args, callback) => callback(null, newValues.some(v => v.state !== args[0]) ? args[1] : args[2])
+  }
+]
 
 export class group extends GenericDevice {
   configLoader: ConfigLoader;
@@ -29,17 +60,28 @@ export class group extends GenericDevice {
     this.tagList = tagList;
 
     if (typeof func === 'string') {
-      switch (func) {
-        case 'count':
-          this.function = (newValues, callback) => callback(null, newValues.length.toString());
-          break;
-        default:
-          logger.warning(`Function '${func}' not supported in group '${this.path}'.`);
-          this.function = (newValues, callback) => callback(null, undefined);
-          break;
+
+      const funcTab = func.split(":");
+      const funcName = funcTab[0];
+      const funcArgs = funcTab.slice(1, funcTab.length);
+
+      const foundFunctions = functions.filter(f => f.name === funcName && f.nargs === funcArgs.length);
+
+      if (foundFunctions.length === 1) {
+        const foundFunction = foundFunctions[0];
+        this.function = (newValues, callback) => foundFunction.func(newValues, funcArgs, callback);
+      } else {
+        const help = `\nSupported functions are:\n${functions.map(f => `- "${f.name}:${f.argsDescription}": ${f.description}`).join("\n")}`;
+
+        if (foundFunctions.length === 0)
+          logger.warn(`Function '${func}' not supported in group '${this.path}'.` + help);
+        else
+          logger.error(`Too many internal functions matching '${func}' in group '${this.path}'.` + help);
+
+        this.function = (newValues, callback) => callback(null, undefined);
       }
     } else {
-      this.function = (newValues, callback) => func(newValues, (error: Error, value: string) => callback(error, value.toString()));
+      this.function = (newValues, callback) => func(newValues, (error: Error, value: string) => callback(error, value?.toString() || ""));
     }
 
     configLoader.on('startup', event => {
@@ -55,6 +97,8 @@ export class group extends GenericDevice {
   release() {
     this.releaseListeners();
     super.release();
+    this.function = null;
+    this.devices = null;
   }
 
   releaseListeners() {
@@ -65,7 +109,7 @@ export class group extends GenericDevice {
   initialize() {
     this.releaseListeners();
 
-    this.devices = this.configLoader.getDevicesFromTagList(this.tagList);
+    this.devices = getDevicesFromTagList(this.tagList);
 
     this.devices.forEach(d => d.on('change', this.recomputeStateHandler));
   }
