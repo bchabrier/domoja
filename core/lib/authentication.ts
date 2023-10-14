@@ -227,7 +227,7 @@ export function configure(app: express.Application,
   app.get('/logout', function (req, res) {
     // clear the remember me cookie when logging out
     res.clearCookie('remember_me');
-    req.logout();
+    req.logout(null);
     res.redirect('/');
   });
 }
@@ -368,7 +368,7 @@ function getSecrets() {
 }
 
 function authenticateBasicAndApiKey(req: express.Request, res: express.Response, next: (err?: any) => void) {
-  passport.authenticate('basic', { session: false }, function (err, user, info) {
+  passport.authenticate('basic', { session: false }, function (err: Error, user: Express.User, info: any) {
     // test with:
     // curl 'http://192.168.0.10:4001/devices/aquarium.pompes' -u hb:hbpassword01 -H 'Accept: application/json, text/plain, */*' -H 'Referer: http://raspberrypi:8100/' -H 'Origin: http://raspberrypi:8100' --compressed 
     logger.debug('Authentication with basic', err, user, info);
@@ -377,7 +377,7 @@ function authenticateBasicAndApiKey(req: express.Request, res: express.Response,
       return req.logIn(user, next);
     }
 
-    passport.authenticate('headerapikey', function (err, user, info) {
+    passport.authenticate('headerapikey', function (err: Error, user: Express.User, info: any) {
       // test with:
       // curl 'http://192.168.0.10:4001/devices/aquarium.pompes' -H "Authorization: Api-Key qdpofiqdlfkj" -H 'Accept: application/json, text/plain, */*' -H 'Referer: http://raspberrypi:8100/' -H 'Origin: http://raspberrypi:8100' --compressed 
       logger.debug('Authentication with api key', err, user, info);

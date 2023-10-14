@@ -214,7 +214,7 @@ export class DomojaServer {
       };
       http_https = https;
     }
-    this.server = http_https.createServer(options, this.app);
+    this.server = http_https === http ? http.createServer(null, this.app) : https.createServer(options, this.app);
 
     this.ws = new socketio.Server(this.server, {
       allowEIO3: true
