@@ -55,6 +55,7 @@ export class command extends Source {
 	constructor(path: string, public VALUES: { [value: string]: string }, public pushUpdates: string, initObject: InitObject) {
 		super(path, initObject);
 		if (this.pushUpdates) {
+			this.debugModeLogger.info(`push-updates="${this.pushUpdates}".`);
 			this.stateUpdaterProcess = child_process.exec(this.pushUpdates, { env: { 'DEBUG': this.debugMode ? '1' : '0', SOURCE: this.path } });
 			let data = '';
 			this.stateUpdaterProcess.stderr.on('data', chunk => { this.logger.warn(`Got stderr from command '${this.path}' push-updates:\n${chunk}`); });
