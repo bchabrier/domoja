@@ -65,7 +65,7 @@ export function checkRoute(req: express.Request) {
 
     function dumpInfo() {
       logger.warn("Url:", req.protocol + "://" + req.hostname + req.url);
-      if (req.query && req.query != {}) logger.warn("Query:", req.query);
+      if (req.query && Object.keys(req.query).length > 0) logger.warn("Query:", req.query);
       if (req.method == "POST") logger.warn("Body:", req.body);
       logger.warn("Referer:", req.headers.referer);
       logger.warn("User-agent:", req.headers["user-agent"]);
