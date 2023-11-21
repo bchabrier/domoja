@@ -64,7 +64,7 @@ export class VoiceByGoogle extends Source {
 
 		let encodedMsg = encodeURIComponent(msg.substr(0, end + spcl));
 
-		mpg321().outputdevice('alsa').audiodevice('hw:0,0')
+		mpg321().outputdevice('alsa').audiodevice('hw:1,0')
 			.file('http://translate.google.com/translate_tts?tl=' +
 				this.language +
 				'&ie=utf-8&client=tw-ob&q=' + encodedMsg).stereo().gain(this.volume).exec((err: Error) => {

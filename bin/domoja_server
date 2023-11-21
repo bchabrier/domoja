@@ -135,14 +135,19 @@ set_mixer ()
     then
 	# find control
 	numid=`amixer -c $c controls | awk -F, "/name='$control'/"' { print $1}'`
-	amixer -c $c cset $numid $value
+	if [ "$numid" != "" ]
+	then
+	    amixer -c $c cset $numid $value
+	else
+	    echo "No control '$control' for card '$cardname' found." >&2
+	fi
     else
 	echo "Card '$cardname' not found." >&2
     fi
 }
 
 # set the sound card to 3.5 mm jack
-set_mixer 'PCM' 'PCM Playback Route' 1
+# set_mixer 'PCM' 'PCM Playback Route' 1
 set_mixer 'PCM' 'PCM Playback Volume' 100%
 set_mixer 'PCM' 'PCM Playback Switch' 1
 
