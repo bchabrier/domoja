@@ -106,7 +106,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     }
 
     getDevices(attribute: string, id: string) {
-        return this.devicesByAttribute[attribute][id];
+        return this.devicesByAttribute[attribute] && this.devicesByAttribute[attribute][id] || [];
     }
 
     addDevice(device: GenericDevice): void {
