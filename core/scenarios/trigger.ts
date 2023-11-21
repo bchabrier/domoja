@@ -25,10 +25,12 @@ export abstract class Trigger {
 
         this.handler = (msg?: message) => {
             this.scenario.debugMode && logger.info('Scenario "%s" triggers%s...', this.scenario.path, this.reason ? " due to " + this.reason : "");
+            logger.debug('Scenario "%s" triggers%s...', this.scenario.path, this.reason ? " due to " + this.reason : "");
             this.reason = null;
             msg && this.doc.setSandboxMsg(msg);
 
             this.scenario.start(err => {
+                logger.debug('Done running scenario "%s"', this.scenario.path);
                 err && logger.warn(`Error while executing scenario '${this.scenario.path}':`, err);
                 logger.debug('Resetting sandbox.');
                 this.doc.setSandboxMsg({});
