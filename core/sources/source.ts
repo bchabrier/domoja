@@ -26,6 +26,15 @@ export class message {
     tem?: string;
 }
 
+function compactString(s: string) {
+    const max = 1024;
+    if (s && s.length > max) {
+        return `${s.length} chars: ` + s.substring(0, max / 2) + '... ...' + s.substring(s.length - max / 2);
+    } else {
+        return s;
+    }
+}
+
 export abstract class Source /* extends events.EventEmitter */ implements DomoModule {
     // cannot derive events.EventEmitter because we want to pass Event to on, once, etc
     //id: id;
@@ -140,7 +149,9 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     }
 
     updateAttribute(id: ID, attribute: string, value: string, lastUpdateDate: Date = new Date) {
-        logger.debug('updateAttribute', id, attribute, value);
+        if (logger.debug.name !== 'noop') {
+            logger.debug('updateAttribute', id, attribute, compactString(value));
+        }
         if (this.isAttributeSupported(id, attribute)) {
             let devices = this.devicesByAttribute[attribute][id];
             logger.debug(`updating attribute for ${devices?devices.length:0} device(s)`);
@@ -156,8 +167,10 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
                     }
                     device.stateHasBeenSet = true;
                     device.lastUpdateDate = new Date;
-                    logger.debug('emitting change event for', device.path, oldValue, "=>", value);
-                    this.emitEvent('change', device.path, { oldValue: oldValue, newValue: value, date: device.lastUpdateDate });
+                    if (logger.debug.name !== 'noop') {
+                        logger.debug('emitting change event for', device.path, compactString(oldValue), "=>", compactString(device.state));
+                    }
+                    this.emitEvent('change', device.path, { oldValue: oldValue, newValue: device.state, date: device.lastUpdateDate });
                 });
                 return;
             }
@@ -170,7 +183,9 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
     }
 
     setAttribute(id: ID, attribute: string, value: string, callback: (err: Error) => void): void {
-        logger.debug('setAttribute(id="%s", attribute="%s", value="%s")', id, attribute, value);
+        if (logger.debug.name !== 'noop') {
+            logger.debug('setAttribute(id="%s", attribute="%s", value="%s")', id, attribute, compactString(value));
+        }
         this.doSetAttribute(id, attribute, value, err => {
             err || this.updateAttribute(id, attribute, value);
             callback(err);
