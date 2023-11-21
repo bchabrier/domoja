@@ -177,6 +177,6 @@ then
 	# no watch
 	PORT=$PORT exec authbind --deep node --inspect=0.0.0.0 --require ts-node/register $main "$config_path" $options
 else
-	PORT=$PORT TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER=typescript-cached-transpile exec authbind --deep $PMGR_RUN ts-node $main "$config_path" $options
+	PORT=$PORT NODE_OPTIONS=--max-old-space-size=300 TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER=typescript-cached-transpile exec authbind --deep $PMGR_RUN ts-node $main "$config_path" $options
 #	PORT=$PORT TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER=typescript-cached-transpile exec authbind --deep node --require ts-node/register $main "$config_path" $options
 fi
