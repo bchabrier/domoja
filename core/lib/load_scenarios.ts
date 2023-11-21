@@ -341,9 +341,8 @@ function stateAction(c: Parser.Parse): ActionFunction {
     logger.debug("found stateAction");
 
     return function (cb: (err: Error) => void) {
-        let self = this as Sandbox;
         value((err, result) => {
-            const d = self.getDevice(device)
+            const d = document.getDevice(device);
             d && d.setState(result, cb);
         });
     }

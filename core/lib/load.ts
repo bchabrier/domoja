@@ -333,8 +333,8 @@ export type Sandbox = {
     setInterval: typeof setInterval,
     clearInterval: typeof clearInterval,
     args: { args: any, result: any },
-    getDevice: typeof getDevice,
-    getSource: typeof getSource,
+    getDevice: typeof sandboxedGetDevice,
+    getSource: typeof sandboxedGetSource,
     setDeviceState: typeof setDeviceState,
     getDeviceState: typeof getDeviceState,
     getDevicePreviousState: typeof getDevicePreviousState,
@@ -395,13 +395,14 @@ export class ConfigLoader extends events.EventEmitter {
         clearTimeout: clearTimeout,
         setInterval: setInterval,
         clearInterval: clearInterval,
-        getDevice: getDevice,
-        getSource: getSource,
+        getDevice: sandboxedGetDevice,
+        getSource: sandboxedGetSource,
         setDeviceState: setDeviceState,
         getDeviceState: getDeviceState,
         getDevicePreviousState: getDevicePreviousState,
         getDeviceLastUpdateDate: getDeviceLastUpdateDate,
         getDeviceStateHistory: getDeviceStateHistory,
+        getDevicesFromTagList: sandboxedGetDevicesFromTagList,
         logger: logger,
         msg: <{ emitter: string, oldValue: string, newValue: string }>new Object(), // new Object needed to access outside of the sandbox
         args: <{ args: any[], result: any }>new Object(), // new Object needed to access outside of the sandbox
@@ -666,20 +667,6 @@ export class ConfigLoader extends events.EventEmitter {
             devTab.push(this.devices[element].device)
         });
         return devTab;
-    }
-
-    public getDevicesFromTagList(tagList: string): GenericDevice[] {
-        logger.debug('getting devices with tag in:', tagList);
-        return Object.keys(this.devices).map(d => this.devices[d].device).filter(
-            d => {
-                for (var t of tagList.split(/ +| *, */)) {
-                    if (d.matchTag(t)) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-        );
     }
 
     private getModuleClass(moduleName: string, className: string): new () => DomoModule {
@@ -1921,12 +1908,51 @@ export function getDevice(shortPath: string): GenericDevice {
     return d ? d.device : undefined;
 }
 
+function sandboxedGetDevice(shortPath: string) {
+    const device = getDevice(shortPath);
+
+    return device ? {
+        name: device.name,
+        path: device.path,
+        state: device.state,
+        previousState: device.previousState,
+        rawState: device.rawState,
+        previousRawState: device.previousRawState,
+    } : undefined;
+}
+
 export function getSource(sourceID: string): Source {
     //logger.debug(sources)
     let s = findByShortPath(sources, sourceID)
     if (!s) logger.warn(new Error("Source '" + sourceID + "' not found in" + sources).stack);
     //    return s.source
     return s ? s.source : undefined;
+}
+
+function sandboxedGetSource(sourceID: string) {
+    const source = getSource(sourceID);
+
+    return source ? {
+        path: source.path,
+    } : undefined;
+}
+
+export function getDevicesFromTagList(tagList: string): GenericDevice[] {
+    logger.debug('getting devices with tag in:', tagList);
+    return Object.keys(currentConfig.devices).map(d => currentConfig.devices[d].device).filter(
+        d => {
+            for (var t of tagList.split(/ +| *, */)) {
+                if (d.matchTag(t)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    );
+}
+
+function sandboxedGetDevicesFromTagList(tagList: string) {
+    return getDevicesFromTagList(tagList).map(d => sandboxedGetDevice(d.path).path);
 }
 
 function standardErrorHandler(err: Error) {
@@ -1937,7 +1963,7 @@ function setDeviceState(path: string, state: string, callback: (err: Error) => v
     let device = getDevice(path);
     if (device) {
         try {
-            device.setState(device.transform ? device.transform(state) : state, callback);
+            device.setState(state, callback);
         } catch (err) {
             callback(err);
         }
