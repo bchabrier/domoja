@@ -1,8 +1,10 @@
 import * as util from 'util';
 import * as passport from 'passport';
 import * as passportLocal from 'passport-local';
-var LocalStrategy = passportLocal.Strategy;
-var RememberMeStrategy = require('passport-remember-me').Strategy;
+const LocalStrategy = passportLocal.Strategy;
+//var RememberMeStrategy = require('passport-remember-me').Strategy;
+import * as RememberMe from 'passport-remember-me';
+const RememberMeStrategy = RememberMe.Strategy;
 import * as passportHeaderApiKey from 'passport-headerapikey';
 const HeaderAPIKeyStrategy = passportHeaderApiKey.HeaderAPIKeyStrategy;
 import * as passportHttp from 'passport-http';

@@ -43,6 +43,7 @@
     "@types/express-session": "^1.17.0",
     "@types/mocha": "<=8",
     "@types/node": "^20.6.2",
+    "@types/passport-remember-me": "^0.0.3",
     "@types/rewire": "^2.5.28",
     "c8": "^7.10.0",
     "coveralls": "^3.1.1",
