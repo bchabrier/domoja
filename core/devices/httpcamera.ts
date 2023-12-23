@@ -36,7 +36,12 @@ export class httpCamera extends camera {
 
     // if local url, we use the passed headers to get authentified
     if (baseUrl.startsWith(url.origin)) {
+      logger.debug(`Camera "${this.name}": local url, using passed headers:`, headers);
       options.headers = headers;
+    } else {
+      // if not local url, delete any authorization to make sure it is not used when communicating with the camera
+      // (could interfere with Basic or Digest authentication)
+      delete headers['authorization'];
     }
 
     if (this.authorizationHeader && this.authorizationHeader !== '') {
@@ -51,17 +56,17 @@ export class httpCamera extends camera {
         // need authentication, or authentication failed
         // let's see if Basic or Digest are needed
         const WWWAuthenticateHeader = response.headers['www-authenticate'];
-        logger.debug(`Camera "${this.name}": unauthorized request. response header www.authenticate:`, WWWAuthenticateHeader);
+        logger.debug(`Camera "${this.name}": unauthorized request. response header www.authenticate:`, WWWAuthenticateHeader, `headers:`, response.headers);
         const authenticateMethod = WWWAuthenticateHeader && WWWAuthenticateHeader.split(' ')[0];
         switch (authenticateMethod?.toLowerCase()) {
           case 'digest':
-            logger.debug(`Camera "${this.name}": using method digest`);
+            logger.debug(`Camera "${this.name}": using method digest with headers`, headers, `and digestAuth:`, url.username + ':' + url.password);
             urllib.request(url.href, {
               headers: headers,
               digestAuth: url.username + ':' + url.password,
               streaming: true,
             }, (err, data, res) => {
-              logger.error(`Camera "${this.name}": got err:`, err)
+              logger.debug(`Camera "${this.name}": got err:`, err, `res statusCode:`, res.statusCode);
               if (err) {
                 logger.error("name:", err.name)
                 if (err.name === 'ResponseTimeoutError') {
@@ -80,7 +85,7 @@ export class httpCamera extends camera {
               } else {
                 const request = ((<any>res).req as http.ClientRequest);
                 this.authorizationHeader = request.getHeader('authorization') as string;
-                logger.debug(`Camera "${this.name}": got result, keeping authorization header for next time:`, this.authorizationHeader);
+                logger.debug(`Camera "${this.name}": got result with status=${res.statusCode}, keeping authorization header for next time:`, this.authorizationHeader);
                 callback(res);
               }
             });
@@ -108,6 +113,7 @@ export class httpCamera extends camera {
             callback(response);
         }
       } else {
+        logger.debug(`Got snapshot for camera "${this.name}", response statusCode:`, response.statusCode);
         callback(response);
       }
     }
