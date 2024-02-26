@@ -25,6 +25,7 @@ export class Mqtt extends Source {
                 password: this.password,
                 reconnectPeriod: 15000
             });
+            this.debugModeLogger.info(`Trying to connect to mqtt source '${this.path}' to mqtt server '${this.url}'...`);
             this.client.on('connect', (ack) => {
                 this.creatingClient = false;
                 if (ack && (<any>ack).returnCode == 0) {
@@ -32,7 +33,7 @@ export class Mqtt extends Source {
                 } else {
                     this.logger.error(`Could not connect mqtt source '${this.path}' to mqtt server '${this.url}':`, ack);
                 }
-                f();    
+                f();
                 this.pushedDos.forEach(f => f());
                 this.pushedDos = [];
             });
@@ -46,7 +47,7 @@ export class Mqtt extends Source {
                 this.logger.error('disconnect!!!');
             });
             this.client.on('message', (topic, message) => {
-                this.debugModeLogger.info(`received message '${message.toLocaleString()}'.`);
+                this.debugModeLogger.info(`topic '${topic}' received message '${message.toLocaleString()}'.`);
                 this.updateAttribute(topic, 'state', message.toLocaleString());
             });
         } else {
@@ -63,7 +64,7 @@ export class Mqtt extends Source {
         super.addDevice(device);
         device.topic = device.id; // as a workaround until non 'id' is supported
         this.connectAndDo(() => {
-            this.debugModeLogger.info('addDevice, subscribing');
+            this.debugModeLogger.info(`Adding device '${device.path}', subscribing to topic "${device.topic}"`);
             this.client.subscribe(device.topic, err => {
                 if (err) this.logger.error(`mqtt source '${this.path}' could not subscribe to topic '${device.topic}' for device '${device.path}':`, err)
             });
@@ -73,6 +74,7 @@ export class Mqtt extends Source {
 
     releaseDevice(device: GenericDevice): void {
         this.connectAndDo(() => {
+            this.debugModeLogger.info(`Releasing device '${device.path}', unsubscribing to topic "${device.topic}"`);
             this.client.unsubscribe(device.topic, (err: Error) => {
                 if (err) this.logger.error(`mqtt source '${this.path}' could not unsubscribe from topic '${device.topic}' for device '${device.path}':`, err);
             });
