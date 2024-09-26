@@ -4,7 +4,7 @@ import * as request from 'request';
 
 var logger = require("tracer").colorConsole({
 	dateformat: "dd/mm/yyyy HH:MM:ss.l",
-	level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
+	level: 2 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
 
@@ -13,7 +13,7 @@ import { CronJob } from 'cron';
 
 
 // URL de la page du site EDF
-var tempoURLCouleurDuJour = "https://particulier.edf.fr/services/rest/referentiel/searchTempoStore?dateRelevant="
+var tempoURLCouleurDuJour = "https://www.api-couleur-tempo.fr/api/jourTempo/"
 
 // numéros des scénarios Zibase définissant les couleurs
 var Tempo_Bleu = 24;
@@ -123,23 +123,35 @@ export class tempo extends Source {
 
 		let today = new Date();
 		let todayString = format(today);
+
+		this.getTempoForDay(todayString, "couleurDuJour", err => {
+			if (err) return callback(err);
+			this.getTempoForDay(todayString, "couleurDeDemain", err => {
+				callback(err);
+			});
+		});
+	}
+
+	private getTempoForDay(date: string, couleurDuJour: "couleurDuJour" | "couleurDeDemain", callback: (err: Error) => void) {
 		let self = this;
-		this.request = request.get(tempoURLCouleurDuJour + todayString, {
+
+		this.request = request.get(tempoURLCouleurDuJour + date, {
 			headers: {
-				'User-Agent': 'Wget/1.18 (linux-gnueabihf)' // for some reason, edf is rejecting request default agent
+				'Accept': 'application/json'
 			}
 		}, function (err, response, bodyString) {
 
 			//returns a JSON object similar to:
-			// {"couleurJourJ":"TEMPO_BLEU","couleurJourJ1":"NON_DEFINI"}
+			// codeJour	integer
+			// Code couleur du tarif Tempo applicable: 0: tarif inconnu (pas encore communiqué par RTE) 1: tarif bleu 2: tarif blanc 3: tarif rouge
 			let obj: {
-				"couleurJourJ": "TEMPO_BLEU" | "TEMPO_BLANC" | "TEMPO_ROUGE" | "NON_DEFINI",
-				"couleurJourJ1": "TEMPO_BLEU" | "TEMPO_BLANC" | "TEMPO_ROUGE" | "NON_DEFINI"
+				"dateJour": string,
+				"codeJour": 0 | 1 | 2 | 3;
 			};
 			let success = 0;
 			try {
 				obj = JSON.parse(bodyString);
-				if (obj.couleurJourJ != undefined)
+				if (obj.codeJour != undefined)
 					success = 1;
 				else
 					success = 0;
@@ -149,48 +161,30 @@ export class tempo extends Source {
 			let now = new Date;
 			self.updateAttribute('lastUpdateDate', 'state', now.toString());
 			if (success == 1) {
-				switch (obj.couleurJourJ) {
-					case "TEMPO_BLEU":
-						self.updateAttribute('couleurDuJour', 'state', "Bleu", now);
+				switch (obj.codeJour) {
+					case 1:
+						self.updateAttribute(couleurDuJour, 'state', "Bleu", now);
 						break;
-					case "TEMPO_BLANC":
-						self.updateAttribute('couleurDuJour', 'state', "Blanc", now);
+					case 2:
+						self.updateAttribute(couleurDuJour, 'state', "Blanc", now);
 						break;
-					case "TEMPO_ROUGE":
-						self.updateAttribute('couleurDuJour', 'state', "Rouge", now);
+					case 3:
+						self.updateAttribute(couleurDuJour, 'state', "Rouge", now);
 						break;
-					case "NON_DEFINI":
-						self.updateAttribute('couleurDuJour', 'state', "Indéterminé", now);
-						break;
-					default:
-						self.updateAttribute('couleurDuJour', 'state', "Indéterminé", now);
-						logger.error("Couleur du jour '" + obj.couleurJourJ + "' non connue.");
-				}
-				self.tomorrowColorUpdated = true;
-				switch (obj.couleurJourJ1) {
-					case "TEMPO_BLEU":
-						self.updateAttribute('couleurDeDemain', 'state', "Bleu", now);
-						break;
-					case "TEMPO_BLANC":
-						self.updateAttribute('couleurDeDemain', 'state', "Blanc", now);
-						break;
-					case "TEMPO_ROUGE":
-						self.updateAttribute('couleurDeDemain', 'state', "Rouge", now);
-						break;
-					case "NON_DEFINI":
-						self.tomorrowColorUpdated = false;
-						self.updateAttribute('couleurDeDemain', 'state', "Indéterminé", now);
+					case 0:
+						self.updateAttribute(couleurDuJour, 'state', "Indéterminé", now);
 						break;
 					default:
-						self.tomorrowColorUpdated = false;
-						self.updateAttribute('couleurDeDemain', 'state', "Indéterminé", now);
-						logger.error("Couleur de demain '" + obj.couleurJourJ1 + "' non connue.");
+						self.updateAttribute(couleurDuJour, 'state', "Indéterminé", now);
+						logger.error(couleurDuJour + " '" + obj.codeJour + "' non connue.");
 				}
+				if (couleurDuJour === "couleurDeDemain") this.tomorrowColorUpdated = true;
+
 				callback(null);
 			} else {
-				callback(new Error("No success from '" + tempoURLCouleurDuJour + todayString + "': response: '" + bodyString + "'."));
+				callback(new Error("No success from '" + tempoURLCouleurDuJour + date + "': response: '" + bodyString + "'."));
 			}
 			return;
 		});
-	};
+	}
 }
