@@ -391,9 +391,15 @@ S27oDfFq04XSox7JM9HdTt2hLK96x1T7FpFrBTnALzb7vHv9MhXqAT90fPR/8A==
 
     release(): void {
         this.logout((err, res) => {
-            if (err) logger.error(err, res);
-            if (!res) logger.error('res is null');
-            if (res.success != true) logger.error('Could not logout from freebox', this.path);
+            if (err) {
+                this.logger.error('Could not logout from freebox:', err);
+                return;
+            }
+            if (!res) {
+                this.logger.error('Could not logout from freebox:', 'res is null');
+                return;
+            }
+            if (res.success != true) this.logger.error('Could not logout from freebox:', res);
         });
         super.release();
     }
