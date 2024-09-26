@@ -66,9 +66,9 @@ export class httpCamera extends camera {
               digestAuth: url.username + ':' + url.password,
               streaming: true,
             }, (err, data, res) => {
-              logger.debug(`Camera "${this.name}": got err:`, err, `res statusCode:`, res.statusCode);
+              logger.debug(`Camera "${this.name}": got err:`, err, `res statusCode:`, res?.statusCode);
               if (err) {
-                logger.error("name:", err.name)
+                logger.error(`Camera "${this.name}": error:`, err.name)
                 if (err.name === 'ResponseTimeoutError') {
                   retries--;
                   if (retries >= 0) {
