@@ -51,12 +51,25 @@ import * as kill from 'tree-kill';
 export class command extends Source {
 
 	stateUpdaterProcess: child_process.ChildProcessWithoutNullStreams;
+	beingReleased: boolean = false;
 
 	constructor(path: string, public VALUES: { [value: string]: string }, public pushUpdates: string, initObject: InitObject) {
 		super(path, initObject);
 		if (this.pushUpdates) {
 			this.debugModeLogger.info(`push-updates="${this.pushUpdates}".`);
 			this.stateUpdaterProcess = child_process.exec(this.pushUpdates, { env: { 'DEBUG': this.debugMode ? '1' : '0', SOURCE: this.path } });
+			this.stateUpdaterProcess.on("close", (code, signal) => {
+				if (!this.beingReleased || signal !== 'SIGTERM') this.logger.error(`Child process closed with code '${code}' / signal:`, signal);
+			});
+			this.stateUpdaterProcess.on("exit", (code, signal) => {
+				if (!this.beingReleased || signal !== 'SIGTERM') this.logger.error(`Child process exited with code '${code}' / signal:`, signal);
+			});
+			this.stateUpdaterProcess.on("disconnect", (...args) => {
+				this.logger.error(`Child process got disconnected:`, ...args);
+			});
+			this.stateUpdaterProcess.on("error", (err) => {
+				this.logger.error(`Child process got error:`, err);
+			});
 			let data = '';
 			this.stateUpdaterProcess.stderr.on('data', chunk => { this.logger.warn(`Got stderr from command '${this.path}' push-updates:\n${chunk}`); });
 			this.stateUpdaterProcess.stdout.on('data', chunk => {
@@ -97,10 +110,11 @@ export class command extends Source {
 	}
 
 	release(): void {
+		this.beingReleased = true;
 		if (this.stateUpdaterProcess) {
 			//this.stateUpdaterProcess.kill('SIGINT');
 			//process.kill(-this.stateUpdaterProcess.pid, 'SIGINT');
-			kill(this.stateUpdaterProcess.pid);
+			kill(this.stateUpdaterProcess.pid, 'SIGTERM');
 			delete this.stateUpdaterProcess;
 		}
 
@@ -130,7 +144,7 @@ export class command extends Source {
 			source: 'REQUIRED',
 			id: 'REQUIRED',
 			transform: 'OPTIONAL',
-			camera: 'OPTIONAL' // added for alarm (should be an array)
+			camera: 'OPTIONAL' // added for command (should be an array)
 		});
 	}
 }
