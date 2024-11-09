@@ -115,8 +115,12 @@ export class astronomy extends Source {
 
 		let self = this;
 
-		let url = "http://www.proxiti.info/horaires_soleil.php?o=" + this.location;
-		this.request = request.get(url, function (err, response, bodyString) {
+		let url = "https://www.proxiti.info/horaires_soleil.php?o=" + this.location;
+		this.request = request.get(url, {
+			headers: {
+				'user-agent': 'curl/7.64.0',
+			}
+		}, function (err, response, bodyString) {
 
 			if (err) return callback(err);
 
