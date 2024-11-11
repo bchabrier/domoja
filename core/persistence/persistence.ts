@@ -257,7 +257,7 @@ export class mongoDB extends persistence {
             var db = client.db();
             var collection = db.collection('Backup states');
             const indexName = "Index for Backup states";
-            collection.createIndex({ 'id': 1 }, { name: indexName }, (err, results) => {
+            collection.createIndex({ 'id': 1 }, { name: indexName, unique: true }, (err, results) => {
                 if (err) logger.error(`Could not create index "${indexName}"`);
             });
 
