@@ -168,6 +168,18 @@ fi
 main=$(awk -F\" '$2 == "main" { print $4}' "$package_dir/package.json")
 
 cd $package_dir
+
+# rename any session file that has not been fully completed
+if [ ! -z "$(ls sessions/*.json.* 2>/dev/null)" ]; 
+then 
+	echo "Renaming old sessions..."
+	for f in sessions/*.json.*
+	do
+		echo $f
+		mv $f ${f%.*}
+	done
+fi
+
 if $debug
 then
 	# with watch

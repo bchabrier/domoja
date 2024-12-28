@@ -156,7 +156,7 @@ export function configure(app: express.Application,
     secret: getSecrets(),
     store: _store,
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
     cookie: _dev ? { secure: true, sameSite: "none" } : undefined
   }));
 
