@@ -7,6 +7,8 @@ var logger = require("tracer").colorConsole({
   level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
+import * as colors from 'colors/safe';
+
 import * as chokidar from 'chokidar';
 import * as core from 'domoja-core';
 import * as net from 'net';
@@ -261,7 +263,7 @@ export class DomojaServer {
   start(listeningCallback?: () => void) {
     this.server.listen(this.app.get('port'), () => {
       this.app.set('port', (<net.AddressInfo>this.server.address()).port); // in case app.get('port') is null
-      console.log('Express %s server listening on port %s', this.app.get('env'), this.app.get('port'));
+      logger.info(colors.magenta('Express %s server listening on port %s'), this.app.get('env'), this.app.get('port'));
       listeningCallback && listeningCallback.apply(this);
     });
   }

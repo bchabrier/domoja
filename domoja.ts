@@ -91,7 +91,7 @@ if (!fs.existsSync(CONFIG_FILE)) {
           checkRoute(req) && res.redirect(301, 'https://' + req.hostname + req.originalUrl);
         });
         let server80 = http.createServer(app80).listen(80, function () {
-          console.log('Express production server listening on port 80');
+          logger.info(colors.magenta('Express production server listening on port 80'));
         });
       }
     });
