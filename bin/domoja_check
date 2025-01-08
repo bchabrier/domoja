@@ -1,0 +1,356 @@
+#!/bin/bash
+
+usage () 
+{
+    cat >&2 <<EOF
+Usage: `basename $0` [options]
+Check if domoja if running correctly. Domoja must be "online" through pm2
+
+Options:
+    -h, --help      this help
+    -q, --quiet     do not display output
+    -f, --verbose   display more output
+    -r, --restart   restart if not running correctly
+    -f, --force     does not ask for confirmation before restarting
+
+    -d, --debug     debug mode
+EOF
+
+}
+
+QUIET=0
+FORCE=0
+RESTART=0
+VERBOSE=0
+DEBUG=0
+
+OPTSPEC="hqdvrf-:"
+die() { echo "$*" >&2; usage; exit 2; }  # complain to STDERR and exit with error
+needs_arg() { if [ -z "$OPTARG" ]; then die "No arg for --$OPT option"; fi; }
+while getopts "$OPTSPEC" OPT; do
+  # support long options: https://stackoverflow.com/a/28466267/519360
+  if [ "$OPT" = "-" ]; then   # long option: reformulate OPT and OPTARG
+    OPT="${OPTARG%%=*}"       # extract long option name
+    OPTARG="${OPTARG#$OPT}"   # extract long option argument (may be empty)
+    OPTARG="${OPTARG#=}"      # if long option argument, remove assigning `=`
+  fi
+  case "$OPT" in
+        h | help)
+            usage
+            exit 
+            ;;
+        #b | bravo )    needs_arg; bravo="$OPTARG" ;;
+
+        q | quiet)
+            QUIET=1
+            ;;
+        v | verbose)
+            VERBOSE=1
+            ;;
+        f | force)
+            FORCE=1
+            ;;
+        r | restart)
+            RESTART=1
+            ;;
+        d | debug)
+            DEBUG=1
+            ;;
+
+        ??* )          die "Unknown option --$OPT" ;;  # bad long option
+        ? )            exit 2 ;;  # bad short option (error reported via getopts)
+    esac
+done
+shift $((OPTIND-1)) # remove parsed options and args from $@ list
+#PATTERN=$1; shift
+
+[ $VERBOSE = 1 -a $QUIET = 1 ] && echo "Cannot be quiet and verbose together">&2 && exit 2
+
+if [ $DEBUG = 1 ]
+then
+    echo QUIET $QUIET
+    echo VERBOSE $VERBOSE
+fi
+
+TMPFILES=""
+trap 'rm -f $TMPFILES' 0
+
+check_command ()
+{
+    local description="$1"
+    local command="$2"
+    local successtest="$3"
+
+    [ $QUIET = 0 ] && echo -n "$description"
+    [ $QUIET = 0 -a $VERBOSE != 1 ] && echo -n "... "
+    [ $QUIET = 0 -a $VERBOSE != 1 -a $DEBUG = 1 ] && echo
+    [ $VERBOSE = 1 ] && echo ":"
+
+    local tmpout=/tmp/res.out.$$
+    local tmperr=/tmp/res.err.$$
+    local tmpboth=/tmp/res.$$
+    local tmpstatus=/tmp/status.$$
+    TMPFILES="$TMPFILES $tmpout $tmperr $tmpboth $tmpstatus"
+    
+    # execute command, capturing stdout, stderr and both in separate files,
+    # displaying results if verbose mode
+    [ $DEBUG = 1 ] && echo Executing: "$command"
+    (eval stdbuf -o0 -e0 "$command" 2> >(stdbuf -e0 tee $tmperr) > >(stdbuf -o0 tee $tmpout); echo $? > $tmpstatus) | if [ $VERBOSE = 1 ] 
+    then
+        stdbuf -o0 tee $tmpboth 
+    else
+        cat > $tmpboth 
+    fi
+    local status=$(cat $tmpstatus)
+
+    # get last char of output
+    local lastcar=$(tail -c1 $tmpboth | xxd -p) # 0a if ending with a newline
+
+    local stdout=$(cat $tmpout)
+    local stderr=$(cat $tmperr)
+    if [ $DEBUG = 1 ]
+    then
+        echo "stdout='$stdout'"
+        echo "stderr='$stderr'"
+    fi
+
+    local success='[ "STATUS" = 0 ]'
+    
+    if [ "$successtest" != "" ] 
+    then
+        success=$successtest 
+    fi
+    success=$(echo "$success" | sed -e 's/STATUS/$status/g' -e 's/STDOUT/$stdout/g' -e 's/STDERR/$stderr/g' )
+    [ $DEBUG = 1 ] && echo Testing result with $success
+    eval $success
+    status=$?
+    [ $DEBUG = 1 ] && echo "status=$status"
+
+    # verbose output
+    if [ $VERBOSE = 1 ]
+    then
+        [ "$lastcar" != "0a" -a "$lastcar" != "" ] && echo # if not ending with a newline, add one
+
+        [ $status = 0 ] && echo Command succeeded || echo Command failed with exit code $status
+        echo
+    fi
+
+    # default output
+    if [ $QUIET = 0 -a $VERBOSE = 0 ]
+    then
+        [ $status = 0 ] && echo OK || echo KO
+    fi
+
+    return $status
+}
+
+STEPS=()
+
+add_step ()
+{
+    STEPS+=($# "$@")
+}
+
+run_steps ()
+{
+    local status=0
+    local i=0
+    while [ $i -lt ${#STEPS[@]} ]
+    do
+        local nbargs=${STEPS[$i]}
+        if [ $DEBUG = 1 ]
+        then
+            echo $i: new step with nbargs=$nbargs
+            for arg in "${STEPS[@]:$(($i + 1)):$(($nbargs))}"
+            do
+                echo arg: $arg
+            done
+        fi
+        check_command "${STEPS[@]:$(($i + 1)):$(($nbargs))}"
+        local s=$?
+        [ $status != 0 ] && return $status
+        status=$([ $s = 0 ] && echo 0 || echo 1)
+        i=$(($i + $nbargs + 1))
+    done
+    return $status
+}
+
+clear_steps ()
+{
+    STEPS=()
+}
+
+# find pm2
+which pm2 > /dev/null
+if [ $? != 0 ]
+then
+    PATH=$PATH:'/home/pi/.nvm/versions/node/v20.9.0/bin'
+fi
+[ $DEBUG = 1 ] && echo "Using pm2: $(which pm2)"
+
+oIFS=$IFS
+IFS='' read -r -d '' awkpgm <<"EOF"
+    function mktimestamp(line) {
+        # line is under the form:
+        # 25/12/2024 21:39:40.351 <info> load.ts:480 (ConfigLoader.parse) Loading secrets file ...
+
+        # remove color codes
+        line=gensub(/\x1B\[([0-9]{1,3}(;[0-9]{1,2};?)?)?[mGK]/, "", "g", line)
+
+        # split into fields
+        split(line, fields, /[\/ :.]/)
+
+        # make timestamp
+        t=fields[3]" "fields[2]" "fields[1]" "fields[4]" "fields[5]" "fields[6]" -1"
+        return mktime(t)
+    }
+    function hms(interval) {
+        s=interval % 60
+        interval = (interval - s)/60
+        m=interval % 60
+        interval = (interval - m)/60
+        h=interval % 60
+
+        hstring=h>0?h" hour"(h==1?"":"s"):""
+        mstring=m>0?m" minute"(m==1?"":"s"):""
+        sstring=s>0?s" second"(s==1?"":"s"):""
+
+        return gensub(/ *$/, "", "g", gensub(/^ */, "", "g", gensub(/ +/, " ", "g", hstring" "mstring" "sstring)))
+    }
+    function addevent(eventname, preveventname, interval) {
+        supportedevents[eventname]=1
+        if (preveventname!="" && supportedevents[preveventname]!=1) 
+            print "ERROR in \"addevent\": Unsupported event \""preveventname"\". You must use \"addevent\" before using it."
+        if (preveventname != "") prevevents[eventname]=preveventname
+        intervals[eventname]=interval
+
+    }
+    function raiseevent(eventname, line) {
+
+        if (supportedevents[eventname]!=1) {
+            print "ERROR in \"raiseevent\": Unsupported event \""eventname"\"."
+            exit
+        }
+
+        # keep only the last event
+        delete events[ts[eventname]]
+
+        timestamp=mktimestamp(line)
+        ts[eventname]=timestamp
+        lines[eventname]=line
+        events[timestamp]=eventname
+    }
+    # check that all events are done in correct sequence
+    function checkevents() {
+
+        # check that all events have been produced
+        for (eventname in supportedevents) {
+            if (ts[eventname]==""){
+                return "Missing event \""eventname"\""
+            }
+        }
+
+        asorti(events, sortedevents);
+
+        # check order of events
+        for (e in sortedevents) {
+            timestamp=sortedevents[e]
+            event=events[timestamp]
+            prevevent=prevevents[event]
+            interval=intervals[event]
+            if (prevevent != "" && interval != 0) {
+                prevtimestamp=ts[prevevent]
+                if (!(prevtimestamp < timestamp && timestamp < prevtimestamp + interval)) {
+                    t=timestamp - prevtimestamp;
+                    return "Event \""event"\" should be between \""prevevent"\" and \""prevevent"\" + "hms(interval)", is "hms(t)
+                }
+            }
+        }
+    }
+    BEGIN {
+        addevent("Loading secrets", "", 0)
+        addevent("Connected to mongoDB", "Loading secrets", 2*60)
+        addevent("Express started", "Connected to mongoDB", 1*60)
+    }
+    $0 ~ /Loading secrets file/ { 
+        raiseevent("Loading secrets", $0)
+    }
+    $0 ~ /Successfully connected to mongodb/ { 
+        raiseevent("Connected to mongoDB", $0)
+    }
+    $1 ~ /[0-9][0-9]/ && $0 ~ /Express [^ ]+ server listening on port/ { 
+        raiseevent("Express started", $0)
+    }
+    END {
+        # check event sequence
+        error=checkevents();
+        if (error != "") {
+            print error":"
+            asorti(events, sortedevents);
+            for (e in sortedevents) {
+                timestamp=sortedevents[e]
+                event=events[timestamp]
+                print lines[event]
+            }
+        }
+    }
+EOF
+IFS=$oIFS
+
+oIFS=$IFS
+IFS='' read -r -d '' pm2awkpgm <<"EOF"
+    BEGIN {
+        statusField=-1
+        nameField=-1
+    }
+    nameField ==-1 && $2 == "id" {
+        for (i=0; i<NF; i++) {
+            if ($i == "status") statusField=i
+            if ($i == "name") nameField=i
+        }
+    }
+    statusField != -1 && $nameField == "domoja" { print $statusField }
+EOF
+
+IFS=$oIFS
+add_step 'pm2 status' "pm2 list domoja | awk '$pm2awkpgm'" '[ STDOUT = "online" ]'
+run_steps
+domoja_online=$([ $? = 0 ] && echo 1 || echo 0)
+
+
+if [ $domoja_online = 1 ]
+then
+    clear_steps
+    add_step 'MongoDB running correctly' 'sudo systemctl status mongodb' "echo STDOUT | grep -q 'active (running)'"
+    add_step 'HTTP connexion to domo.bchabrier.com' 'curl -sv http://domo.bchabrier.com'
+    add_step 'HTTP connexion to http://192.168.0.10:5000' 'curl -sv http://192.168.0.10:5000'
+    # HTTPS call from local machine does not work - unknown reason
+    # add_step 'HTTPS connexion to domo.bchabrier.com' 'curl -sv https://domo.bchabrier.com'
+    add_step 'Startup done' "awk '$awkpgm' ~/.pm2/logs/domoja-out.log" '[ "STDOUT" = "" ]'
+    run_steps
+    status=$?
+    if [ $QUIET = 0 -a $RESTART = 1 -a $status != 0 ]
+    then
+        ans=
+        while [ "$ans" != 'y' -a "$ans" != 'yes' -a "$ans" != 'n' -a "$ans" != 'no' ]
+        do
+            if [ $FORCE = 1 ]
+            then
+                ans=y
+            else
+                read -p "Domoja is not running correctly, do you want to restart it? " ans
+            fi
+            if [ "$ans" = 'y' -o "$ans" = 'yes' ]
+            then
+                pm2 restart domoja
+            fi
+        done
+    fi
+else
+    [ $QUIET = 0 ] && echo "Domoja not started, use 'pm2 restart domoja' to start it"
+fi
+
+exit $status
+
+
+

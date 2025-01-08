@@ -1,4 +1,5 @@
 bin/domoja_server text eol=lf
+bin/domoja_check text eol=lf
 tools/generate_demo text eol=lf
 tools/update_readme text eol=lf
 tools/test_demo text eol=lf
