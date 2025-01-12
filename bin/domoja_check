@@ -269,7 +269,7 @@ IFS='' read -r -d '' awkpgm <<"EOF"
     }
     BEGIN {
         addevent("Loading secrets", "", 0)
-        addevent("Connected to mongoDB", "Loading secrets", 2*60)
+        addevent("Connected to mongoDB", "Loading secrets", 5*60)
         addevent("Express started", "Connected to mongoDB", 1*60)
     }
     $0 ~ /Loading secrets file/ { 
