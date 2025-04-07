@@ -539,7 +539,7 @@ export class mongoDB extends persistence {
         if (mongoDB.nbInstances === 0) {
             clearInterval(mongoDB.statsJob);
             mongoDB.statsJob = null;
-            mongoDB.mongoClient.close();
+            mongoDB.mongoClient && mongoDB.mongoClient.close();
             mongoDB.mongoClient = null;
         }
     }
