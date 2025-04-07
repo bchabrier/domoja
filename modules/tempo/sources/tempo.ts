@@ -147,21 +147,24 @@ export class tempo extends Source {
 			let obj: {
 				"dateJour": string,
 				"codeJour": 0 | 1 | 2 | 3;
+			} | {
+				"type": string,
+				"title": string,
+				"detail": string;
 			};
-			let success = 0;
+			let codeJour: undefined | 0 | 1 | 2 | 3 = undefined;
 			try {
 				obj = JSON.parse(bodyString);
-				if (obj.codeJour != undefined)
-					success = 1;
-				else
-					success = 0;
+				if ('codeJour' in obj) {
+					if (obj.codeJour != undefined) codeJour = obj.codeJour;
+				} else if (obj.title == "An error occurred" && obj.detail == "Not Found") codeJour = 0; // indeterminé
 			} catch (e) {
 				logger.error(e);
 			}
 			let now = new Date;
 			self.updateAttribute('lastUpdateDate', 'state', now.toString());
-			if (success == 1) {
-				switch (obj.codeJour) {
+			if (codeJour != undefined) {
+				switch (codeJour) {
 					case 1:
 						self.updateAttribute(couleurDuJour, 'state', "Bleu", now);
 						break;
@@ -176,7 +179,7 @@ export class tempo extends Source {
 						break;
 					default:
 						self.updateAttribute(couleurDuJour, 'state', "Indéterminé", now);
-						logger.error(couleurDuJour + " '" + obj.codeJour + "' non connue.");
+						logger.error(couleurDuJour + " '" + codeJour + "' non connue.");
 				}
 				if (couleurDuJour === "couleurDeDemain") this.tomorrowColorUpdated = true;
 
