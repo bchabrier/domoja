@@ -4,6 +4,7 @@ import { Source, Parameters, ConfigLoader, InitObject, GenericDevice, reloadConf
 import * as http from 'http';
 import * as querystring from 'querystring';
 import { DomojaServer } from '../server';
+import * as socketio from 'socket.io';
 
 import * as apis from '../api';
 import { ServerContainer } from '../node_modules/typescript-rest/dist/server/server-container';
@@ -19,15 +20,18 @@ describe('Module api', function () {
 
     let server: DomojaServer;
 
+    let io = { engine: { use: () => { } } } as unknown as socketio.Server;
+
     this.beforeAll(function (done) {
-        server = new DomojaServer(null, false, false, () => {
+        server = new DomojaServer(0, false, false, () => {
             core.configure(server.app,
                 (user, pwd, done) => { done(null, { id: "test" }) },
-                (user, cb) => cb(null, { id: "test" }),
-                null,
+                (user, cb) => cb(null as unknown as Error, { id: "test" }),
+                core.token,
                 '',
                 (req, resp) => { },
-                null,
+                null as any,
+                io,
                 true
             );
             done();
@@ -94,7 +98,7 @@ describe('Module api', function () {
     describe('GET /devices', function () {
         it('should return the devices', function (done) {
             server.loadConfig('./test/load/devices/device.yml', err => {
-                doRequest('GET', '/devices', null, (body) => {
+                doRequest('GET', '/devices', null as any, (body) => {
                     //console.log(body);
                     let result = JSON.parse(body);
                     assert.notEqual(result, null);
@@ -110,7 +114,7 @@ describe('Module api', function () {
     describe('GET /devices/:id', function () {
         it('should return a device', function (done) {
             server.loadConfig('./test/load/devices/device.yml', err => {
-                doRequest('GET', '/devices/simple_device', null, (body) => {
+                doRequest('GET', '/devices/simple_device', null as any, (body) => {
                     //console.log(body);
                     let result = JSON.parse(body);
                     assert.notEqual(result, null);
@@ -122,7 +126,7 @@ describe('Module api', function () {
         });
         it('should raise an exception if device not found', function (done) {
             server.loadConfig('./test/load/devices/device.yml', err => {
-                doRequest('GET', '/devices/unknown_device', null, (body) => {
+                doRequest('GET', '/devices/unknown_device', null as any, (body) => {
                     //console.log(body);
                     assert.ok(body.match(/device not found/));
                     done();
@@ -170,7 +174,7 @@ describe('Module api', function () {
     describe('GET /app', function () {
         it('should return the application', function (done) {
             server.loadConfig('./test/load/devices/device.yml', err => {
-                doRequest('GET', '/app/', null, (body) => {
+                doRequest('GET', '/app/', null as any, (body) => {
                     let result = JSON.parse(body);
                     assert.notEqual(result, null);
                     assert.equal(result.demoMode, 0);
@@ -206,7 +210,7 @@ describe('Module api', function () {
     describe('GET /pages', function () {
         it('should return [] when no page exists', function (done) {
             server.loadConfig('./test/load/devices/device.yml', err => {
-                doRequest('GET', '/pages/', null, (body) => {
+                doRequest('GET', '/pages/', null as any, (body) => {
                     let result = JSON.parse(body);
                     assert.notEqual(result, null);
                     assert.ok(Array.isArray(result));
@@ -217,7 +221,7 @@ describe('Module api', function () {
         });
         it('should return an array of pages', function (done) {
             server.loadConfig('./test/load/pages.yml', err => {
-                doRequest('GET', '/pages/', null, (body) => {
+                doRequest('GET', '/pages/', null as any, (body) => {
                     //console.log(body);
                     let result = JSON.parse(body);
                     assert.notEqual(result, null);
@@ -232,7 +236,7 @@ describe('Module api', function () {
     });
     describe('/api-docs', function () {
         it('should deliver Swagger pages', function (done) {
-            doRequest('GET', '/api-docs/', null, (body) => {
+            doRequest('GET', '/api-docs/', null as any, (body) => {
                 //console.log(body);
                 assert.ok(body.match(/swagger/));
                 done();

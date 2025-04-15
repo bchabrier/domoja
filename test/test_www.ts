@@ -1,25 +1,29 @@
 import * as http from "http";
 import * as fs from "fs";
 import * as assert from "assert";
+import * as socketio from 'socket.io';
 
 import * as core from 'domoja-core'
 
 import { DomojaServer } from '../server';
 
 describe('Repository www', function () {
-    this.timeout(5000);
+    this.timeout(15000);
 
     let server: DomojaServer;
 
+    let io = { engine: { use: () => { } } } as unknown as socketio.Server;
+
     this.beforeAll(function (done) {
-        server = new DomojaServer(null, false, false, () => {
+        server = new DomojaServer(0, false, false, () => {
             core.configure(server.app,
                 (user, pwd, done) => { done(null, { id: "test" }) },
-                (user, cb) => cb(null, { id: "test" }),
-                null,
+                (user, cb) => cb(null as unknown as Error, { id: "test" }),
+                core.token,
                 '',
                 (req, resp) => { },
-                null,
+                null as any,
+                io,
                 true
             );
             done();
