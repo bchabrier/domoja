@@ -8,7 +8,7 @@ var logger = require("tracer").colorConsole({
 });
 
 //import * as cache from "./cache";
-import { CronJob } from 'cron';
+import { Cron } from 'croner';
 
 // http://www.proxiti.info/horaires_soleil.php?o=06030
 // <tr><th>Date</th><th>Lever du Soleil</th><th>Coucher du Soleil</th><th>Durée du Jour</th><th>Soleil au Zénith</th><th>Début de l'Aube</th><th>Fin du Crépuscule</th></tr>
@@ -54,16 +54,16 @@ export class astronomy extends Source {
 		super(path, initObject);
 		this.location = location;
 		let self = this;
-		this.job = new CronJob({
-			cronTime: '00 01 * * *', // Runs every day at 1:00 AM.
-			onTick: function () {
+		this.job = new Cron('00 01 * * *', // Runs every day at 1:00 AM.
+			{
+				unref: true,
+			},
+			function () {
 				self.RetryUpdate(function () {
 					logger.info("All astronomy info updated from CronJob.")
 				})
-			},
-			runOnInit: true
-		});
-		this.job.start();
+			});
+		this.job.trigger();
 	}
 
 	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {

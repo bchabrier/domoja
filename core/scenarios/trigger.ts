@@ -2,7 +2,7 @@
 import { GenericDevice, ConfigLoader, message, CRONPATTERN } from '..';
 import { Scenario } from './scenario';
 
-import { CronJob } from 'cron';
+import { Cron } from 'croner';
 import * as dayjs from 'dayjs';
 var customParseFormat = require('dayjs/plugin/customParseFormat');
 dayjs.extend(customParseFormat);
@@ -45,7 +45,7 @@ export abstract class Trigger {
 
 export class TimeTrigger extends Trigger {
     when: string;
-    cronJob: CronJob;
+    cronJob: Cron;
     timeout: NodeJS.Timeout;
     atHandler: (msg: message) => void;
 
@@ -79,9 +79,8 @@ export class TimeTrigger extends Trigger {
                 this.scenario.debugMode && logger.info(`Scenario "${this.scenario.path}" trigger date redefined due to device "${this.when}"'s state change from "${msg.oldValue}" to "${msg.newValue}".`);
                 this.cronJob && this.cronJob.stop();
                 if (!isNaN(dt) && dt > Date.now()) {
-                    this.cronJob = new CronJob(new Date(dt), () => { this.reason = new Date(dt) + " reached"; this.handler() });
-                    this.cronJob.start();
-                    this.scenario.debugMode && logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates());
+                    this.cronJob = new Cron(new Date(dt), { unref: true }, () => { this.reason = new Date(dt) + " reached"; this.handler() });
+                    this.scenario.debugMode && logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextRun());
                 } else {
                     this.scenario.debugMode && logger.info('Scenario "%s" will not trigger. "%s" is invalid or in the past.', this.scenario.path, msg.newValue);
                     this.cronJob = undefined;
@@ -97,13 +96,13 @@ export class TimeTrigger extends Trigger {
             });
         } else if (this.when.match(CRONPATTERN)) {
             // cronjob
-            this.cronJob = new CronJob(this.when, () => {
+            // trim added until feature request is accepted in croner: https://github.com/Hexagon/croner/issues/275
+            this.cronJob = new Cron(this.when.trim(), { unref: true }, () => {
                 this.reason = this.when + " reached";
                 this.handler();
-                this.scenario.debugMode && logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates())
+                this.scenario.debugMode && logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextRun())
             });
-            this.cronJob.start();
-            this.scenario.debugMode && logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextDates())
+            this.scenario.debugMode && logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, this.cronJob.nextRun())
         } else {
             let dt = TimeTrigger.dateTime(this.when);
             if (!isNaN(dt)) {

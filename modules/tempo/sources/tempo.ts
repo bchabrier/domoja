@@ -9,7 +9,7 @@ var logger = require("tracer").colorConsole({
 
 
 //import * as cache from "./cache");
-import { CronJob } from 'cron';
+import { Cron } from 'croner';
 
 
 // URL de la page du site EDF
@@ -43,34 +43,35 @@ function format(d: Date): string {
  * ```
  */
 export class tempo extends Source {
-	jobUpdateAllColors: CronJob;
-	jobUpdateTomorrowColor: CronJob;
+	jobUpdateAllColors: Cron;
+	jobUpdateTomorrowColor: Cron;
 	tomorrowColorUpdated: boolean = false;
 	request: request.Request;
 
 	constructor(path: string, initObject: InitObject) {
 		super(path, initObject);
 		let self = this;
-		this.jobUpdateAllColors = new CronJob({
-			cronTime: '00 01 * * *', // Runs every day at 1:00 AM.
-			onTick: function () {
+		this.jobUpdateAllColors = new Cron('00 01 * * *', // Runs every day at 1:00 AM.
+			{
+				unref: true
+			},
+			function () {
 				self.RetryUpdate(function () {
 					logger.info("All tempo info updated from CronJob.")
 				})
+			}
+		);
+		this.jobUpdateAllColors.trigger();
+		this.jobUpdateTomorrowColor = new Cron('05 * * * *', // Runs every hour + 5 mn.
+			{
+				unref: true
 			},
-			runOnInit: true
-		});
-		this.jobUpdateAllColors.start();
-		this.jobUpdateTomorrowColor = new CronJob({
-			cronTime: '05 * * * *', // Runs every hour + 5 mn.
-			onTick: function () {
+			function () {
 				if (!self.tomorrowColorUpdated) self.RetryUpdate(function () {
 					if (self.tomorrowColorUpdated) logger.info("Tomorrow color info updated from CronJob.")
 				})
 			},
-			runOnInit: false
-		});
-		this.jobUpdateTomorrowColor.start();
+		);
 	}
 
 	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {

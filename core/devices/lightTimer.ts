@@ -6,8 +6,7 @@ import * as astronomy from '../lib/astronomy';
 import { sensor } from './sensor';
 import { device } from './device';
 import { GenericDevice } from './genericDevice';
-import cron = require('cron');
-var cronJob = cron.CronJob;
+import { Cron } from 'croner';
 import { Source, message, DEFAULT_SOURCE, DefaultSource } from '../sources/source';
 import { ConfigLoader } from '../lib/load';
 import { DomoModule, InitObject, Parameters } from '../lib/module';
@@ -394,7 +393,8 @@ export class LightTimer extends GenericDevice {
         let self = this;
 
         if (!this.activated) {
-            this.cronjob = new cronJob('00 00 * * *', () => { self.setup() }, null, true);
+            this.cronjob = new Cron('00 00 * * *', { unref: true }, () => { self.setup() });
+            this.cronJob.trigger();
 
             let self = this
             this.sensorListener = (msg: message) => {
