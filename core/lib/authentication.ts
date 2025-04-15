@@ -52,6 +52,20 @@ export function configure(app: express.Application,
   _store = store;
   _dev = devMode
 
+  // avoid issue TypeError: res._implicitHeader is not a function
+  // cf https://github.com/expressjs/session/issues/888#issuecomment-2518050909
+  function patchImplicitHeaderBug(msg: string) {
+
+    return function (req: express.Request, res: express.Response, next: express.NextFunction) {
+      const resExtensions = res as any;
+
+      if (!resExtensions._implicitHeader) resExtensions._implicitHeader = () => { console.log(msg) };
+
+      next();
+    }
+  }
+  app.use(patchImplicitHeaderBug('"_implicitHeader was not defined, avoided exit code in app!!!"'));
+
   // Local Authentication strategy
   passport.use(new LocalStrategy(function (user: string, pwd: string, done: (error: any, user?: any, options?: IVerifyOptions) => void) {
     logger.debug('LocalStrategy calling check');
@@ -232,6 +246,7 @@ export function configure(app: express.Application,
     req.logout(null);
     res.redirect('/');
   });
+  io.engine.use(patchImplicitHeaderBug('"_implicitHeader was not defined, avoided exit code in io.engine!!!"'));
 }
 
 // Simple route middleware to ensure user is authenticated.
