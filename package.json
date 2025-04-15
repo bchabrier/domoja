@@ -50,7 +50,8 @@
     "mocha": "<=8",
     "rewire": "^5.0.0",
     "sinon": "^12.0.1",
-    "ts-mocha": "^8.0.0"
+    "ts-mocha": "^8.0.0",
+    "typescript-rest-swagger": "^1.1.7"
   },
   "engines": {
     "node": ">=0.10.0"
@@ -71,7 +72,7 @@
     "report": ": generate coverage report; c8 report",
     "prepare:report": ": generate coverage report; c8 report --reporter=lcovonly",
     "coverage": ": publish coverage report to coveralls; c8 report --reporter=text-lcov | coveralls",
-    "swagger:force": ": run swagger generation - requires typescript-rest-swagger; swaggerGen -c ./swaggerConfig.json",
+    "swagger:force": ": run swagger generation - requires typescript-rest-swagger; sed -i -e 's/var decorators = node.decorators;/var decorators = ts.canHaveDecorators(node) ? ts.getDecorators(node) : [];/g' ./node_modules/typescript-rest-swagger/dist/utils/decoratorUtils.js && swaggerGen -c ./swaggerConfig.json",
     "swagger": ": run swagger generation if needed; for f in api/*.ts; do [ ! -f api/swagger.json ] || [ $f -nt api/swagger.json ] && ( npm --scripts-prepend-node-path=auto run swagger:force; break ); done; exit 0",
     "generate:demo": ": generate demo.yml; ./tools/generate_demo",
     "publish": ": publish to npm; npm --scripts-prepend-node-path=auto run generate:demo; npm --scripts-prepend-node-path=auto run swagger; ./tools/update_readme; ./tools/publish",
