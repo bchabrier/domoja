@@ -78,7 +78,7 @@ export class IPX800 extends Source {
 				this.logger.info('Disconnected from IPX, trying to reconnect in %d secs...', self.timeout);
 				setTimeout(() => {
 					if (self.client) self.client.connect(8124);
-				}, self.timeout * 1000);
+				}, self.timeout * 1000).unref();
 			} else {
 				this.logger.info('Disconnected from IPX');
 			}

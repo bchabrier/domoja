@@ -69,7 +69,7 @@ export abstract class persistence {
             this.cleanOldData((err) => {
                 if (err) logger.warn('Could not clean history of "%s":', this.id, err);
             });
-        }, 24 * 60 * 60 * 1000);
+        }, 24 * 60 * 60 * 1000).unref();
     }
     insert(record: { date: Date, state: any }, callback: (err: Error, doc: Object) => void): void {
         if (demoMode) return callback(null, undefined);
@@ -120,7 +120,7 @@ export class mongoDB extends persistence {
                     logger.info("MongoDB stats:", results);
                 });
             });
-        }, 24 * 60 * 60 * 1000);
+        }, 24 * 60 * 60 * 1000).unref();
 
         mongoDB.nbInstances++;
     }
@@ -130,7 +130,7 @@ export class mongoDB extends persistence {
             callback(null, mongoDB.mongoClient);
         } else {
             if (mongoDB.connecting) {
-                setTimeout(() => this.getMongoClient(callback), 1000);
+                setTimeout(() => this.getMongoClient(callback), 1000).unref();
                 return;
             } else {
                 mongoDB.connecting = true;

@@ -114,7 +114,7 @@ export class tempo extends Source {
 				logger.warn("Retrying in", delay, "mn");
 				setTimeout(function () {
 					self.RetryUpdate(f);
-				}, delay * 60 * 1000);
+				}, delay * 60 * 1000).unref();
 			}
 		});
 	}

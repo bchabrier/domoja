@@ -287,7 +287,7 @@ function consumeRememberMeToken(token: string, fn: (err: Error, value: string) =
   // still find the token.
   setTimeout(function () {
     _tokenMgr.deleteToken(token, function (err: Error) { });
-  }, 5000);
+  }, 5000).unref(); // don't block the event loop
   return _tokenMgr.getToken(token, fn);
 }
 
@@ -379,7 +379,7 @@ function getSecrets() {
     rollNewSecretJob = setInterval(() => {
       rollSecrets();
       loadSecrets();
-    }, 30 * 24 * 60 * 1000);
+    }, 30 * 24 * 60 * 1000).unref(); // don't block the event loop
   }
   return secrets;
 }

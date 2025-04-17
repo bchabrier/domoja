@@ -180,7 +180,7 @@ export abstract class GenericDevice implements DomoModule {
                     logger.error(`Could not backup state of device "${this.path}" to DB:`, err);
                 }
             });
-        }, 60 * 1000);
+        }, 60 * 1000).unref();
 
 
 

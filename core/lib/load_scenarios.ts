@@ -478,6 +478,6 @@ function waitAction(c: Parser.Parse): ActionFunction {
             default:
                 let s: never = unit;
         }
-        setTimeout(() => cb(null), target - now);
+        setTimeout(() => cb(null), target - now).unref();
     }
 }

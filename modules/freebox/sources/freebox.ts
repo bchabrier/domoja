@@ -104,7 +104,7 @@ export class Freebox extends Source {
                         this.cache[api] = result;
                     }
                 }
-                if (this.pollIntervals[api]) this.pollIntervals[api].timeout = setTimeout(() => poll(api, interval), interval);
+                if (this.pollIntervals[api]) this.pollIntervals[api].timeout = setTimeout(() => poll(api, interval), interval).unref();
             });
         }
 
@@ -156,7 +156,7 @@ export class Freebox extends Source {
                     if (status == 'pending') {
                         setTimeout(() => {
                             waitNonPendingStatus(callback);
-                        });
+                        }).unref();
                     } else {
                         callback(null, res);
                     }

@@ -108,7 +108,7 @@ export class TimeTrigger extends Trigger {
             if (!isNaN(dt)) {
                 if (!isNaN(dt) && dt > Date.now()) {
                     this.timeout && clearTimeout(this.timeout);
-                    setTimeout(() => { this.reason = dt + " reached"; this.handler() }, dt - Date.now());
+                    setTimeout(() => { this.reason = dt + " reached"; this.handler() }, dt - Date.now()).unref();
                     this.scenario.debugMode && logger.info('Scenario "%s" will trigger at %s.', this.scenario.path, new Date(dt));
                 } else {
                     this.scenario.debugMode && logger.info('Scenario "%s" will not trigger. "%s" is invalid or in the past.', this.scenario.path, this.when);

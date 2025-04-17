@@ -69,7 +69,7 @@ export class Zibase extends Source {
 		this.timeout = setInterval(() => {
 			logger.error("No message received after " + this.to + "s, restarting Zibase connection.");
 			this.reconnectToZibase();
-		}, this.to * 1000);
+		}, this.to * 1000).unref();
 	}
 
 	private sendCommand(address: string, action: ZbAction, protocol?: ZbProtocol, dimLevel?: number, nbBurst?: number): void {

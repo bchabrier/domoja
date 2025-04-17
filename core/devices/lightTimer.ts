@@ -293,7 +293,7 @@ export class LightTimer extends GenericDevice {
                 }, time.getTime() - now.getTime() +
                     ((toMinutes(time) <= toMinutes(now)) ?
                         24 * 60 * 60 * 1000 :
-                        0));
+                        0)).unref();
             }
             if (self.off_from_TO) clearTimeout(self.off_from_TO);
             self.off_from_TO = planUpdate("off_from", self.off_from, now);
@@ -321,7 +321,7 @@ export class LightTimer extends GenericDevice {
         this.delayOFF_TO = setTimeout(() => {
             logger.debug("LightTimer '%s' reached timeout: turning lights OFF...", self.id)
             self.lightsOFF();
-        }, this.duration * 1000);
+        }, this.duration * 1000).unref();
 
     }
 
@@ -408,7 +408,7 @@ export class LightTimer extends GenericDevice {
             for (let s of this.sensors) {
                 s.on("change", this.sensorListener);
             }
-            setTimeout(() => { self.setup() }, 0);
+            setTimeout(() => { self.setup() }, 0).unref();
             this.activated = true;
         }
     }

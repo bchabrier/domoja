@@ -63,7 +63,7 @@ export class Openzwave extends Source {
 			watchTimeout = setTimeout(() => {
 				watchTimeout = null;
 				startDriver();
-			}, 2000);
+			}, 2000).unref();
 		});
 
 		const maxAttempts = 3;
@@ -252,7 +252,7 @@ export class Openzwave extends Source {
 				if (attempt < maxAttempts) {
 					this.logger.warn(`(${attempt}/${maxAttempts}) could not start driver:`, e);
 					this.logger.warn(`Retrying in ${sleepTime / 1000}s...`);
-					setTimeout(startDriver, sleepTime);
+					setTimeout(startDriver, sleepTime).unref();
 				} else {
 					this.logger.error(`could not start driver after ${maxAttempts} attempts:`, e);
 					callback && callback(e);
@@ -282,7 +282,7 @@ export class Openzwave extends Source {
 		this.refreshNeighborsLock = true;
 		this.refreshNeighborsTimeout = setTimeout(() => {
 			this.refreshNeighborsLock = false;
-		}, this.refreshNeighborsMaxSeconds * 1000);
+		}, this.refreshNeighborsMaxSeconds * 1000).unref();
 
 		let queue: Promise<readonly number[]>[] = [];
 		this.driver.controller.nodes.forEach(node => {
