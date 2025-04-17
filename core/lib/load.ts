@@ -13,6 +13,7 @@ import * as events from 'events';
 import { ConfigLoader as importedConfigLoader, CRONPATTERN } from '..'
 import { Console } from 'console';
 import { WriteStream } from 'tty';
+import assert = require('assert');
 
 let depth = 0;
 
@@ -756,7 +757,6 @@ function errorContext(body: string, linePos: number, charPos: number): string {
     return contextString[2] + repeat(" ", charPos - 1) + "^";
 }
 
-import assert = require('assert');
 
 
 function objectToInitObject(document: ConfigLoader, object: plainObject): InitObject {

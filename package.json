@@ -33,10 +33,10 @@
     "tracer": "^1.1.2",
     "ts-node": "^10.4.0",
     "typescript": "^5.2.2",
-    "typescript-cached-transpile": "^0.0.6",
     "typescript-rest": "^3.0.1"
   },
   "devDependencies": {
+    "@swc/core": "^1.11.21",
     "@types/async": "^3.0.3",
     "@types/cors": "^2.8.4",
     "@types/express": "^4.16.0",
@@ -58,11 +58,11 @@
   },
   "main": "domoja.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "./tools/cascade tsc",
     "commit:www": ": propagate domoja-ui commits; ./tools/propagate_commits ~/domoja-ui www",
     "commit:config": ": propagate domoja-config commits; \"$npm_execpath\" run generate:demo; ./tools/propagate_commits ~/domoja-config ./config/demo.yml",
-    "start": ": run domoja; TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER=typescript-cached-transpile ts-node domoja.ts",
-    "start:config": ": run domoja; TS_NODE_TRANSPILE_ONLY=true TS_NODE_COMPILER=typescript-cached-transpile ts-node domoja.ts ./config",
+    "start": ": run domoja; ts-node domoja.ts",
+    "start:config": ": run domoja; ts-node domoja.ts ./config",
     "pm2:install": "pm2 -s delete domoja; pm2 -s start --name domoja --interpreter sh bin/domoja_server -- -p 5000; pm2 -s save; pm2 list",
     "test": ": run test coverage; trap 'tput cnorm' INT; c8 --extension .ts npm --scripts-prepend-node-path=auto run test:only",
     "test:only": ": run test suite once; trap 'tput cnorm' INT; ts-mocha test/**/*.ts modules/*/test/**/*.ts $WATCHPARAMS --exit; rc=$?; tput cnorm; exit $rc",
