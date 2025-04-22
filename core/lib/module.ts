@@ -10,6 +10,9 @@ export interface Parameters {
 
 export interface DomoModule {
     release(): void;
+    configLoader: ConfigLoader;
+	isReleased(): boolean;
+
 
     // should be static but not supported
     createInstance(configLoader: ConfigLoader, id: string, initObject: InitObject): DomoModule;

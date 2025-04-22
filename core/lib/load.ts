@@ -643,7 +643,9 @@ export class ConfigLoader extends events.EventEmitter {
         logger.debug('Instanciating module', require('util').inspect(moduleClass, { showHidden: false, depth: null }), 'with initObject', data);
         // createInstance should be static but cannot
         if (moduleClass && moduleClass.prototype && moduleClass.prototype.createInstance) {
-            return moduleClass.prototype.createInstance(this, instanceFullname, data);
+            const instance = moduleClass.prototype.createInstance(this, instanceFullname, data) as DomoModule;
+            instance.configLoader = this;
+            return instance;
         } else {
             logger.error(new Error('Failed to instanciate \'' + instanceFullname + '\'').stack);
             return null;

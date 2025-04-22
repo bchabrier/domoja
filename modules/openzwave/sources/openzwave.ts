@@ -785,10 +785,6 @@ export class Openzwave extends Source {
 		super.release();
 	}
 
-	isReleased() {
-		return this.configLoader && this.configLoader.released;
-	}
-
 	static registerDeviceTypes(): void {
 		Source.registerDeviceType(this, 'device', {
 			source: 'REQUIRED',

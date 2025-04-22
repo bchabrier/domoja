@@ -98,6 +98,7 @@ let backupJob: NodeJS.Timeout;
 
 export abstract class GenericDevice implements DomoModule {
     [x: string]: any;
+    configLoader: ConfigLoader;
     name: string;
     path: string;
     id: ID;
@@ -280,6 +281,10 @@ export abstract class GenericDevice implements DomoModule {
     }
 
     abstract createInstance(configLoader: ConfigLoader, instanceFullname: string, initObject: InitObject): DomoModule;
+
+    isReleased() {
+        return this.configLoader && this.configLoader.released;
+    }
 
     release(): void {
         allDevices.splice(allDevices.indexOf(this), 1);

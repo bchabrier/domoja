@@ -38,7 +38,7 @@ function compactString(s: string) {
 export abstract class Source /* extends events.EventEmitter */ implements DomoModule {
     // cannot derive events.EventEmitter because we want to pass Event to on, once, etc
     //id: id;
-
+    configLoader: ConfigLoader;
     private eventEmitter: events.EventEmitter;
     private devicesByAttribute: { [attribute: string]: { [id: string]: GenericDevice[] } };
     private devicesByPath: { [path: string]: GenericDevice }
@@ -75,7 +75,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
 
         const rewriteFunction = (logFunction: (...data: any[]) => void, force: boolean = false) => {
             return (...args: any[]) => {
-                (this.debugMode || force) && logFunction(`Source "${this.path}" of type "${this.type}": ` + args[0], ...args.slice(1));
+                (this.debugMode || force) && logFunction(`Source "${this.path}"${this.isReleased() ? " (released)" : ""} of type "${this.type}": ` + args[0], ...args.slice(1));
             }
         }
 
@@ -109,6 +109,10 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
 
         this.discoveredDevices = null;
     }
+
+    isReleased() {
+		return this.configLoader && this.configLoader.released;
+	}
 
     setDebugMode(debug: boolean) {
         this.debugMode = debug;
@@ -154,7 +158,7 @@ export abstract class Source /* extends events.EventEmitter */ implements DomoMo
         }
         if (this.isAttributeSupported(id, attribute)) {
             let devices = this.devicesByAttribute[attribute][id];
-            logger.debug(`updating attribute for ${devices?devices.length:0} device(s)`);
+            logger.debug(`updating attribute for ${devices ? devices.length : 0} device(s)`);
             if (devices) {
                 devices.forEach(device => {
                     let oldValue = device.getState();
