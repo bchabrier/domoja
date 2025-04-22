@@ -1,5 +1,5 @@
 import { Source, message, ConfigLoader, InitObject, Parameters, GenericDevice } from 'domoja-core';
-import { Driver, ValueID, ZWaveNode, ValueMetadata, AssociationCheckResult, InclusionStrategy, InterviewContext, ZWaveOptions, PartialZWaveOptions } from "zwave-js";
+import { Driver, ValueID, ZWaveNode, ValueMetadata, AssociationCheckResult, InclusionStrategy, InterviewContext, ZWaveOptions, PartialZWaveOptions, Endpoint } from "zwave-js";
 import { CommandClasses, allCCs, TranslatedValueID, NodeStatus } from "@zwave-js/core";
 import { createDefaultTransportFormat } from "@zwave-js/core/bindings/log/node";
 import * as winston from "winston";
@@ -11,6 +11,19 @@ var logger = require("tracer").colorConsole({
 	level: 3 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
 });
 
+
+function nodeIdentifier(node: ZWaveNode | Endpoint): string {
+	const isEndpoint = !('label' in node);
+
+	const identifier = isEndpoint ? "" : [
+		node.deviceConfig?.description,
+		node.label,
+		node.manufacturer,
+		node.location
+	].filter((s) => s && s !== '').join(', ');
+
+	return `${node.nodeId}${identifier !== "" ? ` (${identifier})` : ""}`;
+}
 
 /**
  * Domoja source to connect to ZWave devices
@@ -75,7 +88,7 @@ export class Openzwave extends Source {
 
 		let level = !this.debugMode || driverLogLevel === undefined ? "error" : driverLogLevel;
 
-		let  options: PartialZWaveOptions = {
+		let options: PartialZWaveOptions = {
 			features: {
 				"softReset": false,
 			},
@@ -162,7 +175,7 @@ export class Openzwave extends Source {
 
 				let i = 0;
 				this.driver.controller.nodes.forEach((node) => {
-					this.debugModeLogger.info(`handling node "${node.id}" (${node.deviceConfig?.description}, ${node.label}, ${node.manufacturer}})...`);
+					this.debugModeLogger.info(`handling node ${nodeIdentifier(node)}...`);
 
 					this.nodes.set(node.id.toString(), node);
 
@@ -170,12 +183,12 @@ export class Openzwave extends Source {
 					node.once("dead", async () => {
 						i++;
 						initAllNodesReadyCheck();
-						this.debugModeLogger.info(`node "${node.id}" is dead (${i}/${nbNodes})...`); //, require('util').inspect(node));
+						this.debugModeLogger.info(`node ${nodeIdentifier(node)} is dead (${i}/${nbNodes})...`); //, require('util').inspect(node));
 					});
 					node.once("ready", async () => {
 						i++;
 						initAllNodesReadyCheck();
-						this.debugModeLogger.info(`node "${node.id}" is ready (${i}/${nbNodes})...`); //, require('util').inspect(node));
+						this.debugModeLogger.info(`node ${nodeIdentifier(node)} is ready (${i}/${nbNodes})...`); //, require('util').inspect(node));
 						this.debugModeLogger.warn(`id=${node.id}`);
 						this.debugModeLogger.warn(`nodeId=${node.nodeId}`);
 						this.debugModeLogger.warn(`label=${node.label}`);
@@ -192,7 +205,7 @@ export class Openzwave extends Source {
 					});
 					node.on('value updated', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.debugModeLogger.warn(`node "${node.id}": value [${deviceId}]${this.getDevicesAsString(deviceId)} updated from "${args.prevValue}" to "${args.newValue}"`);
+						this.debugModeLogger.warn(`node ${nodeIdentifier(node)}: value [${deviceId}]${this.getDevicesAsString(deviceId)} updated from "${args.prevValue}" to "${args.newValue}"`);
 						this.refreshConfig();
 						let newValue = args.newValue.toString();
 						if (node.supportsCC(CommandClasses['Multilevel Switch'])) {
@@ -206,50 +219,50 @@ export class Openzwave extends Source {
 					});
 					node.on('value notification', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.debugModeLogger.warn(`node "${node.id}"${this.getDevicesAsString(deviceId)}: value notification for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.value}"`);
+						this.debugModeLogger.warn(`node ${nodeIdentifier(node)} ${this.getDevicesAsString(deviceId)}: value notification for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.value}"`);
 						this.updateAttribute(deviceId, 'state', args.value.toString(), new Date);
 					});
 					node.on('value added', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.debugModeLogger.warn(`node "${node.id}": value added for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.newValue}"`);
+						this.debugModeLogger.warn(`node ${nodeIdentifier(node)}: value added for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.newValue}"`);
 						this.refreshConfig();
 						this.updateAttribute(deviceId, 'state', args.newValue?.toString(), new Date);
 					});
 					node.on('value removed', async (node, args) => {
 						const deviceId = this.getValueIDIdRaw(node, args.commandClass, args.endpoint, args.propertyKey, args.property)
-						this.debugModeLogger.warn(`node "${node.id}": value removed for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.prevValue}"`);
+						this.debugModeLogger.warn(`node ${nodeIdentifier(node)}: value removed for [${deviceId}]${this.getDevicesAsString(deviceId)}: "${args.prevValue}"`);
 						this.refreshConfig();
 						this.updateAttribute(deviceId, 'state', undefined, new Date);
 					});
 					node.on('notification', async (node, ccId, args) => {
-						this.debugModeLogger.warn(`node "${node.nodeId}": notification: "${ccId}" "${args}"`);
+						this.debugModeLogger.warn(`node ${nodeIdentifier(node)}: notification: "${ccId}" "${args}"`);
 						//this.updateAttribute(node.id.toString(), 'state', undefined, new Date);
 					});
 					node.on('statistics updated', async (node, statistics) => {
-						//this.debugModeLogger.warn(`node "${node.id}": statistics updated:`, statistics);
+						//this.debugModeLogger.warn(`node "${nodeIdentifier(node)}: statistics updated:`, statistics);
 					});
 					node.on('interview started', async (node) => {
-						this.debugModeLogger.warn(`node "${node.id}": interview started`);
+						this.debugModeLogger.warn(`node ${nodeIdentifier(node)}: interview started`);
 						//this.updateAttribute(node.id.toString(), 'state', undefined, new Date);
 					});
 					node.on('interview completed', async (node) => {
-						this.debugModeLogger.warn(`node "${node.id}": interview completed`);
+						this.debugModeLogger.warn(`node ${nodeIdentifier(node)}: interview completed`);
 						this.refreshConfig();
 						//this.updateAttribute(node.id.toString(), 'state', undefined, new Date);
 					});
 					node.on("interview failed", async (node) => {
-						this.debugModeLogger.warn(`node "${node.id}": interview failed`);
+						this.debugModeLogger.warn(`node ${nodeIdentifier(node)}: interview failed`);
 					});
 					node.on("interview stage completed", async (node) => {
-						this.debugModeLogger.warn(`node "${node.id}": interview stage completed`);
+						this.debugModeLogger.warn(`node ${nodeIdentifier(node)}: interview stage completed`);
 					});
 					node.on("alive", async (node) => {
-						this.debugModeLogger.warn(`node "${node.id}": alive`);
+						this.debugModeLogger.warn(`node ${nodeIdentifier(node)}: alive`);
 						this.refreshConfig();
 					});
 
-					this.debugModeLogger.error(`node "${node.id}": getAllAssociationGroups:`, this.driver.controller.getAllAssociationGroups(node.id));
-					this.debugModeLogger.error(`node "${node.id}": getAllAssociations:`, this.driver.controller.getAllAssociations(node.id));
+					this.debugModeLogger.error(`node ${nodeIdentifier(node)}: getAllAssociationGroups:`, this.driver.controller.getAllAssociationGroups(node.id));
+					this.debugModeLogger.error(`node ${nodeIdentifier(node)}: getAllAssociations:`, this.driver.controller.getAllAssociations(node.id));
 					if (false && node.id === 5) {
 						this.debugModeLogger.error("Working on associations");
 						this.debugModeLogger.error("isAssociationAllowed:", this.driver.controller.checkAssociation({ nodeId: 5 }, 3, { nodeId: 1 }));
@@ -310,7 +323,7 @@ export class Openzwave extends Source {
 					this.logger.warn(`${nNotReady}/${this.driver.controller.nodes.size} nodes are not ready after ${allNodesReadyTimeout / 1000}s. Pinging not ready nodes...`);
 					this.driver.controller.nodes.forEach(node => {
 						if (!node.ready && node.status !== NodeStatus.Dead) {
-							this.logger.warn(`Pinging node "${node.id}" (${node.deviceConfig?.description}, ${node.label}, ${node.manufacturer}})...`);
+							this.logger.warn(`Pinging node ${nodeIdentifier(node)}...`);
 							node.ping();
 						}
 
@@ -340,7 +353,7 @@ export class Openzwave extends Source {
 							*/
 			});
 			this.driver.on('node ready', (node) => {
-				this.logger.warn(`node "${node.id}" (${node.deviceConfig?.description}, ${node.label}, ${node.manufacturer}}) is ready (from controller).`);
+				this.logger.warn(`node${nodeIdentifier(node)} is ready (from controller).`);
 			});
 			this.driver.once('all nodes ready', () => {
 				if (this.isReleased()) return; // abort if source is released
@@ -364,11 +377,11 @@ export class Openzwave extends Source {
 						// Ignore dead nodes or the all nodes ready event will never be emitted without physical user interaction
 						const type = this.driver.controller.ownNodeId === node.id ? "controller" : "node";
 						if (node.status === NodeStatus.Dead) {
-							this.logger.warn(`- ${type} "${node.id}" (${node.deviceConfig?.description}, ${node.label}, ${node.manufacturer}}) is dead.`);
+							this.logger.warn(`- ${type} ${nodeIdentifier(node)} is dead.`);
 						} else if (node.ready) {
-							this.logger.warn(`- ${type} "${node.id}" (${node.deviceConfig?.description}, ${node.label}, ${node.manufacturer}}) is ready.`);
+							this.logger.warn(`- ${type} ${nodeIdentifier(node)} is ready.`);
 						} else {
-							this.logger.warn(`- ${type} "${node.id}" (${node.deviceConfig?.description}, ${node.label}, ${node.manufacturer}}) not yet ready.`);
+							this.logger.warn(`- ${type} ${nodeIdentifier(node)} not yet ready.`);
 						}
 					})
 					//this.driver['checkAllNodesReady']();
@@ -390,7 +403,8 @@ export class Openzwave extends Source {
 					lastException = null
 				} catch (e) {
 					lastException = e;
-					this.debugModeLogger.warn(`Driver start failed. Restarting driver (${attempt}) in ${sleepTime / 1000}s:`, e);
+					if (this.isReleased()) this.debugModeLogger.warn(`Driver start failed:`, e);
+					else this.debugModeLogger.warn(`Driver start failed. Restarting driver (${attempt}) in ${sleepTime / 1000}s:`, e);
 				}
 			}
 
@@ -574,11 +588,11 @@ export class Openzwave extends Source {
 		const command = JSON.parse(config).command;
 		const node = this.nodes.get(command.nodeId);
 		const commandName = command.command;
-		this.debugModeLogger.error(`Controller config command '${commandName}' on node '${command.nodeId}'`);
+		this.debugModeLogger.error(`Controller config command '${commandName}' on node ${nodeIdentifier(command)}`);
 		switch (commandName) {
 			case "setValue":
 				node.setValue(command.valueID, command.value).then((res) => {
-					if (!res) this.logger.warn(`Could not set value of node "${command.nodeId}" to "${command.value}"...`);
+					if (!res) this.logger.warn(`Could not set value of node ${nodeIdentifier(command)} to "${command.value}"...`);
 					this.refreshConfig();
 					this.logger.error("getvalue apres refreshconfig =>", node.getValue(command.valueID));
 					callback(null);
@@ -592,7 +606,7 @@ export class Openzwave extends Source {
 					this.logger.error(e);
 					callback(e);
 				}).then((res) => {
-					if (!res) this.logger.warn(`Could not ping node "${command.nodeId}"...`);
+					if (!res) this.logger.warn(`Could not ping node ${nodeIdentifier(command)}...`);
 					this.refreshConfig();
 					callback(null);
 				});
@@ -602,7 +616,7 @@ export class Openzwave extends Source {
 					this.logger.error(e);
 					callback(e);
 				}).then((res) => {
-					if (!res) this.logger.warn(`Could not heal node "${command.nodeId}"...`);
+					if (!res) this.logger.warn(`Could not heal node ${nodeIdentifier(command)}...`);
 					this.refreshConfig();
 					this.refreshNeighbors();
 					callback(null);
@@ -658,7 +672,7 @@ export class Openzwave extends Source {
 				callback(null);
 				break;
 			default:
-				callback(new Error(`Unsupport command "${commandName}" for node ${command.nodeId}`));
+				callback(new Error(`Unsupport command "${commandName}" for node ${nodeIdentifier(command)}`));
 				break;
 		}
 	}
