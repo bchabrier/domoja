@@ -340,7 +340,7 @@ export class mongoDB extends persistence {
                     },
                     (err, result) => {
                         if (err) logger.error(`Could not remove old data from collection '${collection}'!`);
-                        else logger.info(`Removed ${result.deletedCount} data older than ${limit} (${this.keepString}) from collection "${collection}".`);
+                        else logger.info(`Removed ${result.deletedCount} data older than ${limit} (${this.keepString.trim()}) from collection "${collection}".`);
                         callback(err);
                     }
                 );
@@ -367,7 +367,7 @@ export class mongoDB extends persistence {
                             },
                             (err, result) => {
                                 if (err) logger.error(`Could not remove old data from collection '${collectionName}'!`);
-                                else logger.info(`Removed ${result.deletedCount} data older than ${limit} (${this.keepAggregationString}) from collection "${collectionName}".`);
+                                else logger.info(`Removed ${result.deletedCount} data older than ${limit} (${this.keepAggregationString.trim()}) from collection "${collectionName}".`);
                                 callback(err);
                             }
                         );
