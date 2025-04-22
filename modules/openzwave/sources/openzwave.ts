@@ -1,6 +1,7 @@
 import { Source, message, ConfigLoader, InitObject, Parameters, GenericDevice } from 'domoja-core';
-import { Driver, ValueID, ZWaveNode, ValueMetadata } from "zwave-js";
-import { createLogMessagePrinter, CommandClasses, allCCs, TranslatedValueID } from "@zwave-js/core";
+import { Driver, ValueID, ZWaveNode, ValueMetadata, AssociationCheckResult, InclusionStrategy, InterviewContext, ZWaveOptions, PartialZWaveOptions } from "zwave-js";
+import { CommandClasses, allCCs, TranslatedValueID, NodeStatus } from "@zwave-js/core";
+import { createDefaultTransportFormat } from "@zwave-js/core/bindings/log/node";
 import * as winston from "winston";
 import * as chokidar from 'chokidar';
 import * as assert from 'assert'
@@ -39,6 +40,9 @@ export class Openzwave extends Source {
 		nodes: Object[];
 	} = { nodes: [] };
 	neighbors: { [id: number]: readonly number[] } = {};
+	configLoader: ConfigLoader;
+	driverReadyCheckTimeout: NodeJS.Timeout;
+	allNodesReadyCheckTimeout: NodeJS.Timeout;
 
 	constructor(path: string, driverPort: string, driverLogLevel: string, initObject: InitObject, callback?: (err: Error) => void) {
 		super(path, initObject);
@@ -62,13 +66,48 @@ export class Openzwave extends Source {
 			}
 			watchTimeout = setTimeout(() => {
 				watchTimeout = null;
-				startDriver();
+				tryStartDriver();
 			}, 2000).unref();
 		});
 
-		const maxAttempts = 3;
-		const sleepTime = 15000; //ms
-		const startDriver = () => {
+		const sleepTimeInitial = 30000; //ms
+		let sleepTime = sleepTimeInitial; //ms
+
+		let level = !this.debugMode || driverLogLevel === undefined ? "error" : driverLogLevel;
+
+		let  options: PartialZWaveOptions = {
+			features: {
+				"softReset": false,
+			},
+			attempts: {
+			},
+			logConfig: {
+				enabled: true,
+				level: level,
+				//forceConsole: true,
+				transports: [
+					new winston.transports.Console({
+						level: level,
+						format: winston.format.combine(
+							//myFormat,
+							//winston.format.simple(),
+							createDefaultTransportFormat(true, false),
+						)
+					})
+				]
+			}
+		};
+
+		const startDriver = async () => {
+			if (this.driver) {
+				if (this.driverReadyCheckTimeout) clearTimeout(this.driverReadyCheckTimeout);
+				this.driverReadyCheckTimeout = null;
+
+				await this.destroyDriver();
+				await new Promise(r => setTimeout(r, sleepTime).unref()); // sleep
+			}
+
+			if (this.isReleased()) return; // abort if source is released
 
 			//			const myFormat = winston.format.printf(({ level, message, label, primaryTags, secondaryTags, direction, timestamp }) => {
 			//				return `${timestamp} ${level}:\t${label} ${primaryTags||""} ${direction} ${message} ${secondaryTags||""}`;
@@ -77,36 +116,39 @@ export class Openzwave extends Source {
 				return `${timestamp} ${level}:\t${label} ${primaryTags || ""} ${direction} ${message} ${secondaryTags || ""}`;
 			});
 
-			let level = !this.debugMode || driverLogLevel === undefined ? "error" : driverLogLevel;
 
 			// Tell the driver which serial port to use
-			this.driver = new Driver(driverPort, {
-				enableSoftReset: false,
-				logConfig: {
-					enabled: true,
-					level: level,
-					//forceConsole: true,
-					transports: [
-						new winston.transports.Console({
-							level: level,
-							format: winston.format.combine(
-								//myFormat,
-								//winston.format.simple(),
-								createLogMessagePrinter(false),
-							)
-						})
-					]
-				}
-			});
+			this.driver = new Driver(driverPort, options);
+
+			// options.attempts.openSerialPort controls the number of attempts done to open the serial port
+			// an attempt is done every 1 second, and the default is 10 attempts
+			// this is very unsufficient when reloading the domoja configuration, especially because the old configuration
+			// is release after the new one is created and valid
+			// 
+			// retrying to open the serial port is much more efficient than recreating the whole driver. In addition,
+			// it seems that even when the driver is destroyed, the serial port is not unlocked immediately
+			//
+			// so, we force the number of attempts to open the serial port to 2 minutes (1 attempt per second)
+			// we let the first driver creation use the default attempts number so that any error is reported quickly the first time,
+			// hence the value is set after the first driver creation
+			(options.attempts as any).openSerialPort = 120;
+
 			// You must add a handler for the error event before starting the driver
-			this.driver.on("error", (e) => {
+			this.driver.on("error", async (e) => {
 				// Do something with it
-				this.logger.error(`error with port "${driverPort}":`, e);
+				await tryStartDriver();
 			});
 			// Listen for the driver ready event before doing anything with the driver
 			this.driver.once("driver ready", () => {
 
 				this.logger.info(`driver is ready.`);
+
+				// disable the check timeout
+				clearTimeout(this.driverReadyCheckTimeout);
+				this.driverReadyCheckTimeout = null;
+
+				if (this.isReleased()) return; // abort if source is released
+
 				attempt = 0;
 
 				/*
@@ -120,14 +162,20 @@ export class Openzwave extends Source {
 
 				let i = 0;
 				this.driver.controller.nodes.forEach((node) => {
-					this.debugModeLogger.info(`handling node...`, node);
+					this.debugModeLogger.info(`handling node "${node.id}" (${node.deviceConfig?.description}, ${node.label}, ${node.manufacturer}})...`);
 
 					this.nodes.set(node.id.toString(), node);
 
 					// e.g. add event handlers to all known nodes
+					node.once("dead", async () => {
+						i++;
+						initAllNodesReadyCheck();
+						this.debugModeLogger.info(`node "${node.id}" is dead (${i}/${nbNodes})...`); //, require('util').inspect(node));
+					});
 					node.once("ready", async () => {
 						i++;
-						this.debugModeLogger.info(`node ${node.id} is ready (${i}/${nbNodes})...`, require('util').inspect(node));
+						initAllNodesReadyCheck();
+						this.debugModeLogger.info(`node "${node.id}" is ready (${i}/${nbNodes})...`); //, require('util').inspect(node));
 						this.debugModeLogger.warn(`id=${node.id}`);
 						this.debugModeLogger.warn(`nodeId=${node.nodeId}`);
 						this.debugModeLogger.warn(`label=${node.label}`);
@@ -174,7 +222,7 @@ export class Openzwave extends Source {
 						this.updateAttribute(deviceId, 'state', undefined, new Date);
 					});
 					node.on('notification', async (node, ccId, args) => {
-						this.debugModeLogger.warn(`node "${node.id}": notification: "${ccId}" "${args}"`);
+						this.debugModeLogger.warn(`node "${node.nodeId}": notification: "${ccId}" "${args}"`);
 						//this.updateAttribute(node.id.toString(), 'state', undefined, new Date);
 					});
 					node.on('statistics updated', async (node, statistics) => {
@@ -189,16 +237,27 @@ export class Openzwave extends Source {
 						this.refreshConfig();
 						//this.updateAttribute(node.id.toString(), 'state', undefined, new Date);
 					});
+					node.on("interview failed", async (node) => {
+						this.debugModeLogger.warn(`node "${node.id}": interview failed`);
+					});
+					node.on("interview stage completed", async (node) => {
+						this.debugModeLogger.warn(`node "${node.id}": interview stage completed`);
+					});
+					node.on("alive", async (node) => {
+						this.debugModeLogger.warn(`node "${node.id}": alive`);
+						this.refreshConfig();
+					});
 
 					this.debugModeLogger.error(`node "${node.id}": getAllAssociationGroups:`, this.driver.controller.getAllAssociationGroups(node.id));
 					this.debugModeLogger.error(`node "${node.id}": getAllAssociations:`, this.driver.controller.getAllAssociations(node.id));
 					if (false && node.id === 5) {
 						this.debugModeLogger.error("Working on associations");
-						this.debugModeLogger.error("isAssociationAllowed:", this.driver.controller.isAssociationAllowed({ nodeId: 5 }, 3, { nodeId: 1 }));
-						if (this.driver.controller.isAssociationAllowed({ nodeId: 5 }, 3, { nodeId: 1 })) {
+						this.debugModeLogger.error("isAssociationAllowed:", this.driver.controller.checkAssociation({ nodeId: 5 }, 3, { nodeId: 1 }));
+						const check = this.driver.controller.checkAssociation({ nodeId: 5 }, 3, { nodeId: 1 });
+						if (check === AssociationCheckResult.OK) {
 							this.debugModeLogger.error("adding association");
 							this.driver.controller.addAssociations({ nodeId: 5 }, 3, [{ nodeId: 1 }]);
-						}
+						} else this.debugModeLogger.error("adding association failed:", check);
 					}
 
 
@@ -206,8 +265,8 @@ export class Openzwave extends Source {
 				this.debugModeLogger.error("ownNodeId:", this.driver.controller.ownNodeId);
 
 				// set controller handlers
-				this.driver.controller.on('inclusion started', (secure: boolean) => {
-					this.updateAttribute(this.driver.controller.ownNodeId.toString(), 'state', secure ? 'INCLUSION' : 'INCLUSION_NON_SECURE', new Date);
+				this.driver.controller.on('inclusion started', (strategy) => {
+					this.updateAttribute(this.driver.controller.ownNodeId.toString(), 'state', strategy !== InclusionStrategy.Insecure ? 'INCLUSION' : 'INCLUSION_NON_SECURE', new Date);
 				});
 				this.driver.controller.on('exclusion started', () => {
 					this.updateAttribute(this.driver.controller.ownNodeId.toString(), 'state', 'EXCLUSION', new Date);
@@ -230,6 +289,45 @@ export class Openzwave extends Source {
 					this.updateAttribute(this.driver.controller.ownNodeId.toString(), 'state', 'NO_INCLUSION_EXCLUSION', new Date);
 				});
 
+				const countNotReadyNodes = () => {
+					let nNotReady = 0;
+					this.driver.controller.nodes.forEach(node => {
+						if (!node.ready && node.status !== NodeStatus.Dead) {
+							nNotReady++;
+						}
+					});
+					return nNotReady;
+				}
+
+				const allNodesReadyTimeout = 2 * 60 * 1000; // 2 minutes
+				const checkAllNodesReady = () => {
+					this.allNodesReadyCheckTimeout = null;
+					if (this.isReleased()) return; // abort if source is released
+
+					const nNotReady = countNotReadyNodes();
+					if (nNotReady === 0) return; // all nodes are ready
+
+					this.logger.warn(`${nNotReady}/${this.driver.controller.nodes.size} nodes are not ready after ${allNodesReadyTimeout / 1000}s. Pinging not ready nodes...`);
+					this.driver.controller.nodes.forEach(node => {
+						if (!node.ready && node.status !== NodeStatus.Dead) {
+							this.logger.warn(`Pinging node "${node.id}" (${node.deviceConfig?.description}, ${node.label}, ${node.manufacturer}})...`);
+							node.ping();
+						}
+
+					});
+
+					initAllNodesReadyCheck();
+				}
+				const initAllNodesReadyCheck = () => {
+					const nNotReady = countNotReadyNodes();
+					if (nNotReady === 0) return; // all nodes are ready
+
+					if (this.allNodesReadyCheckTimeout) clearTimeout(this.allNodesReadyCheckTimeout);
+					this.allNodesReadyCheckTimeout = setTimeout(checkAllNodesReady, allNodesReadyTimeout).unref();
+				}
+				initAllNodesReadyCheck();
+
+
 				this.debugModeLogger.info(`end of driver ready...`);
 
 				/*
@@ -241,25 +339,93 @@ export class Openzwave extends Source {
 							});
 							*/
 			});
+			this.driver.on('node ready', (node) => {
+				this.logger.warn(`node "${node.id}" (${node.deviceConfig?.description}, ${node.label}, ${node.manufacturer}}) is ready (from controller).`);
+			});
 			this.driver.once('all nodes ready', () => {
+				if (this.isReleased()) return; // abort if source is released
 				this.refreshNeighbors();
 				this.debugModeLogger.info(`all nodes are ready.`);
 				this.refreshConfig();
 			});
-			// Start the driver. To await this method, put this line into an async method
-			this.driver.start().catch(e => {
-				attempt++;
-				if (attempt < maxAttempts) {
-					this.logger.warn(`(${attempt}/${maxAttempts}) could not start driver:`, e);
-					this.logger.warn(`Retrying in ${sleepTime / 1000}s...`);
-					setTimeout(startDriver, sleepTime).unref();
-				} else {
-					this.logger.error(`could not start driver after ${maxAttempts} attempts:`, e);
-					callback && callback(e);
-				}
-			}).then(() => callback && callback(null));
+
+			// a debug function to check the status of all nodes every 10 seconds
+			if (this.debugMode) {
+				const checkStatus = setInterval(() => {
+					if (this.isReleased() || !this.driver || this.driver['_nodesReadyEventEmitted']) {
+						clearInterval(checkStatus);
+						return;
+					}
+					if (!this.driver.ready) return;
+
+					this.logger.warn(`Checking status of all nodes:`);
+
+					this.driver.controller.nodes.forEach(node => {
+						// Ignore dead nodes or the all nodes ready event will never be emitted without physical user interaction
+						const type = this.driver.controller.ownNodeId === node.id ? "controller" : "node";
+						if (node.status === NodeStatus.Dead) {
+							this.logger.warn(`- ${type} "${node.id}" (${node.deviceConfig?.description}, ${node.label}, ${node.manufacturer}}) is dead.`);
+						} else if (node.ready) {
+							this.logger.warn(`- ${type} "${node.id}" (${node.deviceConfig?.description}, ${node.label}, ${node.manufacturer}}) is ready.`);
+						} else {
+							this.logger.warn(`- ${type} "${node.id}" (${node.deviceConfig?.description}, ${node.label}, ${node.manufacturer}}) not yet ready.`);
+						}
+					})
+					//this.driver['checkAllNodesReady']();
+				}, 10000).unref();
+			}
+
+			await this.driver.start();
 		}
-		startDriver();
+		const tryStartDriver = async () => {
+			// Start the driver
+			let success = false;
+			let lastException: any | null = null;
+			while (!this.isReleased() && !success) {
+				attempt++;
+				sleepTime += 15 * 1000;
+				try {
+					await startDriver();
+					success = true;
+					lastException = null
+				} catch (e) {
+					lastException = e;
+					this.debugModeLogger.warn(`Driver start failed. Restarting driver (${attempt}) in ${sleepTime / 1000}s:`, e);
+				}
+			}
+
+			if (this.isReleased()) return; // abort if source is released
+
+			if (lastException) {
+				this.logger.error(`Driver start failed after ${attempt} attempt${attempt > 1 ? "s" : ""}. Last error:`, lastException);
+				await this.destroyDriver();
+				return callback && callback(lastException);
+			};
+
+			// start the driver ready check timeout
+			const driverReadyTimeout = 2 * 60 * 1000; // 2 minutes
+			if (this.driverReadyCheckTimeout) clearTimeout(this.driverReadyCheckTimeout);
+			this.driverReadyCheckTimeout = setTimeout(async () => {
+				this.driverReadyCheckTimeout = null;
+				if (this.isReleased()) return; // abort if source is released
+				this.logger.warn(`Driver is not ready after ${driverReadyTimeout / 1000} seconds. Restarting driver in ${sleepTime / 1000}s...`);
+				attempt = 0;
+				await tryStartDriver();
+			}, driverReadyTimeout).unref();
+			attempt > 1 && this.logger.info(`Driver started after ${attempt} attempt${attempt > 1 ? "s" : ""}`);
+			callback && callback(null);
+		}
+
+		tryStartDriver();
+	}
+
+	async destroyDriver() {
+		try {
+			await this.driver.destroy();
+		} catch (e) {
+			this.logger.error("Error while destroying driver:", e);
+		}
+		this.driver = null;
 	}
 
 	getDevicesAsString(deviceId: string): string {
@@ -432,7 +598,7 @@ export class Openzwave extends Source {
 				});
 				break;
 			case "heal":
-				this.driver.controller.healNode(parseInt(command.nodeId)).catch(e => {
+				this.driver.controller.rebuildNodeRoutes(parseInt(command.nodeId)).catch(e => {
 					this.logger.error(e);
 					callback(e);
 				}).then((res) => {
@@ -452,7 +618,8 @@ export class Openzwave extends Source {
 					let a = controllerNode.getSupportedCCInstances();
 					a.forEach(cc => {
 						this.logger.error('interviewing supported CCinstances', cc.ccName)
-						cc.interview().then(res => {
+						// for some reason this.driver is not recognized as InterviewContext... Bug???
+						cc.interview(this.driver as unknown as InterviewContext).then(res => {
 							this.logger.error(`interview of supported CCinstance ${cc.ccName}:`, res);
 						});
 					});
@@ -522,7 +689,7 @@ export class Openzwave extends Source {
 	}
 
 	private startInclusionNonSecure(callback: (err: Error) => void): void {
-		this.driver.controller.beginInclusion(true).catch(callback).then(() => callback(null));
+		this.driver.controller.beginInclusion({ "strategy": InclusionStrategy.Insecure }).catch(callback).then(() => callback(null));
 	}
 
 	private startExclusion(callback: (err: Error) => void): void {
@@ -534,7 +701,9 @@ export class Openzwave extends Source {
 	}
 
 	createInstance(configLoader: ConfigLoader, path: string, initObject: InitObject): Source {
-		return new Openzwave(path, initObject.port, initObject.driverLogLevel, initObject);
+		const instance = new Openzwave(path, initObject.port, initObject.driverLogLevel, initObject);
+		instance.configLoader = configLoader;
+		return instance;
 	}
 
 	getParameters(): Parameters {
@@ -597,9 +766,13 @@ export class Openzwave extends Source {
 
 	release(): void {
 		if (this.refreshNeighborsTimeout) clearTimeout(this.refreshNeighborsTimeout);
-		this.driver.destroy();
+		this.destroyDriver();
 		this.watcher.close();
 		super.release();
+	}
+
+	isReleased() {
+		return this.configLoader && this.configLoader.released;
 	}
 
 	static registerDeviceTypes(): void {

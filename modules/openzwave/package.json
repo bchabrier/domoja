@@ -16,8 +16,9 @@
     "url": "git+https://github.com/bchabrier/domoja.git"
   },
   "keywords": [
-    "zibase",
-    "zapi",
+    "domoja",
+    "openzwave",
+    "zwave-js",
     "home automation"
   ],
   "bugs": {
@@ -26,13 +27,14 @@
   "homepage": "https://github.com/bchabrier/domoja/modules/openzwave#readme",
   "dependencies": {
     "tracer": "^1.1.2",
-    "zwave-js": "^12.2.1"
+    "zwave-js": "^15.0.6"
   },
   "devDependencies": {
     "@types/mocha": "<=8",
     "c8": "^7.10.0",
     "mocha": "<=8",
-    "ts-mocha": "^8.0.0"
+    "ts-mocha": "^8.0.0",
+    "typescript": "^5.8.3"
   },
   "main": "index.ts",
   "files": [

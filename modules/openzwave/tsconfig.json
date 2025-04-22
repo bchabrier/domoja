@@ -4,7 +4,8 @@
   "compilerOptions": {
     "noImplicitAny": true,
     "target": "es2017",
-    "module": "commonjs",
+    "module": "Node16",
+    "moduleResolution": "node16",
     //"allowJs": true,
     "sourceMap": true,
     "declaration": true,
