@@ -211,6 +211,13 @@ Persistence can be specified through the `persistence` attribute:
 
   By default, raw data is kept 1 year and aggregated data 5 years. 
 
+To access the MongoDB database, you can use MongoDB Compass. 
+Note: the RaspberryPi version of MongoDB is supported by old Compass releases only:
+- version [1.25.0](https://github.com/mongodb-js/compass/releases/tag/v1.25.0), fully compatible (recommended)
+- version [1.28.4](https://github.com/mongodb-js/compass/releases/tag/v1.25.0), missing schema analysis.
+- version [1.29.5](https://github.com/mongodb-js/compass/releases/tag/v1.29.5), poor compatibility, e.g. cannot visualize documents.
+
+
 User Interface
 --------------
 
