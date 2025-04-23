@@ -171,16 +171,29 @@ export class mongoDB extends persistence {
                     if (aggregate == "none") {
                         var collectionStore = db.collection(collection);
                         const indexName = "Index for " + collection;
-                        collectionStore.createIndex({ date: 1 }, { name: indexName }, (err, results) => {
-                            if (err) logger.error(`Could not create index "${indexName}"`);
-                        });
-                        collectionStore.insertOne(record, (err, result) => {
-                            if (err != null) {
-                                logger.error("Error while storing in Mongo:", err)
-                                logger.error(err.stack)
+
+                        collectionStore.indexExists(indexName, async (err, exists) => {
+                            if (err) {
+                                logger.error(`Could not check index "${indexName}":`, err);
+                                return callback(err);
+                            } else {
+                                if (!exists) {
+                                    try {
+                                        await collectionStore.createIndex({ date: 1 }, { name: indexName });
+                                    } catch (e) {
+                                        logger.error(`Could not create index "${indexName}":`, e);
+                                    }
+                                }
+                                collectionStore.insertOne(record, (err, result) => {
+                                    if (err != null) {
+                                        logger.error("Error while storing in Mongo:", err)
+                                        logger.error(err.stack)
+                                    }
+                                    callback(err);
+                                });
                             }
-                            callback(err);
                         });
+
                     } else {
                         let d = new Date(record.date);
                         switch (aggregate) {
@@ -210,25 +223,38 @@ export class mongoDB extends persistence {
                         }
                         var collectionStore = db.collection(collection + " by " + aggregate);
                         const indexName = "Index for " + collection + " by " + aggregate;
-                        collectionStore.createIndex({ date: 1 }, { name: indexName }, (err, results) => {
-                            if (err) logger.error(`Could not create index "${indexName}"`);
-                        });
-                        collectionStore.updateOne(
-                            {
-                                date: d
-                            },
-                            {
-                                $inc: { sum: parseFloat(record.state), count: 1 }
-                            },
-                            {
-                                upsert: true
-                            },
-                            (err, result) => {
-                                if (err != null) {
-                                    logger.error("Error while storing in Mongo:", err)
+
+                        collectionStore.indexExists(indexName, async (err, exists) => {
+                            if (err) {
+                                logger.error(`Could not check index "${indexName}":`, err);
+                                return callback(err);
+                            } else {
+                                if (!exists) {
+                                    try {
+                                        await collectionStore.createIndex({ date: 1 }, { name: indexName });
+                                    } catch (e) {
+                                        logger.error(`Could not create index "${indexName}":`, e);
+                                    }
                                 }
-                                callback(err);
-                            });
+
+                                collectionStore.updateOne(
+                                    {
+                                        date: d
+                                    },
+                                    {
+                                        $inc: { sum: parseFloat(record.state), count: 1 }
+                                    },
+                                    {
+                                        upsert: true
+                                    },
+                                    (err, result) => {
+                                        if (err != null) {
+                                            logger.error("Error while storing in Mongo:", err)
+                                        }
+                                        callback(err);
+                                    });
+                            }
+                        });
                     }
                 },
                 (err) => {
@@ -252,14 +278,18 @@ export class mongoDB extends persistence {
     };
 
     doBackupStateToDB(state: string | Date, callback: (err: Error) => void): void {
-        this.getMongoClient((err, client) => {
+        this.getMongoClient(async (err, client) => {
             if (err) return callback(err);
             var db = client.db();
             var collection = db.collection('Backup states');
             const indexName = "Index for Backup states";
-            collection.createIndex({ 'id': 1 }, { name: indexName, unique: true }, (err, results) => {
-                if (err) logger.error(`Could not create index "${indexName}"`);
-            });
+            if (! await collection.indexExists(indexName)) {
+                try {
+                    await collection.createIndex({ 'id': 1 }, { name: indexName, unique: true });
+                } catch (e) {
+                    logger.error(`Could not create index "${indexName}":`, e);
+                }
+            }
 
             collection.findOneAndReplace(
                 {
