@@ -416,16 +416,6 @@ export class Openzwave extends Source {
 				return callback && callback(lastException);
 			};
 
-			// start the driver ready check timeout
-			const driverReadyTimeout = 2 * 60 * 1000; // 2 minutes
-			if (this.driverReadyCheckTimeout) clearTimeout(this.driverReadyCheckTimeout);
-			this.driverReadyCheckTimeout = setTimeout(async () => {
-				this.driverReadyCheckTimeout = null;
-				if (this.isReleased()) return; // abort if source is released
-				this.logger.warn(`Driver is not ready after ${driverReadyTimeout / 1000} seconds. Restarting driver in ${sleepTime / 1000}s...`);
-				attempt = 0;
-				await tryStartDriver();
-			}, driverReadyTimeout).unref();
 			attempt > 1 && this.logger.info(`Driver started after ${attempt} attempt${attempt > 1 ? "s" : ""}`);
 			callback && callback(null);
 		}
