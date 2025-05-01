@@ -33,4 +33,13 @@ devices:
 [//]: # (sourceDoc END)
 
 
-
+zwave-js versions track
+-----------------------
+- 15.2.1: seems fine
+- 15.2.0: works fine - still sometimes some errors "unexpected error: The serial port is not open! (ZW0202)" in refreshNeighbors
+- 15.1.0: supposed to retry sending messages. Interviews retry, but fail... :
+```
+2025-04-23T21:37:56.232Z CNTRLR   [Node 016] ping failed: (0 , import_serial.isAnySendDataResponse) is not a fun
+                                  ction
+```
+- 15.0.6: works fine but sometimes interviews fail and are not retried
