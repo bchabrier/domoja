@@ -353,7 +353,7 @@ export class Openzwave extends Source {
 							*/
 			});
 			this.driver.on('node ready', (node) => {
-				this.logger.warn(`node${nodeIdentifier(node)} is ready (from controller).`);
+				this.debugModeLogger.warn(`node${nodeIdentifier(node)} is ready (from controller).`);
 			});
 			this.driver.once('all nodes ready', () => {
 				if (this.isReleased()) return; // abort if source is released
