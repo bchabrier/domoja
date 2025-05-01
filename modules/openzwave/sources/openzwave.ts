@@ -454,9 +454,13 @@ export class Openzwave extends Source {
 			this.refreshNeighborsLock = false;
 		}, this.refreshNeighborsMaxSeconds * 1000).unref();
 
+		// TODO retry in case of error
 		let queue: Promise<readonly number[]>[] = [];
 		this.driver.controller.nodes.forEach(node => {
-			queue.push(this.driver.controller.getNodeNeighbors(node.id));
+			queue.push(this.driver.controller.getNodeNeighbors(node.id).catch(e => {
+				this.logger.error(`Error while getting neighbors for node ${nodeIdentifier(node)}:`, e);
+				return <readonly number[]>[];
+			}));
 		});
 		Promise.all(queue).then(results => {
 			let i = 0;
