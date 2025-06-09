@@ -192,13 +192,13 @@ export class Openzwave extends Source {
 						this.debugModeLogger.warn(`id=${node.id}`);
 						this.debugModeLogger.warn(`nodeId=${node.nodeId}`);
 						this.debugModeLogger.warn(`label=${node.label}`);
-						this.debugModeLogger.warn(`description=${node.deviceConfig.description}`);
-						this.debugModeLogger.warn(`manufacturer=${node.deviceConfig.manufacturer}`);
-						this.debugModeLogger.warn(`${node.deviceConfig.devices.length} devices`);
-						node.deviceConfig.devices.forEach((d, i) => {
+						this.debugModeLogger.warn(`description=${node.deviceConfig?.description}`);
+						this.debugModeLogger.warn(`manufacturer=${node.deviceConfig?.manufacturer}`);
+						this.debugModeLogger.warn(`${node.deviceConfig?.devices.length} devices`);
+						node.deviceConfig && node.deviceConfig.devices.forEach((d, i) => {
 							this.debugModeLogger.warn(`Device ${i}:`, d);
 						});
-						this.debugModeLogger.warn(`${node.deviceConfig.endpoints ? node.deviceConfig.endpoints.size : 0} config endpoints`);
+						this.debugModeLogger.warn(`${node.deviceConfig?.endpoints ? node.deviceConfig.endpoints.size : 0} config endpoints`);
 						this.debugModeLogger.warn(`${node.getAllEndpoints().length} endpoints`);
 						this.debugModeLogger.warn(`${node.getEndpointCount()} endpoints count`);
 						this.debugModeLogger.warn(`definedValueIds:`, node.getDefinedValueIDs());
