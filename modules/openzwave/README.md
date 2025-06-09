@@ -35,7 +35,10 @@ devices:
 
 zwave-js versions track
 -----------------------
-- 15.2.1: seems fine
+- 15.6.0: idem, works fine, probably a memory leak
+- 15.4.2: uses too much memory, but works
+- 15.3.2: seems to work better, but eats much more memory than earlier version (v12?). Still many crashes (no ACK, driver not ready...)
+- 15.2.1: seems fine - but often errors "TypeError: Value of "this" must be of DOMException"
 - 15.2.0: works fine - still sometimes some errors "unexpected error: The serial port is not open! (ZW0202)" in refreshNeighbors
 - 15.1.0: supposed to retry sending messages. Interviews retry, but fail... :
 ```
