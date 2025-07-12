@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { MongoClient } from 'mongodb';
+import { Collection, MongoClient } from 'mongodb';
 import { message } from '../sources/source';
 import { Duration, parseDuration } from './durationParser';
 import * as async from 'async';
@@ -107,6 +107,7 @@ export class mongoDB extends persistence {
     static connecting: boolean = false;
     static statsJob: NodeJS.Timeout;
     static nbInstances = 0;
+    static indexChecks: { [indexName: string]: boolean } = {};
 
     constructor(id: string, ttl?: number, strategy?: Strategy, keep?: string) {
         super(id, ttl, strategy, keep);
@@ -172,26 +173,13 @@ export class mongoDB extends persistence {
                         var collectionStore = db.collection(collection);
                         const indexName = "Index for " + collection;
 
-                        collectionStore.indexExists(indexName, async (err, exists) => {
-                            if (err) {
-                                logger.error(`Could not check index "${indexName}":`, err);
-                                return callback(err);
-                            } else {
-                                if (!exists) {
-                                    try {
-                                        await collectionStore.createIndex({ date: 1 }, { name: indexName });
-                                    } catch (e) {
-                                        logger.error(`Could not create index "${indexName}":`, e);
-                                    }
-                                }
-                                collectionStore.insertOne(record, (err, result) => {
-                                    if (err != null) {
-                                        logger.error("Error while storing in Mongo:", err)
-                                        logger.error(err.stack)
-                                    }
-                                    callback(err);
-                                });
+                        this.checkIndex(indexName, collectionStore);
+                        collectionStore.insertOne(record, (err, result) => {
+                            if (err != null) {
+                                logger.error("Error while storing in Mongo:", err)
+                                logger.error(err.stack)
                             }
+                            callback(err);
                         });
 
                     } else {
@@ -224,37 +212,24 @@ export class mongoDB extends persistence {
                         var collectionStore = db.collection(collection + " by " + aggregate);
                         const indexName = "Index for " + collection + " by " + aggregate;
 
-                        collectionStore.indexExists(indexName, async (err, exists) => {
-                            if (err) {
-                                logger.error(`Could not check index "${indexName}":`, err);
-                                return callback(err);
-                            } else {
-                                if (!exists) {
-                                    try {
-                                        await collectionStore.createIndex({ date: 1 }, { name: indexName });
-                                    } catch (e) {
-                                        logger.error(`Could not create index "${indexName}":`, e);
-                                    }
-                                }
+                        this.checkIndex(indexName, collectionStore);
 
-                                collectionStore.updateOne(
-                                    {
-                                        date: d
-                                    },
-                                    {
-                                        $inc: { sum: parseFloat(record.state), count: 1 }
-                                    },
-                                    {
-                                        upsert: true
-                                    },
-                                    (err, result) => {
-                                        if (err != null) {
-                                            logger.error("Error while storing in Mongo:", err)
-                                        }
-                                        callback(err);
-                                    });
-                            }
-                        });
+                        collectionStore.updateOne(
+                            {
+                                date: d
+                            },
+                            {
+                                $inc: { sum: parseFloat(record.state), count: 1 }
+                            },
+                            {
+                                upsert: true
+                            },
+                            (err, result) => {
+                                if (err != null) {
+                                    logger.error("Error while storing in Mongo:", err)
+                                }
+                                callback(err);
+                            });
                     }
                 },
                 (err) => {
@@ -283,22 +258,18 @@ export class mongoDB extends persistence {
             var db = client.db();
             var collection = db.collection('Backup states');
             const indexName = "Index for Backup states";
-            if (! await collection.indexExists(indexName)) {
-                try {
-                    await collection.createIndex({ 'id': 1 }, { name: indexName, unique: true });
-                } catch (e) {
-                    logger.error(`Could not create index "${indexName}":`, e);
-                }
-            }
+
+            this.checkIndex(indexName, collection);
+
+            const newObject = {
+                'id': this.id,
+                state: state,
+                date: new Date()
+            };
 
             collection.findOneAndReplace(
                 {
                     'id': this.id
-                },
-                {
-                    'id': this.id,
-                    state: state,
-                    date: new Date()
                 },
                 { upsert: true }
             ).catch(e => {
@@ -406,6 +377,109 @@ export class mongoDB extends persistence {
                         callback(err);
                     });
             }
+        });
+    }
+
+    async checkIndex(indexName: string, collectionStore: Collection<any>) {
+        if (mongoDB.indexChecks[indexName] == true) {
+            return; // index being checked
+        }
+        mongoDB.indexChecks[indexName] = true; // mark index as being checked
+
+        let exists = await collectionStore.indexExists(indexName);
+        let unique = true;
+        if (exists) {
+            try {
+                const indexes = await collectionStore.indexes();
+                const index = indexes.find((i: { name: string }) => i.name === indexName);
+                logger.debug(`indexInformation for "${indexName}" from collection "${collectionStore.collectionName}":`, indexes);
+                unique = index.unique;
+            } catch (e) {
+                logger.error(`indexInformation failed for "${indexName}":`, e);
+            }
+            if (!unique) {
+                try {
+                    logger.warn(`Dropping index "${indexName}" for collection "${collectionStore.collectionName}" because it is not unique.`);
+                    await collectionStore.dropIndex(indexName);
+                    exists = false;
+                } catch (e) {
+                    logger.error(`Could not drop index "${indexName}":`, e);
+                }
+            }
+        }
+        if (!exists) {
+            try {
+                logger.warn(`Creating unique index "${indexName}" for collection "${collectionStore.collectionName}".`);
+                await collectionStore.createIndex({ date: 1 }, { name: indexName, unique: true });
+            } catch (e) {
+                const str = e.message;
+                if (str.includes("E11000 duplicate key error")) {
+                    logger.error(`Could not create index "${indexName}" because of duplicate keys! Removing duplicates...`);
+                    const devRemoveDuplicates = function (collectionName: string, callback: (err: Error) => void) {
+                        return new Promise<void>((resolve, reject) => {
+                            this.devRemoveDuplicates(collectionStore.collectionName, (err: Error) => {
+                                callback(err);
+                                resolve();
+                            });
+                        });
+                    }
+
+                    await devRemoveDuplicates(collectionStore.collectionName, (err) => {
+                        if (err) {
+                            logger.error(`Could not remove duplicates for index "${indexName}":`, err);
+                        } else {
+                            logger.info(`Removed duplicates for index "${indexName}".`);
+                        }
+                    });
+                } else {
+                    logger.error(`Could not create index "${indexName}":`, e);
+                }
+            }
+        }
+        mongoDB.indexChecks[indexName] = false; // remove mark that index is being checked
+    }
+
+    devRemoveDuplicates(collection: string, callback: (err: Error) => void) {
+        this.getMongoClient((err, client) => {
+            if (err != null) {
+                logger.error("Cannot connect to Mongo:", err);
+                logger.error(err.stack);
+                callback(err);
+                return;
+            }
+            var db = client.db();
+            var collectionStore = db.collection(collection);
+            const results = collectionStore.aggregate([
+                { $group: { _id: "$date", count: { $sum: 1 }, docs: { $push: "$$ROOT" } } },
+                { $match: { count: { $gt: 1 } } }
+            ], { allowDiskUse: true }).toArray((err, results) => {
+                if (err) {
+                    logger.error(`Error while aggregating duplicates for collection "${collection}":`, err);
+                    callback(err);
+                    return;
+                }
+                logger.error(`Found ${results.length} duplicates in collection "${collection}":`);
+                async.each(results, (result, cb) => {
+                    let sum = 0;
+                    let count = 0;
+                    for (let i = 0; i < result.docs.length; i++) {
+                        sum += parseFloat(result.docs[i].sum);
+                        count += parseFloat(result.docs[i].count);
+                        logger.error(`date ${result.docs[i].date} and avg ${result.docs[i].sum / result.docs[i].count}`);
+                    }
+                    logger.error(`date ${result._id} and cumulated avg ${sum / count}`);
+                    collectionStore.deleteMany({ date: result._id }, (err, res) => {
+                        if (err) {
+                            logger.error(`Error while removing duplicates for collection "${collection}":`, err);
+                            cb(err);
+                        } else {
+                            collectionStore.insertOne({ date: result._id, sum, count }, cb);
+                        }
+                    });
+                }, async (err) => {
+                    callback(err);
+                });
+            });
         });
     }
 
