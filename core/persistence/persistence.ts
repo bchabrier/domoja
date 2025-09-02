@@ -143,6 +143,7 @@ export abstract class persistence {
 }
 
 export class mongoDB extends persistence {
+    static mongoUri: string = 'mongodb://127.0.0.1:27017/domoja';
     static mongoClient: MongoClient;
     static connecting: boolean = false;
     static statsJob: NodeJS.Timeout;
@@ -177,7 +178,7 @@ export class mongoDB extends persistence {
                 mongoDB.connecting = true;
             }
             mongoDB.mongoClient && mongoDB.mongoClient.close();
-            MongoClient.connect('mongodb://127.0.0.1:27017/domoja', { poolSize: 10 }, (err, client) => {
+            MongoClient.connect(mongoDB.mongoUri, { poolSize: 10 }, (err, client) => {
                 if (err) {
                     logger.error("Cannot (re)connect to Mongo:", err);
                     callback(err, null);
