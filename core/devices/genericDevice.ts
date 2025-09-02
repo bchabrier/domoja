@@ -5,6 +5,7 @@ import { InitObject, Parameters, DomoModule } from '../lib/module';
 import { ConfigLoader, getSource, getCurrentConfig } from '../lib/load';
 import * as events from 'events';
 import * as persistence from '../persistence/persistence';
+import * as mongodb from '../persistence/mongodb';
 import * as async from 'async';
 
 //import secrets = require("../secrets");
@@ -110,7 +111,7 @@ export abstract class GenericDevice implements DomoModule {
     rawState?: string;
     previousState: string;
     previousRawState?: string;
-    persistence: persistence.mongoDB;
+    persistence: persistence.persistence;
     persistStates = false;
     lastUpdateDate: Date;
     tags: string;
@@ -167,10 +168,10 @@ export abstract class GenericDevice implements DomoModule {
         let persistence_spec = initObject && initObject.persistence;
         if (persistence_spec) {
             let pspec = persistence_spec.split(":");
-            this.persistence = new persistence.mongoDB(pspec[1], pspec[2], pspec[3], pspec[4]);
+            this.persistence = new mongodb.mongoDB(pspec[1], pspec[2], pspec[3], pspec[4]);
             this.persistStates = true;
         } else {
-            this.persistence = new persistence.mongoDB(this.path);
+            this.persistence = new mongodb.mongoDB(this.path);
         }
 
         this.source.addDevice(this);
