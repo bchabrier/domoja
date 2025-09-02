@@ -449,6 +449,10 @@ export class mongoDB extends persistence {
                         (err, result) => {
                             if (err) logger.error(`Could not remove old data from collection '${collection}'!`);
                             else logger.info(`Removed ${result.deletedCount} data older than ${limit} (${this.keepString.trim()}) from collection "${collection}".`);
+                            false && this.devRemoveDuplicates(collection, (err) => {
+                                if (err) logger.error(`Could not remove duplicates from collection '${collection}'!`, err);
+                                else logger.info(`Removed duplicates and recreated unique index for collection "${collection}".`);
+                            });
                             callback(err);
                         }
                     );
@@ -480,6 +484,10 @@ export class mongoDB extends persistence {
                                 (err, result) => {
                                     if (err) logger.error(`Could not remove old data from collection '${collectionName}'!`);
                                     else logger.info(`Removed ${result.deletedCount} data older than ${limit} (${this.keepAggregationString.trim()}) from collection "${collectionName}".`);
+                                    false && this.devRemoveDuplicates(collectionName, (err) => {
+                                        if (err) logger.error(`Could not remove duplicates from aggregate collection '${collection}'!`, err);
+                                        else logger.info(`Removed duplicates and recreated unique index for aggregate collection "${collection}".`);
+                                    });
                                     callback(err);
                                 }
                             );
