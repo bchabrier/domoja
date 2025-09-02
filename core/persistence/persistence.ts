@@ -70,6 +70,11 @@ export abstract class persistence {
                 if (err) logger.warn('Could not clean history of "%s":', this.id, err);
             });
         }, 24 * 60 * 60 * 1000).unref();
+        setTimeout(() => {
+            this.cleanOldData((err) => {
+                if (err) logger.warn('Could not clean history of "%s":', this.id, err);
+            });
+        }, 5 * 60 * 1000).unref(); // run once after 5 minutes, don't block event loop
     }
     insert(record: { date: Date, state: any }): Promise<Object>;
     insert(record: { date: Date, state: any }, callback: (err: Error, doc: Object) => void): void;
