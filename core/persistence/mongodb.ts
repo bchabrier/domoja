@@ -79,10 +79,6 @@ export class mongoDB extends persistence {
     doInsert(record: { date: Date; state: any; }, callback?: (err: Error, doc: Object) => void): void | Promise<Object> {
 
         if (callback) {
-            if (/^-?[0-9]+\.?[0-9]*$/.test(record.state) && (parseFloat(record.state) <= -10 || parseFloat(record.state) > 35)) {
-                logger.warn("Mauvaise température reçue, ignorée:", record);
-                return callback(new Error("Mauvaise temperature!"), null);
-            }
             this.getMongoClient((err, client) => {
                 logger.trace("inserting in Mongo...");
                 var db = client.db();
