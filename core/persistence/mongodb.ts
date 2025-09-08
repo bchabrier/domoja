@@ -88,18 +88,18 @@ export class mongoDB extends persistence {
                 var db = client.db();
                 var collection = this.id;
                 async.every(!isNaN(parseFloat(record.state)) ? ALL_AGGREGATION_TYPES.values() : ["none"],
-                    (aggregate: Exclude<AggregationType, 'change'>, callback) => {
+                    (aggregate: Exclude<AggregationType, 'change'>, cb) => {
                         if (aggregate == "none") {
                             var collectionStore = db.collection(collection);
                             const indexName = "Index for " + collection;
 
                             this.checkIndex(indexName, collectionStore);
                             collectionStore.insertOne(record, (err, result) => {
-                                if (err != null) {
+                                if (err !== null) {
                                     logger.error("Error while storing in Mongo:", err);
                                     logger.error(err.stack);
                                 }
-                                callback(err);
+                                cb(err, err !== null);
                             });
 
                         } else {
@@ -145,10 +145,10 @@ export class mongoDB extends persistence {
                                     upsert: true
                                 },
                                 (err, result) => {
-                                    if (err != null) {
+                                    if (err !== null) {
                                         logger.error("Error while storing in Mongo:", err);
                                     }
-                                    callback(err);
+                                    cb(err, err !== null);
                                 });
                         }
                     },
@@ -263,14 +263,14 @@ export class mongoDB extends persistence {
                     if (err) {
                         callback(err, null);
                     } else {
-                        callback(null, aggregate === "none"
+                        const ret = aggregate === "none"
                             ? results.map(r => { return { date: r.date, value: r.state }; })
                             : aggregate === "change"
                                 ? results.map(r => { return { date: r.date, value: r.state }; }).filter(
                                     (elt, i, tab) => i === 0 || i === tab.length - 1 ||
                                         tab[i].value !== tab[i - 1].value || tab[i].value != tab[i + 1].value)
-                                : results.map(r => { return { date: r.date, value: (r.sum as number) / (r.count as number) }; })
-                        );
+                                : results.map(r => { return { date: r.date, value: (r.sum as number) / (r.count as number) }; });
+                        callback(null, ret);
                     }
                 });
             });
@@ -337,9 +337,9 @@ export class mongoDB extends persistence {
                         now.getMilliseconds() - this.keepAggregation.milliseconds
                     );
                     async.every(ALL_AGGREGATION_TYPES.values(),
-                        (aggregate: AggregationType, callback) => {
+                        (aggregate: AggregationType, cb) => {
                             if (aggregate == "none") { // handled with this.keep above
-                                callback(null);
+                                cb(null, true);
                                 return;
                             }
                             const collectionName = collection + " by " + aggregate;
@@ -355,7 +355,7 @@ export class mongoDB extends persistence {
                                         if (err) logger.error(`Could not remove duplicates from aggregate collection '${collection}'!`, err);
                                         else logger.info(`Removed duplicates and recreated unique index for aggregate collection "${collection}".`);
                                     });
-                                    callback(err);
+                                    cb(err, true);
                                 }
                             );
                         },
