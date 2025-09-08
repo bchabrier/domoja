@@ -256,6 +256,7 @@ export class mongoDB extends persistence {
                         'date': { $gte: from, $lt: to },
                     },
                     {
+                        'sort': { date: 1 },
                         'projection': { '_id': 0, 'date': 1, 'count': 1, 'sum': 1, 'state': 1 }
                     }
                 ).toArray((err, results) => {
