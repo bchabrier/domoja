@@ -25,7 +25,7 @@ export class mongoDB extends persistence {
         super(id, ttl, strategy, keep);
 
         if (mongoDB.nbInstances === 0) mongoDB.statsJob = setInterval(() => {
-            this.getMongoClient((err, client) => {
+            mongoDB.getMongoClient((err, client) => {
                 logger.trace("Getting stats from Mongo...");
                 var db = client.db();
                 db.stats((err, results) => {
@@ -38,12 +38,12 @@ export class mongoDB extends persistence {
         mongoDB.nbInstances++;
     }
 
-    private getMongoClient(callback: (err: Error, client: MongoClient) => void): void {
+    private static getMongoClient(callback: (err: Error, client: MongoClient) => void): void {
         if (mongoDB.mongoClient && mongoDB.mongoClient.isConnected()) {
             callback(null, mongoDB.mongoClient);
         } else {
             if (mongoDB.connecting) {
-                setTimeout(() => this.getMongoClient(callback), 1000).unref();
+                setTimeout(() => mongoDB.getMongoClient(callback), 1000).unref();
                 return;
             } else {
                 mongoDB.connecting = true;
@@ -64,11 +64,12 @@ export class mongoDB extends persistence {
                 mongoDB.connecting = false;
                 if (!mongoDB.mongoClient.isConnected()) logger.error('Strange, just (re)connected mongo client is not connected!!!');
 
+                /*
                 false && this.devRebuildData("day", "minute", err => {
                     if (err) logger.error(`Could not rebuild week data for persistence "${this.id}":`, err);
                     else logger.info(`Successfully rebuilt week data for persistence "${this.id}".`);
                 });
-
+*/
                 callback(null, client);
             });
         }
@@ -79,8 +80,10 @@ export class mongoDB extends persistence {
     doInsert(record: { date: Date; state: any; }, callback?: (err: Error, doc: Object) => void): void | Promise<Object> {
 
         if (callback) {
-            this.getMongoClient((err, client) => {
+            mongoDB.getMongoClient((err, client) => {
                 logger.trace("inserting in Mongo...");
+                if (err) return callback(err, null);
+
                 var db = client.db();
                 var collection = this.id;
                 async.every(!isNaN(parseFloat(record.state)) ? ALL_AGGREGATION_TYPES.values() : ["none"],
@@ -166,7 +169,7 @@ export class mongoDB extends persistence {
     doRestoreStateFromDB(callback: (err: Error, result: { id: string; state: string | Date; date: Date; }) => void): void;
     doRestoreStateFromDB(callback?: (err: Error, result: { id: string; state: string | Date; date: Date; }) => void): void | Promise<{ id: string; state: string | Date; date: Date; }> {
         if (callback) {
-            this.getMongoClient((err, client) => {
+            mongoDB.getMongoClient((err, client) => {
                 if (err) return callback(err, null);
                 var db = client.db();
                 var collection = db.collection('Backup states');
@@ -191,7 +194,7 @@ export class mongoDB extends persistence {
     doBackupStateToDB(state: string | Date, callback: (err: Error) => void): void;
     doBackupStateToDB(state: string | Date, callback?: (err: Error) => void): void | Promise<void> {
         if (callback) {
-            this.getMongoClient(async (err, client) => {
+            mongoDB.getMongoClient(async (err, client) => {
                 if (err) return callback(err);
                 var db = client.db();
                 var collection = db.collection('Backup states');
@@ -240,7 +243,7 @@ export class mongoDB extends persistence {
     doGetHistory(aggregate: AggregationType, from: Date, to: Date, callback: (err: Error, results: any[]) => void): void;
     doGetHistory(aggregate: AggregationType, from: Date, to: Date, callback?: (err: Error, results: any[]) => void): void | Promise<any[]> {
         if (callback) {
-            this.getMongoClient((err, client) => {
+            mongoDB.getMongoClient((err, client) => {
                 var db = client.db();
                 var collection = this.id;
                 if (aggregate != "none" && aggregate != "change") {
@@ -284,7 +287,7 @@ export class mongoDB extends persistence {
     doCleanOldData(callback: (err: Error) => void): void;
     doCleanOldData(callback?: (err: Error) => void): void | Promise<void> {
         if (callback) {
-            this.getMongoClient((err, client) => {
+            mongoDB.getMongoClient((err, client) => {
                 if (err != null) {
                     logger.error("Cannot connect to Mongo:", err);
                     logger.error(err.stack);
@@ -430,7 +433,7 @@ export class mongoDB extends persistence {
     }
 
     devRemoveDuplicates(collection: string, callback: (err: Error) => void) {
-        this.getMongoClient((err, client) => {
+        mongoDB.getMongoClient((err, client) => {
             if (err != null) {
                 logger.error("Cannot connect to Mongo:", err);
                 logger.error(err.stack);
@@ -474,7 +477,7 @@ export class mongoDB extends persistence {
     }
 
     devRebuildData(target: Exclude<AggregationType, 'change'>, from: Exclude<AggregationType, 'change'>, callback: (err: Error) => void) {
-        this.getMongoClient((err, client) => {
+        mongoDB.getMongoClient((err, client) => {
             if (err != null) {
                 logger.error("Cannot connect to Mongo:", err);
                 logger.error(err.stack);
@@ -557,7 +560,7 @@ export class mongoDB extends persistence {
     }
 
     getHistory2(aggregate: AggregationType, from: Date, to: Date, callback: (err: Error, results: any[]) => void) {
-        this.getMongoClient((err, client) => {
+        mongoDB.getMongoClient((err, client) => {
             if (err != null) {
                 logger.error("Cannot connect to Mongo:", err);
                 logger.error(err.stack);
