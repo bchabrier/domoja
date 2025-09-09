@@ -95,7 +95,7 @@ export class mongoDB extends persistence {
                                     logger.error("Error while storing in Mongo:", err);
                                     logger.error(err.stack);
                                 }
-                                cb(err, err !== null);
+                                cb(err, err === null);
                             });
 
                         } else {
@@ -144,7 +144,7 @@ export class mongoDB extends persistence {
                                     if (err !== null) {
                                         logger.error("Error while storing in Mongo:", err);
                                     }
-                                    cb(err, err !== null);
+                                    cb(err, err === null);
                                 });
                         }
                     },
