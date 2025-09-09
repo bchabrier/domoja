@@ -359,7 +359,7 @@ export class mongoDB extends persistence {
                                         if (err) logger.error(`Could not remove duplicates from aggregate collection '${collection}'!`, err);
                                         else logger.info(`Removed duplicates and recreated unique index for aggregate collection "${collection}".`);
                                     });
-                                    cb(err, true);
+                                    cb(err, err === null);
                                 }
                             );
                         },
