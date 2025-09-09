@@ -632,13 +632,13 @@ export class mongoDB extends persistence {
         });
     }
 
-    release() {
-        super.release();
+    async release() {
+        await super.release();
         mongoDB.nbInstances--;
         if (mongoDB.nbInstances === 0) {
             clearInterval(mongoDB.statsJob);
             mongoDB.statsJob = null;
-            mongoDB.mongoClient && mongoDB.mongoClient.close();
+            mongoDB.mongoClient && await mongoDB.mongoClient.close();
             mongoDB.mongoClient = null;
         }
     }

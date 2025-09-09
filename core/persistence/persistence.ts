@@ -138,7 +138,7 @@ export abstract class persistence {
     abstract doCleanOldData(callback: (err: Error) => void): void;
     abstract doCleanOldData(callback?: (err: Error) => void): void | Promise<void>;
 
-    release() {
+    async release() {
         clearInterval(this.cleanJob);
         this.cleanJob = null;
     }
