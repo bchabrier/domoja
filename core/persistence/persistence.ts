@@ -81,9 +81,9 @@ export abstract class persistence {
         }
         return this.doInsert(record, callback);
     }
-    getHistory(aggregate: AggregationType, from: Date, to: Date): Promise<any[]>;
-    getHistory(aggregate: AggregationType, from: Date, to: Date, callback: (err: Error, results: any[]) => void): void;
-    getHistory(aggregate: AggregationType, from: Date, to: Date, callback?: (err: Error, results: any[]) => void): void | Promise<any[]> {
+    getHistory(aggregate: AggregationType, from: Date | null, to: Date | null): Promise<any[]>;
+    getHistory(aggregate: AggregationType, from: Date | null, to: Date | null, callback: (err: Error, results: any[]) => void): void;
+    getHistory(aggregate: AggregationType, from: Date | null, to: Date | null, callback?: (err: Error, results: any[]) => void): void | Promise<any[]> {
         if (demoMode) {
             if (callback) return callback(null, []);
             else return new Promise<any[]>((resolve) => resolve([]));
@@ -121,9 +121,10 @@ export abstract class persistence {
     abstract doInsert(record: { date: Date, state: any }, callback: (err: Error, doc: Object) => void): void;
     abstract doInsert(record: { date: Date, state: any }, callback?: (err: Error, doc: Object) => void): void | Promise<Object>;
 
-    abstract doGetHistory(aggregate: AggregationType, from: Date, to: Date): Promise<any[]>;
-    abstract doGetHistory(aggregate: AggregationType, from: Date, to: Date, callback: (err: Error, results: any[]) => void): void;
-    abstract doGetHistory(aggregate: AggregationType, from: Date, to: Date, callback?: (err: Error, results: any[]) => void): void | Promise<any[]>;
+    abstract doGetHistory(aggregate: AggregationType, from: Date | null, to: Date | null): Promise<any[]>;
+    abstract doGetHistory(aggregate: AggregationType, from: Date | null, to: Date | null, callback: (err: Error, results: any[]) => void): void;
+    abstract doGetHistory(aggregate: AggregationType, from: Date | null, to: Date | null, callback: (err: Error, results: any[]) => void): void;
+    abstract doGetHistory(aggregate: AggregationType, from: Date | null, to: Date | null, callback?: (err: Error, results: any[]) => void): void | Promise<any[]>;
 
     abstract doRestoreStateFromDB(): Promise<{ id: string, state: string | Date, date: Date }>;
     abstract doRestoreStateFromDB(callback: (err: Error, result: { id: string, state: string | Date, date: Date }) => void): void;

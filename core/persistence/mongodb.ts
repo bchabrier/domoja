@@ -239,9 +239,9 @@ export class mongoDB extends persistence {
         }
     };
 
-    doGetHistory(aggregate: AggregationType, from: Date, to: Date): Promise<any[]>;
-    doGetHistory(aggregate: AggregationType, from: Date, to: Date, callback: (err: Error, results: any[]) => void): void;
-    doGetHistory(aggregate: AggregationType, from: Date, to: Date, callback?: (err: Error, results: any[]) => void): void | Promise<any[]> {
+    doGetHistory(aggregate: AggregationType, from: Date | null, to: Date | null): Promise<any[]>;
+    doGetHistory(aggregate: AggregationType, from: Date | null, to: Date | null, callback: (err: Error, results: any[]) => void): void;
+    doGetHistory(aggregate: AggregationType, from: Date | null, to: Date | null, callback?: (err: Error, results: any[]) => void): void | Promise<any[]> {
         if (callback) {
             mongoDB.getMongoClient((err, client) => {
                 var db = client.db();
@@ -251,9 +251,14 @@ export class mongoDB extends persistence {
                 }
                 let collectionStore = db.collection(collection);
                 collectionStore.find(
-                    {
-                        'date': { $gte: from, $lt: to },
-                    },
+                    from && to ? {
+                        'date': { $gte: from, $lte: to }
+                    } : from ? {
+                        'date': { $gte: from }
+                    } : to ? {
+                        'date': { $lte: to }
+                    } : {}
+                    ,
                     {
                         'sort': { date: 1 },
                         'projection': { '_id': 0, 'date': 1, 'count': 1, 'sum': 1, 'state': 1 }
