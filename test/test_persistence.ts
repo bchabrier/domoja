@@ -125,7 +125,7 @@ describe('Module persistence', function () {
           assert.equal((results[1].date as Date).getTime(), date2.getTime());
         });
 
-        it('should get history precisely in range', async function () {
+        async function prepareHistoryForParamTests(config: persistence_helper<persistence>) {
           persistence = config.createInstance("test_device");
           assert(persistence);
           const dates = [
@@ -143,16 +143,61 @@ describe('Module persistence', function () {
               state: "on"
             });
           }
+        }
 
-          const results = await persistence.getHistory("none", new Date(2024, 0, 2, 10, 40, 0, 0), new Date(2024, 0, 3));
+        it('should get history precisely in range', async function () {
+
+          await prepareHistoryForParamTests(config);
+          const results = await persistence.getHistory("none", new Date(2024, 0, 2, 10, 40, 0, 0), new Date(2024, 0, 10, 10, 40, 0, 0));
           assert(results);
           assert(Array.isArray(results));
-          assert.equal(results.length, 1);
+          assert.equal(results.length, 5);
+        });
 
-          const results2 = await persistence.getHistory("none", new Date(2024, 0, 2, 10, 40, 0, 1), new Date(2024, 0, 3));
-          assert(results2);
-          assert(Array.isArray(results2));
-          assert.equal(results2.length, 0);
+        it('should get history including to', async function () {
+
+          await prepareHistoryForParamTests(config);
+          const results = await persistence.getHistory("none", new Date(2024, 0, 2, 10, 40, 0, 1), new Date(2024, 0, 10, 10, 40, 0, 0));
+          assert(results);
+          assert(Array.isArray(results));
+          assert.equal(results.length, 4);
+        });
+
+        it('should get history including from', async function () {
+
+          await prepareHistoryForParamTests(config);
+          const results = await persistence.getHistory("none", new Date(2024, 0, 1, 10, 30, 0, 0), new Date(2024, 0, 20, 10, 40, 0, -1));
+          assert(results);
+          assert(Array.isArray(results));
+          assert.equal(results.length, 6);
+        });
+
+        it('should get history with from null', async function () {
+
+          await prepareHistoryForParamTests(config);
+          const results = await persistence.getHistory("none", null, new Date(2024, 0, 7, 10, 40, 0, 0));
+          assert(results);
+          assert(Array.isArray(results));
+          assert.equal(results.length, 5);
+        });
+
+        it('should get history with to null', async function () {
+
+          await prepareHistoryForParamTests(config);
+          const results = await persistence.getHistory("none", new Date(2024, 0, 7, 10, 40, 0, 0), null);
+          assert(results);
+          assert(Array.isArray(results));
+          assert.equal(results.length, 2);
+        });
+
+        it('should get history with from and to null', async function () {
+
+          await prepareHistoryForParamTests(config);
+          const results = await persistence.getHistory("none", null, null);
+          assert(results);
+          assert(Array.isArray(results));
+          assert.equal(results.length, 7);
+
         });
 
         let skip = false;
