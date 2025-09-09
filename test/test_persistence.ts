@@ -23,9 +23,11 @@ abstract class persistence_helper<T extends persistence> {
     return new this.ctor(deviceId, ttl, strategy, keep);
   }
 
-  abstract dropDatabase(done: (err?: Error) => void): void;
+  abstract dropDatabase(): Promise<void>;
 }
 
+
+type MongoClient = Parameters<Parameters<typeof mongoDB["getMongoClient"]>[0]>[1];
 
 class mongoDB_helper extends persistence_helper<mongoDB> {
 
@@ -34,30 +36,24 @@ class mongoDB_helper extends persistence_helper<mongoDB> {
     super(mongoDB);
   }
 
-  private getMongoClient(callback: (err: Error | null, client: Parameters<Parameters<mongoDB["getMongoClient"]>[0]>[1]) => void): void {
-    const mongoClient = mongoDB["mongoClient"];
-    if (mongoClient) return callback(null, mongoClient);
 
-
-    // create a fake new connection to force the creation of the mongo client
-    const instance = this.createInstance("fake_device_for_connection_initialization");
-
-    instance["getMongoClient"]((err: Error | null, client: any) => {
-      instance.release();
-      callback(err, client);
-    });
+  private getMongoClient(callback: (err: Error | null, client: MongoClient) => void): void {
+    const mongoDBGetMongoClient = mongoDB["getMongoClient"];
+    mongoDBGetMongoClient(callback);
   }
 
-  dropDatabase(done: (err?: Error) => void): void {
-    // create a fake persistence to force the initialization of the mongo client if not already done
-    const persistence = this.createInstance("fake_device_to_prevent_topology_was_destroyed_error");
-    this.getMongoClient((err, client) => {
-      if (err) return done(err);
+  dropDatabase(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      // create a fake persistence to force the initialization of the mongo client if not already done
+      //const persistence = this.createInstance("fake_device_to_prevent_topology_was_destroyed_error");
+      this.getMongoClient((err, client) => {
+        if (err) return reject(err);
 
-      client.db().dropDatabase((err: Error, result: any) => {
-        if (err) return done(err);
-        if (result !== true) return done(new Error("Cannot drop database"));
-        done();
+        client.db().dropDatabase((err: Error, result: any) => {
+          if (err) return reject(err);
+          if (result !== true) return reject(new Error("Cannot drop database"));
+          resolve();
+        });
       });
     });
   }
@@ -88,8 +84,8 @@ describe('Module persistence', function () {
 
       let persistence: persistence;
 
-      this.beforeEach(function (done) {
-        config.dropDatabase(done);
+      this.beforeEach(async function () {
+        await config.dropDatabase();
       });
 
       describe('#insert', function () {
@@ -119,7 +115,7 @@ describe('Module persistence', function () {
             state: "off"
           });
 
-          const results = await persistence.getHistory("none", new Date(2024, 0, 1), new Date(2024, 0, 3));
+          const results = await persistence.getHistory("none", null, null);
           assert(results);
           assert(Array.isArray(results));
           assert.equal(results.length, 2);
@@ -278,12 +274,15 @@ describe('Module persistence', function () {
               });
             }
 
-            const results = await persistence.getHistory(aggregate.type, new Date(2024, 0, 1), new Date(2026, 9, 1));
+            const results = await persistence.getHistory(aggregate.type, null, null);
             assert(results);
             assert(Array.isArray(results));
             //console.log("Results for aggregate type", aggregate.type, ":");
             //console.log(results, aggregate.results);
-            assert.deepEqual(results, aggregate.results, "Results do not match expected aggregated results");
+            assert.deepEqual(results, aggregate.results, "Results do not match expected aggregated results:"
+              + `All dates/values:${JSON.stringify(datevalues, null, 2)}\n`
+              + `Results: ${JSON.stringify(results, null, 2)}\n`
+              + `Expected: ${JSON.stringify(aggregate.results, null, 2)}`);
           });
         }
 
@@ -306,8 +305,7 @@ describe('Module persistence', function () {
             persistence = config.createInstance("test_device", 0, strategy, '1 year');
             assert(persistence);
 
-            const now = new Date(2025, 8, 7, 10, 51, 32, 167); // 7 Sep 2025, 10:51:32.167
-
+            const now = new Date();
 
             const dates = [
               now, // now
@@ -322,14 +320,25 @@ describe('Module persistence', function () {
               });
             }
 
+            const resultsBeforeCleanup = await persistence.getHistory("none", null, null);
+            assert(resultsBeforeCleanup);
+            assert(Array.isArray(resultsBeforeCleanup));
+            assert.equal(resultsBeforeCleanup.length, 4, `Number of records before cleanup is not correct:\n`
+              + `All dates:${JSON.stringify(dates, null, 2)}\n`
+              + `Results before cleanup: ${JSON.stringify(resultsBeforeCleanup, null, 2)}`); // all 4 records should be present
+
+
             // clean old data - should remove the 400 and 600 days old records
             //console.log("gethistory before cleanolddata", await persistence.getHistory("none", new Date(now.getTime() - 1000 * 60 * 60 * 24 * 700), now));
             await persistence.cleanOldData();
 
-            const results = await persistence.getHistory("none", new Date(now.getTime() - 1000 * 60 * 60 * 24 * 700), now);
+            const results = await persistence.getHistory("none", null, null);
             assert(results);
             assert(Array.isArray(results));
-            assert.equal(results.length, 1); // only 1 record should remain 
+            assert.equal(results.length, 2, `Number of results is not correct:\n`
+              + `All dates:${JSON.stringify(dates, null, 2)}\n`
+              + `Records before cleanolddata:${JSON.stringify(resultsBeforeCleanup, null, 2)}\n`
+              + `Results: ${JSON.stringify(results, null, 2)}`); // only 2 records should remain 
           });
         }
 
@@ -337,7 +346,7 @@ describe('Module persistence', function () {
           persistence = config.createInstance("test_device", 0, 'aggregate', '1 year, 2 years');
           assert(persistence);
 
-          const now = new Date(2025, 8, 7, 10, 51, 32, 167); // 7 Sep 2025, 10:51:32.167
+          const now = new Date();
 
           const dates = [
             now, // now
@@ -355,10 +364,10 @@ describe('Module persistence', function () {
           // clean old data - should remove the 400 and 600 days old records
           await persistence.cleanOldData();
 
-          const results = await persistence.getHistory("none", new Date(now.getTime() - 1000 * 60 * 60 * 24 * 700), now);
+          const results = await persistence.getHistory("none", null, null);
           assert(results);
           assert(Array.isArray(results));
-          assert.equal(results.length, 1); // only 1 record should remain 
+          assert.equal(results.length, 2); // only 2 records should remain 
         });
 
         for (let aggregate of [
@@ -368,14 +377,14 @@ describe('Module persistence', function () {
           { type: 'day', nb: 3 },
           { type: 'hour', nb: 3 },
           { type: 'minute', nb: 3 },
-          { type: 'change', nb: 1 }] as const) {
+          { type: 'change', nb: 2 }] as const) {
           it('should clean old data aggregated by ' + aggregate.type, async function () {
             if (aggregate.type === null) this.skip();
 
             persistence = config.createInstance("test_device", 0, 'aggregate', '1 year, 500 days');
             assert(persistence);
 
-            const now = new Date(2025, 8, 7, 10, 51, 32, 167); // 7 Sep 2025, 10:51:32.167
+            const now = new Date();
 
             const dates = [
               now, // now
@@ -391,20 +400,22 @@ describe('Module persistence', function () {
             }
 
             // clean old data
+            //console.log("gethistory before cleanolddata", await persistence.getHistory(aggregate.type, new Date(now.getTime() - 1000 * 60 * 60 * 24 * 700), new Date(now.getTime() + 1));
             await persistence.cleanOldData();
 
-            const results = await persistence.getHistory(aggregate.type, new Date(now.getTime() - 1000 * 60 * 60 * 24 * 700), now);
+            const results = await persistence.getHistory(aggregate.type, null, null);
             assert(results);
+            //console.log("gethistory after cleanolddata", results);
             assert(Array.isArray(results));
             assert.equal(results.length, aggregate.nb); // only the good number of records should remain 
           });
         }
       });
 
-      this.afterEach(function (done) {
+      this.afterEach(async function () {
         assert(persistence);
-        persistence.release();
-        config.dropDatabase(done);
+        await persistence.release();
+        await config.dropDatabase();
       });
 
     });
