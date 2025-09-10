@@ -87,7 +87,7 @@ export class mongoDB extends persistence {
                 var db = client.db();
                 var collection = this.id;
                 async.every(!isNaN(parseFloat(record.state)) ? ALL_AGGREGATION_TYPES.values() : ["none"],
-                    (aggregate: Exclude<AggregationType, 'change'>, cb) => {
+                    (aggregate: AggregationType, cb) => {
                         if (aggregate == "none") {
                             var collectionStore = db.collection(collection);
                             const indexName = "Index for " + collection;
@@ -101,6 +101,8 @@ export class mongoDB extends persistence {
                                 cb(err, err === null);
                             });
 
+                        } else if (aggregate === "change") {
+                            cb(null, true)
                         } else {
                             let d = new Date(record.date);
                             switch (aggregate) {
@@ -343,6 +345,10 @@ export class mongoDB extends persistence {
                     async.every(ALL_AGGREGATION_TYPES.values(),
                         (aggregate: AggregationType, cb) => {
                             if (aggregate == "none") { // handled with this.keep above
+                                cb(null, true);
+                                return;
+                            }
+                            if (aggregate == "change") {
                                 cb(null, true);
                                 return;
                             }
