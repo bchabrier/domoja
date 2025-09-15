@@ -192,9 +192,10 @@ export class mongoDB extends persistence {
         }
     };
 
-    doBackupStateToDB(state: string | Date): Promise<void>;
-    doBackupStateToDB(state: string | Date, callback: (err: Error) => void): void;
-    doBackupStateToDB(state: string | Date, callback?: (err: Error) => void): void | Promise<void> {
+    doBackupStateToDB(state: string | Date, date: Date): Promise<void>;
+    doBackupStateToDB(state: string | Date, date: Date, callback: (err: Error) => void): void;
+    doBackupStateToDB(state: string | Date, date: Date, callback?: (err: Error) => void): void | Promise<void> {
+
         if (callback) {
             mongoDB.getMongoClient(async (err, client) => {
                 if (err) return callback(err);
@@ -207,7 +208,7 @@ export class mongoDB extends persistence {
                 const newObject = {
                     'id': this.id,
                     state: state,
-                    date: new Date()
+                    date: date
                 };
 
                 collection.findOneAndReplace(
@@ -233,7 +234,7 @@ export class mongoDB extends persistence {
             });
         } else {
             return new Promise<void>((resolve, reject) => {
-                this.doBackupStateToDB(state, (err) => {
+                this.doBackupStateToDB(state, date, (err) => {
                     if (err) reject(err);
                     else resolve();
                 });

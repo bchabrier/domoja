@@ -106,7 +106,7 @@ export abstract class persistence {
             if (callback) return callback(null);
             else return new Promise<void>((resolve) => resolve());
         }
-        return this.doBackupStateToDB(state, callback);
+        return this.doBackupStateToDB(state, new Date(), callback);
     }
     cleanOldData(): Promise<void>;
     cleanOldData(callback: (err: Error) => void): void;
@@ -130,9 +130,9 @@ export abstract class persistence {
     abstract doRestoreStateFromDB(callback: (err: Error, result: { id: string, state: string | Date, date: Date }) => void): void;
     abstract doRestoreStateFromDB(callback?: (err: Error, result: { id: string, state: string | Date, date: Date }) => void): void | Promise<{ id: string, state: string | Date, date: Date }>;
 
-    abstract doBackupStateToDB(state: string | Date): Promise<void>;
-    abstract doBackupStateToDB(state: string | Date, callback: (err: Error) => void): void;
-    abstract doBackupStateToDB(state: string | Date, callback?: (err: Error) => void): void | Promise<void>;
+    abstract doBackupStateToDB(state: string | Date, date: Date): Promise<void>;
+    abstract doBackupStateToDB(state: string | Date, date: Date, callback: (err: Error) => void): void;
+    abstract doBackupStateToDB(state: string | Date, date: Date | ((err: Error) => void), callback?: (err: Error) => void): void | Promise<void>;
 
     abstract doCleanOldData(): Promise<void>;
     abstract doCleanOldData(callback: (err: Error) => void): void;
