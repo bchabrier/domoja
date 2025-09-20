@@ -29,6 +29,7 @@ export abstract class persistence {
     keepAggregation: Duration;
     keepAggregationString: string;
     cleanJob: NodeJS.Timeout;
+    cleanJob5: NodeJS.Timeout;
 
     constructor(id: string, ttl?: number, strategy?: Strategy, keep?: string) {
         this.strategy = strategy || "raw";
@@ -66,7 +67,7 @@ export abstract class persistence {
                 if (err) logger.warn('Could not clean history of "%s":', this.id, err);
             });
         }, 24 * 60 * 60 * 1000).unref();
-        setTimeout(() => {
+        this.cleanJob5 = setTimeout(() => {
             this.cleanOldData((err) => {
                 if (err) logger.warn('Could not clean history of "%s":', this.id, err);
             });
@@ -141,6 +142,8 @@ export abstract class persistence {
     async release() {
         clearInterval(this.cleanJob);
         this.cleanJob = null;
+        clearTimeout(this.cleanJob5);
+        this.cleanJob5 = null;
     }
 }
 
