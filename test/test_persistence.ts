@@ -9,19 +9,26 @@ type persistence = ToMock.persistence;
 import * as assert from 'assert';
 import { persistence, Strategy } from 'domoja-core/persistence/persistence';
 import { mongoDB } from 'domoja-core/persistence/mongodb';
+import { existsSync, mkdtempSync, readFileSync, rmdirSync, rmSync } from 'fs';
+import { dirname } from 'path';
 
 
 abstract class persistence_helper<T extends persistence> {
 
   name: string;
+  private klass: new (deviceName: string, ttl?: number, strategy?: Strategy, keep?: string) => T;
 
   constructor(private ctor: new (deviceName: string, ttl?: number, strategy?: Strategy, keep?: string) => T) {
+    this.klass = ctor;
     this.name = ctor.name
   }
 
   createInstance(deviceId: string, ttl?: number, strategy?: Strategy, keep?: string): T {
     return new this.ctor(deviceId, ttl, strategy, keep);
   }
+
+  abstract dumpToFile(filename: string): Promise<void>;
+  abstract loadFromFile(filename: string): Promise<void>;
 
   abstract dropDatabase(): Promise<void>;
 }
@@ -57,6 +64,15 @@ class mongoDB_helper extends persistence_helper<mongoDB> {
       });
     });
   }
+
+  async dumpToFile(filename: string) {
+    return await mongoDB.dumpToFile(filename);
+  }
+
+  async loadFromFile(filename: string) {
+    return await mongoDB.loadFromFile(filename);
+  }
+
 };
 
 
@@ -333,7 +349,7 @@ describe('Module persistence', function () {
 
       });
 
-      describe('#backup', function () {
+      describe('#backup/restore', function () {
         it('should backup state and restore', async function () {
           persistence = config.createInstance("test_device");
           assert(persistence);
@@ -357,7 +373,7 @@ describe('Module persistence', function () {
               new Date(now.getTime() - 1000 * 60 * 60 * 24 * 200), // 200 days ago
               new Date(now.getTime() - 1000 * 60 * 60 * 24 * 400), // 400 days ago
               new Date(now.getTime() - 1000 * 60 * 60 * 24 * 600), // 600 days ago
-            ];
+            ].sort((a, b) => a.getTime() - b.getTime());
             for (let date of dates) {
               const doc = await persistence.insert({
                 date: date,
@@ -398,7 +414,7 @@ describe('Module persistence', function () {
             new Date(now.getTime() - 1000 * 60 * 60 * 24 * 200), // 200 days ago
             new Date(now.getTime() - 1000 * 60 * 60 * 24 * 400), // 400 days ago
             new Date(now.getTime() - 1000 * 60 * 60 * 24 * 600), // 600 days ago
-          ];
+          ].sort((a, b) => a.getTime() - b.getTime());
           for (let date of dates) {
             const doc = await persistence.insert({
               date: date,
@@ -436,7 +452,7 @@ describe('Module persistence', function () {
               new Date(now.getTime() - 1000 * 60 * 60 * 24 * 200), // 200 days ago
               new Date(now.getTime() - 1000 * 60 * 60 * 24 * 400), // 400 days ago
               new Date(now.getTime() - 1000 * 60 * 60 * 24 * 600), // 600 days ago
-            ];
+            ].sort((a, b) => a.getTime() - b.getTime());
             for (let date of dates) {
               const doc = await persistence.insert({
                 date: date,
@@ -457,9 +473,284 @@ describe('Module persistence', function () {
         }
       });
 
+      describe("dump and load", function () {
+
+        let persistence1: persistence;
+        let persistence2: persistence;
+        let persistence3: persistence;
+
+        const date11 = new Date(2025, 9, 10, 10, 30, 50, 119);
+        const date12 = new Date(2025, 9, 10, 11, 30, 50, 119);
+
+        const date21 = new Date(2024, 3, 10, 10, 30, 50, 119);
+        const date22 = new Date(2024, 4, 10, 12, 30, 50, 119);
+
+
+
+        let dumpFilename: string;
+
+        this.beforeEach(async () => {
+          if (persistence1) await persistence1.release();
+          persistence1 = config.createInstance("test_device1");
+
+          if (persistence2) await persistence2.release();
+          persistence2 = config.createInstance("test_device2", 0, "aggregate", "1 year, 2 years");
+
+          if (persistence3) await persistence3.release();
+          persistence3 = config.createInstance("test_device3_not_persisted"); // no inserts for this one
+
+
+          dumpFilename = mkdtempSync("/tmp/persistencetests_") + "/dumpFile";
+        });
+
+        this.afterEach(async () => {
+          if (persistence1) await persistence1.release();
+          if (persistence2) await persistence2.release();
+          if (persistence3) await persistence3.release();
+          if (existsSync(dumpFilename)) rmSync(dumpFilename);
+
+          const dirName = dirname(dumpFilename);
+
+          if (existsSync(dumpFilename)) rmSync(dumpFilename);
+          if (existsSync(dirName)) rmdirSync(dirName);
+        });
+
+        async function prepareDBForDump() {
+
+          await persistence1.insert({ date: date11, state: "ON" });
+          await persistence1.insert({ date: date12, state: "OFF" });
+          await persistence1.backupStateToDB("OFF");
+
+          await persistence2.insert({ date: date21, state: 10 });
+          await persistence2.insert({ date: date22, state: 15 });
+          await persistence2.backupStateToDB("15");
+
+          await persistence3.backupStateToDB("state for not persisted device");
+        }
+
+        describe('#dumpToFile', function () {
+
+          it('should dump data to a file', async function () {
+
+            await prepareDBForDump();
+
+            await config.dumpToFile(dumpFilename);
+
+            const dump = readFileSync(dumpFilename, { encoding: 'utf-8' });
+            //console.log("Dump file content:\n", dump);
+
+            // remove from the diff the dates of Backup states because they are live dates
+            const dumpObject = JSON.parse(dump);
+            dumpObject["Backup states"].forEach((o: any) => { o.date = "XXX" });
+
+            assert.equal(JSON.stringify(dumpObject, null, 2), `{
+  "Backup states": [
+    {
+      "id": "test_device1",
+      "state": "OFF",
+      "date": "XXX"
+    },
+    {
+      "id": "test_device2",
+      "state": "15",
+      "date": "XXX"
+    },
+    {
+      "id": "test_device3_not_persisted",
+      "state": "state for not persisted device",
+      "date": "XXX"
+    }
+  ],
+  "test_device1": {
+    "change": [
+      {
+        "date": "2025-10-10T08:30:50.119Z",
+        "state": "ON"
+      },
+      {
+        "date": "2025-10-10T09:30:50.119Z",
+        "state": "OFF"
+      }
+    ],
+    "none": [
+      {
+        "date": "2025-10-10T08:30:50.119Z",
+        "state": "ON"
+      },
+      {
+        "date": "2025-10-10T09:30:50.119Z",
+        "state": "OFF"
+      }
+    ]
+  },
+  "test_device2": {
+    "year": [
+      {
+        "date": "2023-12-31T23:00:00.000Z",
+        "sum": 25,
+        "count": 2
+      }
+    ],
+    "month": [
+      {
+        "date": "2024-03-31T22:00:00.000Z",
+        "sum": 10,
+        "count": 1
+      },
+      {
+        "date": "2024-04-30T22:00:00.000Z",
+        "sum": 15,
+        "count": 1
+      }
+    ],
+    "week": [
+      {
+        "date": "2024-04-07T22:00:00.000Z",
+        "sum": 10,
+        "count": 1
+      },
+      {
+        "date": "2024-05-05T22:00:00.000Z",
+        "sum": 15,
+        "count": 1
+      }
+    ],
+    "day": [
+      {
+        "date": "2024-04-09T22:00:00.000Z",
+        "sum": 10,
+        "count": 1
+      },
+      {
+        "date": "2024-05-09T22:00:00.000Z",
+        "sum": 15,
+        "count": 1
+      }
+    ],
+    "hour": [
+      {
+        "date": "2024-04-10T08:00:00.000Z",
+        "sum": 10,
+        "count": 1
+      },
+      {
+        "date": "2024-05-10T10:00:00.000Z",
+        "sum": 15,
+        "count": 1
+      }
+    ],
+    "minute": [
+      {
+        "date": "2024-04-10T08:30:00.000Z",
+        "sum": 10,
+        "count": 1
+      },
+      {
+        "date": "2024-05-10T10:30:00.000Z",
+        "sum": 15,
+        "count": 1
+      }
+    ],
+    "change": [
+      {
+        "date": "2024-04-10T08:30:50.119Z",
+        "state": 10
+      },
+      {
+        "date": "2024-05-10T10:30:50.119Z",
+        "state": 15
+      }
+    ],
+    "none": [
+      {
+        "date": "2024-04-10T08:30:50.119Z",
+        "state": 10
+      },
+      {
+        "date": "2024-05-10T10:30:50.119Z",
+        "state": 15
+      }
+    ]
+  }
+}`);
+
+          });
+
+          describe('#loadFromFile', function () {
+            it('should load data from a file', async function () {
+
+              await prepareDBForDump();
+
+              await config.dumpToFile(dumpFilename);
+
+              await config.loadFromFile(dumpFilename);
+
+            });
+
+            it('should restore data as it was', async function () {
+
+              await prepareDBForDump();
+
+              await config.dumpToFile(dumpFilename);
+              const dump = readFileSync(dumpFilename, { encoding: 'utf-8' });
+
+              await config.dropDatabase();
+              await config.loadFromFile(dumpFilename);
+              await config.dumpToFile(dumpFilename);
+              const dump2 = readFileSync(dumpFilename, { encoding: 'utf-8' });
+
+              // dump and dump2 should be equal
+              assert.equal(dump, dump2);
+
+
+            });
+
+            it('should restore data and history', async function () {
+
+              await prepareDBForDump();
+
+              await config.dumpToFile(dumpFilename);
+
+              console.log("dump file:", readFileSync(dumpFilename, { encoding: 'utf-8' }));
+
+
+              const results1 = await persistence1.getHistory("none", null, null);
+              const results2 = await persistence2.getHistory("none", null, null);
+              const results2_by_day = await persistence2.getHistory("day", null, null);
+              const results2_by_month = await persistence2.getHistory("month", null, null);
+              const results2_by_week = await persistence2.getHistory("week", null, null);
+              const results2_by_year = await persistence2.getHistory("year", null, null);
+              const results2_by_hour = await persistence2.getHistory("hour", null, null);
+              const results2_by_minute = await persistence2.getHistory("minute", null, null);
+
+
+              await config.dropDatabase();
+              await config.loadFromFile(dumpFilename);
+
+              assert.deepEqual(await persistence1.getHistory("none", null, null), results1, "persistence1.getHistory('none') does not match the original one");
+              assert.deepEqual(await persistence2.getHistory("none", null, null), results2, "persistence2.getHistory('none') does not match the original one");
+              assert.deepEqual(await persistence2.getHistory("day", null, null), results2_by_day, "persistence2.getHistory('day') does not match the original one");
+              assert.deepEqual(await persistence2.getHistory("month", null, null), results2_by_month, "persistence2.getHistory('month') does not match the original one");
+              assert.deepEqual(await persistence2.getHistory("week", null, null), results2_by_week, "persistence2.getHistory('week') does not match the original one");
+              assert.deepEqual(await persistence2.getHistory("year", null, null), results2_by_year, "persistence2.getHistory('year') does not match the original one");
+              assert.deepEqual(await persistence2.getHistory("hour", null, null), results2_by_hour, "persistence2.getHistory('hour') does not match the original one");
+              assert.deepEqual(await persistence2.getHistory("minute", null, null), results2_by_minute, "persistence2.getHistory('minute') does not match the original one");
+
+            });
+
+            it.skip('should dump and load the existing DB', async function () {
+              this.timeout(2 * 60 * 60 * 1000);
+              await config.loadFromFile("dump.json"); // dump.json is a static file in the test directory
+              throw new Error("Not implemented yet");
+            });
+
+          });
+        });
+      });
+
+
       this.afterEach(async function () {
-        assert(persistence);
-        await persistence.release();
+        if (persistence) await persistence.release();
         await config.dropDatabase();
       });
 

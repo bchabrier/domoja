@@ -1,11 +1,9 @@
-import * as assert from 'assert';
 import { Collection, MongoClient } from 'mongodb';
-import { message } from '../sources/source';
-import { Duration, parseDuration } from './durationParser';
 import * as async from 'async';
 
 import { colorConsole } from 'tracer';
 import { persistence, AggregationType, ALL_AGGREGATION_TYPES, Strategy } from './persistence';
+import { close, openSync, writeSync } from 'fs';
 
 const logger = colorConsole({
     dateformat: "dd/mm/yyyy HH:MM:ss.l",
@@ -94,23 +92,57 @@ export class mongoDB extends persistence {
 
                 var db = client.db();
                 var collection = this.id;
-                async.every(!isNaN(parseFloat(record.state)) ? ALL_AGGREGATION_TYPES.values() : ["none"],
-                    (aggregate: AggregationType, cb) => {
+                async.every(this.strategy === "aggregate" && !isNaN(parseFloat(record.state)) ? ALL_AGGREGATION_TYPES.values() : ["none", "change"],
+                    async (aggregate: AggregationType) => {
                         if (aggregate == "none") {
                             var collectionStore = db.collection(collection);
                             const indexName = "Index for " + collection;
 
-                            this.checkIndex(indexName, collectionStore);
-                            collectionStore.insertOne(record, (err, result) => {
-                                if (err !== null) {
-                                    logger.error("Error while storing in Mongo:", err);
-                                    logger.error(err.stack);
-                                }
-                                cb(err, err === null);
-                            });
-
+                            mongoDB.checkIndex(indexName, collectionStore);
+                            try {
+                                await collectionStore.insertOne(record);
+                            } catch (err) {
+                                logger.error("Error while storing in Mongo:", err);
+                                logger.error(err.stack);
+                            }
+                            return true;
                         } else if (aggregate === "change") {
-                            cb(null, true)
+                            var collectionStore = db.collection(collection + " by " + aggregate);
+                            const indexName = "Index for " + collection + " by " + aggregate;
+
+                            mongoDB.checkIndex(indexName, collectionStore);
+
+                            // check last 2 values
+                            let beforeLastValue, lastValue: { date: Date, state: string };
+                            if (beforeLastValue === undefined && lastValue === undefined) {
+                                [beforeLastValue, lastValue] = await collectionStore.find(
+                                    {},
+                                    {
+                                        'sort': { date: -1 },
+                                        'limit': 2,
+                                        'projection': { '_id': 0, 'date': 1, 'state': 1 }
+                                    }
+                                ).toArray() as { date: Date, state: string }[];
+                            }
+
+                            if (lastValue && record.date.getTime() <= lastValue.date.getTime()) {
+                                logger.warn("Cannot insert record with date older than last record date", lastValue.date, "in 'change' aggregation, while inserting", record);
+                                return true; // log error, but continue processing other aggregations
+                            }
+
+                            if (lastValue && beforeLastValue && lastValue.state === record.state && lastValue.state === beforeLastValue.state) {
+                                // replace lastValue, so that we ignore the middle record
+                                await collectionStore.updateOne(
+                                    { date: lastValue.date },
+                                    { $set: { state: record.state, date: record.date } }
+                                );
+                                lastValue.date = record.date;
+                                return true;
+                            }
+
+                            // otherwise, just insert the new value
+                            await collectionStore.insertOne(record);
+                            return true;
                         } else {
                             let d = new Date(record.date);
                             switch (aggregate) {
@@ -141,24 +173,24 @@ export class mongoDB extends persistence {
                             var collectionStore = db.collection(collection + " by " + aggregate);
                             const indexName = "Index for " + collection + " by " + aggregate;
 
-                            this.checkIndex(indexName, collectionStore);
+                            mongoDB.checkIndex(indexName, collectionStore);
 
-                            collectionStore.updateOne(
-                                {
-                                    date: d
-                                },
-                                {
-                                    $inc: { sum: parseFloat(record.state), count: 1 }
-                                },
-                                {
-                                    upsert: true
-                                },
-                                (err, result) => {
-                                    if (err !== null) {
-                                        logger.error("Error while storing in Mongo:", err);
+                            try {
+                                await collectionStore.updateOne(
+                                    {
+                                        date: d
+                                    },
+                                    {
+                                        $inc: { sum: parseFloat(record.state), count: 1 }
+                                    },
+                                    {
+                                        upsert: true
                                     }
-                                    cb(err, err === null);
-                                });
+                                );
+                            } catch (err) {
+                                logger.error("Error while storing in Mongo:", err);
+                            }
+                            return true;
                         }
                     },
                     (err) => {
@@ -211,7 +243,7 @@ export class mongoDB extends persistence {
                 var collection = db.collection('Backup states');
                 const indexName = "Index for Backup states";
 
-                this.checkIndex(indexName, collection);
+                mongoDB.checkIndex(indexName, collection);
 
                 const newObject = {
                     'id': this.id,
@@ -331,7 +363,7 @@ export class mongoDB extends persistence {
                         (err, result) => {
                             if (err) logger.error(`Could not remove old data from collection '${collection}'!`);
                             else logger.info(`Removed ${result.deletedCount} data older than ${limit} (${this.keepString.trim()}) from collection "${collection}".`);
-                            false && this.devRemoveDuplicates(collection, (err) => {
+                            false && mongoDB.devRemoveDuplicates(collection, (err) => {
                                 if (err) logger.error(`Could not remove duplicates from collection '${collection}'!`, err);
                                 else logger.info(`Removed duplicates and recreated unique index for collection "${collection}".`);
                             });
@@ -370,7 +402,7 @@ export class mongoDB extends persistence {
                                 (err, result) => {
                                     if (err) logger.error(`Could not remove old data from collection '${collectionName}'!`);
                                     else logger.info(`Removed ${result.deletedCount} data older than ${limit} (${this.keepAggregationString.trim()}) from collection "${collectionName}".`);
-                                    false && this.devRemoveDuplicates(collectionName, (err) => {
+                                    false && mongoDB.devRemoveDuplicates(collectionName, (err) => {
                                         if (err) logger.error(`Could not remove duplicates from aggregate collection '${collection}'!`, err);
                                         else logger.info(`Removed duplicates and recreated unique index for aggregate collection "${collection}".`);
                                     });
@@ -393,7 +425,7 @@ export class mongoDB extends persistence {
         }
     }
 
-    async checkIndex(indexName: string, collectionStore: Collection<any>) {
+    static async checkIndex(indexName: string, collectionStore: Collection<any>) {
         if (mongoDB.indexChecks[indexName] == true) {
             return; // index being checked
         }
@@ -430,7 +462,7 @@ export class mongoDB extends persistence {
                     logger.error(`Could not create index "${indexName}" because of duplicate keys! Removing duplicates...`);
                     const devRemoveDuplicates = function (collectionName: string, callback: (err: Error) => void) {
                         return new Promise<void>((resolve, reject) => {
-                            this.devRemoveDuplicates(collectionStore.collectionName, (err: Error) => {
+                            mongoDB.devRemoveDuplicates(collectionStore.collectionName, (err: Error) => {
                                 callback(err);
                                 resolve();
                             });
@@ -452,7 +484,7 @@ export class mongoDB extends persistence {
         mongoDB.indexChecks[indexName] = false; // remove mark that index is being checked
     }
 
-    devRemoveDuplicates(collection: string, callback: (err: Error) => void) {
+    static devRemoveDuplicates(collection: string, callback: (err: Error) => void) {
         mongoDB.getMongoClient((err, client) => {
             if (err != null) {
                 logger.error("Cannot connect to Mongo:", err);
@@ -646,6 +678,155 @@ export class mongoDB extends persistence {
             }
         });
     }
+
+    static /*override*/ async dumpToFile2(filename: string) {
+
+        const file = openSync(filename, 'w');
+
+        const client = await mongoDB.getMongoClient();
+
+
+        const collections = (await client.db().collections()).filter(col =>
+            col.collectionName !== 'system.indexes'
+            /*
+            && !col.collectionName.endsWith('by change')
+            && !col.collectionName.endsWith('by day')
+            && !col.collectionName.endsWith('by hour')
+            && !col.collectionName.endsWith('by minute')
+            && !col.collectionName.endsWith('by month')
+            && !col.collectionName.endsWith('by week')
+            && !col.collectionName.endsWith('by year')
+            */
+        ).sort((cola, colb) => { // put Backup states collection first
+            const a = cola.collectionName;
+            const b = colb.collectionName;
+
+            if (a === 'Backup states') {
+                if (b === a) return 0;
+                return -1
+            }
+
+            if (a < b) {
+                return -1
+            }
+            if (a === b) {
+                return 0
+            }
+            if (a > b) {
+                return 1
+            }
+
+        });
+
+        writeSync(file, "{\n");
+
+        let i = 0;
+        for (const col of collections) {
+            i++;
+
+            try {
+                const content = await col.find(null, { projection: { _id: 0 } }).toArray();
+
+                let object: { [key: string]: any } = {}
+                object[col.collectionName] = content;
+
+                const s = JSON.stringify(object, null, 2).slice(2, -2);
+
+                writeSync(file, s);
+                if (i < collections.length) writeSync(file, ",");
+                writeSync(file, "\n");
+            } catch (e) {
+                console.log(e)
+            }
+
+
+        }
+        writeSync(file, "}\n");
+
+
+        close(file);
+    }
+
+    /*static override async loadFromFile(filename: string) {
+
+        const file = openSync(filename, 'r');
+
+        const client = await mongoDB.getMongoClient();
+
+
+
+
+        close(file);
+    }
+*/
+
+    static override async deviceIdsFromDB(): Promise<string[]> {
+        try {
+            const client = await mongoDB.getMongoClient();
+
+            const collectionNames = (await client.db().collections()).filter(col =>
+                col.collectionName !== 'system.indexes'
+                && col.collectionName !== 'Backup states'
+                && !col.collectionName.endsWith('by change')
+                && !col.collectionName.endsWith('by day')
+                && !col.collectionName.endsWith('by hour')
+                && !col.collectionName.endsWith('by minute')
+                && !col.collectionName.endsWith('by month')
+                && !col.collectionName.endsWith('by week')
+                && !col.collectionName.endsWith('by year')
+            ).map(col => col.collectionName);
+
+            const deviceIds = (await client.db().collection('Backup states').find(
+                {},
+                {
+                    'projection': { '_id': 0, 'id': 1 }
+                }
+            ).toArray()).map(r => r.id);
+
+            return collectionNames.concat(deviceIds).filter((v, i, a) => a.indexOf(v) === i) // unique values
+                .sort((a, b) => {
+                    if (a < b) return -1;
+                    if (a > b) return 1;
+                    return 0;
+                });
+        } catch (e) {
+            logger.error("Could not get deviceIds from MongoDB:", e);
+            return [];
+        }
+    }
+
+    async loadDatasetToDB(aggregate: AggregationType, records: { date: Date, state: string }[] | { date: Date, sum: number, count: number }[]): Promise<void> {
+        let collectionName = this.id;
+        if (aggregate !== 'none') {
+            collectionName += ' by ' + aggregate;
+        }
+
+        const client = await mongoDB.getMongoClient();
+        var db = client.db();
+        let collectionStore = db.collection(collectionName);
+        const ret = await collectionStore.insertMany(records);
+    }
+
+    async dumpDatasetFromDB(aggregate: Extract<AggregationType, "none" | "change"> | Exclude<AggregationType, "none" | "change">): Promise<{ date: Date, state: string }[] | { date: Date, sum: number, count: number }[]> {
+        let collectionName = this.id;
+        if (aggregate !== 'none') {
+            collectionName += ' by ' + aggregate;
+        }
+
+        const client = await mongoDB.getMongoClient();
+        var db = client.db();
+        let collectionStore = db.collection(collectionName);
+        const results = await collectionStore.find(
+            {},
+            {
+                'sort': { date: 1 },
+                'projection': { '_id': 0, 'date': 1, 'count': 1, 'sum': 1, 'state': 1 }
+            }
+        ).toArray();
+
+        return results;
+    }
+
 
     async release() {
         await super.release();
