@@ -37,8 +37,16 @@ export class mongoDB extends persistence {
 
         mongoDB.nbInstances++;
     }
+    private static getMongoClient(): Promise<MongoClient>;
+    private static getMongoClient(callback: (err: Error, client: MongoClient) => void): void;
+    private static getMongoClient(callback?: (err: Error, client: MongoClient) => void): void | Promise<MongoClient> {
+        if (!callback) return new Promise<MongoClient>((resolve, reject) => {
+            this.getMongoClient((err, client) => {
+                if (err) reject(err);
+                else resolve(client);
+            });
+        });
 
-    private static getMongoClient(callback: (err: Error, client: MongoClient) => void): void {
         if (mongoDB.mongoClient && mongoDB.mongoClient.isConnected()) {
             callback(null, mongoDB.mongoClient);
         } else {
