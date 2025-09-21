@@ -118,7 +118,7 @@ describe('Module persistence', function () {
 
       describe('#getHistory', function () {
         it('should get history', async function () {
-          persistence = config.createInstance("test_device");
+          persistence = config.createInstance("test_device", "raw");
           assert(persistence);
           let date1 = new Date(2024, 0, 1, 10, 30, 0, 0); // 1st Jan 2024, 10:30:00.000
           let date2 = new Date(2024, 0, 2, 10, 40, 0, 0); // 2nd Jan 2024, 10:40:00.000
@@ -142,7 +142,7 @@ describe('Module persistence', function () {
         });
 
         async function prepareHistoryForParamTests(config: persistence_helper<persistence>) {
-          persistence = config.createInstance("test_device");
+          persistence = config.createInstance("test_device", "raw");
           assert(persistence);
           const dates = [
             new Date(2024, 0, 1, 10, 30, 0, 0), // 1st Jan 2024, 10:30:00.000
@@ -479,7 +479,7 @@ describe('Module persistence', function () {
 
         this.beforeEach(async () => {
           if (persistence1) await persistence1.release();
-          persistence1 = config.createInstance("test_device1");
+          persistence1 = config.createInstance("test_device1", "raw");
 
           if (persistence2) await persistence2.release();
           persistence2 = config.createInstance("test_device2", "aggregate", "1 year, 2 years");

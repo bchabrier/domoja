@@ -18,7 +18,7 @@ export function setDemoMode(mode: boolean) {
     demoMode = mode;
 }
 
-export type Strategy = "raw" | "aggregate";
+export type Strategy = "change" | "raw" | "aggregate";
 
 export const ALL_AGGREGATION_TYPES = ["year", "month", "week", "day", "hour", "minute", "change", "none"] as const;
 export type AggregationType = (typeof ALL_AGGREGATION_TYPES)[number];
@@ -66,7 +66,7 @@ export abstract class persistence {
     cleanJob5: NodeJS.Timeout;
 
     constructor(id: string, strategy?: Strategy, keep?: string) {
-        this.strategy = strategy || "raw";
+        this.strategy = strategy || "change";
         this.id = id;
 
         if (keep) {

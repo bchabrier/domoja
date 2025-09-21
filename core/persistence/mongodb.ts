@@ -93,101 +93,120 @@ export class mongoDB extends persistence {
 
                 var db = client.db();
                 var collection = this.id;
-                async.every(this.strategy === "aggregate" && !isNaN(parseFloat(record.state)) ? ALL_AGGREGATION_TYPES.values() : ["none", "change"],
+
+                let aggregates: AggregationType[];
+                switch (this.strategy) {
+                    case "change":
+                        aggregates = ["change"];
+                        break;
+                    case "raw":
+                        aggregates = ["none", "change"];
+                        break;
+                    case "aggregate":
+                        aggregates = isNaN(parseFloat(record.state)) ? ["none", "change"] : [...ALL_AGGREGATION_TYPES];
+                        break;
+                    default:
+                        let n: never = this.strategy;
+                }
+                async.every(aggregates,
                     async (aggregate: AggregationType) => {
-                        if (aggregate == "none") {
-                            var collectionStore = db.collection(collection);
-                            const indexName = "Index for " + collection;
+                        switch (aggregate) {
+                            case "none": {
+                                var collectionStore = db.collection(collection);
+                                const indexName = "Index for " + collection;
 
-                            mongoDB.checkIndex(indexName, collectionStore);
-                            try {
-                                await collectionStore.insertOne(record);
-                            } catch (err) {
-                                logger.error("Error while storing in Mongo:", err);
-                                logger.error(err.stack);
-                            }
-                            return true;
-                        } else if (aggregate === "change") {
-                            var collectionStore = db.collection(collection + " by " + aggregate);
-                            const indexName = "Index for " + collection + " by " + aggregate;
-
-                            mongoDB.checkIndex(indexName, collectionStore);
-
-                            // check last value
-                            if (this.lastChangeRecord === undefined) {
-                                [this.lastChangeRecord] = await collectionStore.find(
-                                    {},
-                                    {
-                                        'sort': { date: -1 },
-                                        'limit': 1,
-                                        'projection': { '_id': 0, 'date': 1, 'state': 1 }
-                                    }
-                                ).toArray() as { date: Date, state: string }[];
-                            }
-
-                            if (this.lastChangeRecord && record.date.getTime() <= this.lastChangeRecord.date.getTime()) {
-                                logger.warn("Cannot insert record with date older than last record date", this.lastChangeRecord.date, "in 'change' aggregation, while inserting", record);
-                                return true; // log error, but continue processing other aggregations
-                            }
-
-                            if (this.lastChangeRecord && this.lastChangeRecord.state === record.state) {
-                                // same value, ignore
+                                mongoDB.checkIndex(indexName, collectionStore);
+                                try {
+                                    await collectionStore.insertOne(record);
+                                } catch (err) {
+                                    logger.error("Error while storing in Mongo:", err);
+                                    logger.error(err.stack);
+                                }
                                 return true;
                             }
+                            case "change": {
+                                var collectionStore = db.collection(collection + " by " + aggregate);
+                                const indexName = "Index for " + collection + " by " + aggregate;
+
+                                mongoDB.checkIndex(indexName, collectionStore);
+
+                                // check last value
+                                if (this.lastChangeRecord === undefined) {
+                                    [this.lastChangeRecord] = await collectionStore.find(
+                                        {},
+                                        {
+                                            'sort': { date: -1 },
+                                            'limit': 1,
+                                            'projection': { '_id': 0, 'date': 1, 'state': 1 }
+                                        }
+                                    ).toArray() as { date: Date, state: string }[];
+                                }
+
+                                if (this.lastChangeRecord && record.date.getTime() <= this.lastChangeRecord.date.getTime()) {
+                                    logger.warn("Cannot insert record with date older than last record date", this.lastChangeRecord.date, "in 'change' aggregation, while inserting", record);
+                                    return true; // log error, but continue processing other aggregations
+                                }
+
+                                if (this.lastChangeRecord && this.lastChangeRecord.state === record.state) {
+                                    // same value, ignore
+                                    return true;
+                                }
 
 
-                            // otherwise, just insert the new value
-                            await collectionStore.insertOne(record);
-                            this.lastChangeRecord = record;
-                            return true;
-                        } else {
-                            let d = new Date(record.date);
-                            switch (aggregate) {
-                                case "year":
-                                    d.setMonth(0);
-                                case "month":
-                                    d.setDate(1);
-                                case "day":
-                                    d.setHours(0);
-                                case "hour":
-                                    d.setMinutes(0);
-                                case "minute":
-                                    d.setSeconds(0);
-                                    d.setMilliseconds(0);
-                                    break;
-                                case "week":
-                                    let day = d.getDay(); // Sunday - Saturday : 0 - 6
-                                    if (day == 0) day = 7;
-                                    d.setDate(d.getDate() - day + 1); //Monday of the week
-                                    d.setHours(0);
-                                    d.setMinutes(0);
-                                    d.setSeconds(0);
-                                    d.setMilliseconds(0);
-                                    break;
-                                default:
-                                    let n: never = aggregate;
+                                // otherwise, just insert the new value
+                                await collectionStore.insertOne(record);
+                                this.lastChangeRecord = record;
+                                return true;
                             }
-                            var collectionStore = db.collection(collection + " by " + aggregate);
-                            const indexName = "Index for " + collection + " by " + aggregate;
+                            default: {
+                                let d = new Date(record.date);
+                                switch (aggregate) {
+                                    case "year":
+                                        d.setMonth(0);
+                                    case "month":
+                                        d.setDate(1);
+                                    case "day":
+                                        d.setHours(0);
+                                    case "hour":
+                                        d.setMinutes(0);
+                                    case "minute":
+                                        d.setSeconds(0);
+                                        d.setMilliseconds(0);
+                                        break;
+                                    case "week":
+                                        let day = d.getDay(); // Sunday - Saturday : 0 - 6
+                                        if (day == 0) day = 7;
+                                        d.setDate(d.getDate() - day + 1); //Monday of the week
+                                        d.setHours(0);
+                                        d.setMinutes(0);
+                                        d.setSeconds(0);
+                                        d.setMilliseconds(0);
+                                        break;
+                                    default:
+                                        let n: never = aggregate;
+                                }
+                                var collectionStore = db.collection(collection + " by " + aggregate);
+                                const indexName = "Index for " + collection + " by " + aggregate;
 
-                            mongoDB.checkIndex(indexName, collectionStore);
+                                mongoDB.checkIndex(indexName, collectionStore);
 
-                            try {
-                                await collectionStore.updateOne(
-                                    {
-                                        date: d
-                                    },
-                                    {
-                                        $inc: { sum: parseFloat(record.state), count: 1 }
-                                    },
-                                    {
-                                        upsert: true
-                                    }
-                                );
-                            } catch (err) {
-                                logger.error("Error while storing in Mongo:", err);
+                                try {
+                                    await collectionStore.updateOne(
+                                        {
+                                            date: d
+                                        },
+                                        {
+                                            $inc: { sum: parseFloat(record.state), count: 1 }
+                                        },
+                                        {
+                                            upsert: true
+                                        }
+                                    );
+                                } catch (err) {
+                                    logger.error("Error while storing in Mongo:", err);
+                                }
+                                return true;
                             }
-                            return true;
                         }
                     },
                     (err) => {
