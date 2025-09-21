@@ -804,7 +804,7 @@ export class mongoDB extends persistence {
         const ret = await collectionStore.insertMany(records);
     }
 
-    async dumpDatasetFromDB(aggregate: Extract<AggregationType, "none" | "change"> | Exclude<AggregationType, "none" | "change">): Promise<{ date: Date, state: string }[] | { date: Date, sum: number, count: number }[]> {
+    async doDumpDatasetFromDB(aggregate: AggregationType): Promise<{ date: Date, state: string }[] | { date: Date, sum: number, count: number }[]> {
         let collectionName = this.id;
         if (aggregate !== 'none') {
             collectionName += ' by ' + aggregate;

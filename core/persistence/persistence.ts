@@ -176,8 +176,19 @@ export abstract class persistence {
     abstract doCleanOldData(): Promise<void>;
     abstract doCleanOldData(callback: (err: Error) => void): void;
 
-    abstract loadDatasetToDB(aggregate: AggregationType, records: { date: Date, state: string }[] | { date: Date, sum: number, count: number }[]): Promise<void>;
-    abstract dumpDatasetFromDB(aggregate: AggregationType): Promise<{ date: Date, state: string }[] | { date: Date, sum: number, count: number }[]>;
+    loadDatasetToDB(aggregate: Exclude<AggregationType, 'change' | 'none'>, records: { date: Date, sum: number, count: number }[]): Promise<void>;
+    loadDatasetToDB(aggregate: Extract<AggregationType, 'change' | 'none'>, records: { date: Date, state: string }[]): Promise<void>;
+    loadDatasetToDB(aggregate: AggregationType, records: { date: Date, state: string }[] | { date: Date, sum: number, count: number }[]): Promise<void> {
+        return this.doLoadDatasetToDB(aggregate, records);
+    }
+    abstract doLoadDatasetToDB(aggregate: AggregationType, records: { date: Date, state: string }[] | { date: Date, sum: number, count: number }[]): Promise<void>;
+
+    dumpDatasetFromDB(aggregate: Exclude<AggregationType, 'change' | 'none'>): Promise<{ date: Date, sum: number, count: number }[]>;
+    dumpDatasetFromDB(aggregate: Extract<AggregationType, 'change' | 'none'>): Promise<{ date: Date, state: string }[]>;
+    dumpDatasetFromDB(aggregate: AggregationType): Promise<{ date: Date, state: string }[] | { date: Date, sum: number, count: number }[]> {
+        return this.doDumpDatasetFromDB(aggregate);
+    }
+    abstract doDumpDatasetFromDB(aggregate: AggregationType): Promise<{ date: Date, state: string }[] | { date: Date, sum: number, count: number }[]>;
 
 
     static async deviceIdsFromDB(): Promise<string[]> {
@@ -380,7 +391,7 @@ export abstract class persistence {
                             }[] = states as any;
                             states2.forEach(s => { s.date = new Date(s.date) });
 
-                            await p.loadDatasetToDB(aggregate, states2);
+                            await p.doLoadDatasetToDB(aggregate, states2);
                         }
 
                         await p.release();
