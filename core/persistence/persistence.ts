@@ -207,9 +207,9 @@ export abstract class persistence {
         // dump backup states
         writeSync(file, `  "Backup states": [\n`);
         let i = 0;
-        console.log("Dumping Backup states for devices:", devices);
+        //console.log("Dumping Backup states for devices:", devices);
         for (const deviceId of devices) {
-            console.log(" Dumping Backup state for device:", deviceId);
+            //console.log(" Dumping Backup state for device:", deviceId);
             i++;
             // create an instance of the persistence subclass
             const p: persistence = Reflect.construct(this.prototype.constructor, [deviceId]);
@@ -218,7 +218,7 @@ export abstract class persistence {
 
             const result = await p.restoreStateFromDB();
             if (!result) continue;
-            console.log(result)
+            //console.log(result)
             writeSync(file, "    {\n" + JSON.stringify({
                 id: result.id,
                 state: result.state,
@@ -236,7 +236,7 @@ export abstract class persistence {
         // dump all devices
         let wroteDeviceId = false; // do not write empty "deviceid" {} if no data
         let wroteDeviceBlock = false; // to manage commas between device blocks
-        console.log("Dumping datasets for devices:", devices);
+        //console.log("Dumping datasets for devices:", devices);
         for (const deviceId of devices) {
 
             // create an instance of the persistence subclass
