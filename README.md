@@ -197,7 +197,7 @@ Persistence
 Device states can be persisted using MongoDB. By default, all states that are numbers are persisted.
 Persistence can be specified through the `persistence` attribute:
 
-`persistence: "<persistence-module>:<id>:0:<aggregation mode>:<keep>"`
+`persistence: "<persistence-module>:<id>:<aggregation mode>:<keep>"`
 * `<persistence-module>` is `mongo` by default.
 * `<id>` specifies the id of the device to be persisted. If not specified, then the path of the device is used. Specifying the id is useful if you want to be sure to keep the persisted states even if you change the path of the device.
 * `<aggregation mode>`: one of `raw` or  `aggregate`.
