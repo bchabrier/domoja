@@ -286,7 +286,7 @@ export class mongoDB extends persistence {
             mongoDB.getMongoClient((err, client) => {
                 var db = client.db();
                 var collection = this.id;
-                if (aggregate != "none" && aggregate != "change") {
+                if (aggregate != "none") {
                     collection += " by " + aggregate;
                 }
                 let collectionStore = db.collection(collection);
@@ -307,13 +307,9 @@ export class mongoDB extends persistence {
                     if (err) {
                         callback(err, null);
                     } else {
-                        const ret = aggregate === "none"
+                        const ret = aggregate === "none" || aggregate === "change"
                             ? results.map(r => { return { date: r.date, value: r.state }; })
-                            : aggregate === "change"
-                                ? results.map(r => { return { date: r.date, value: r.state }; }).filter(
-                                    (elt, i, tab) => i === 0 || i === tab.length - 1 ||
-                                        tab[i].value !== tab[i - 1].value || tab[i].value != tab[i + 1].value)
-                                : results.map(r => { return { date: r.date, value: (r.sum as number) / (r.count as number) }; });
+                            : results.map(r => { return { date: r.date, value: (r.sum as number) / (r.count as number) }; });
                         callback(null, ret);
                     }
                 });
@@ -792,7 +788,7 @@ export class mongoDB extends persistence {
         }
     }
 
-    async loadDatasetToDB(aggregate: AggregationType, records: { date: Date, state: string }[] | { date: Date, sum: number, count: number }[]): Promise<void> {
+    async doLoadDatasetToDB(aggregate: AggregationType, records: { date: Date, state: string }[] | { date: Date, sum: number, count: number }[]): Promise<void> {
         let collectionName = this.id;
         if (aggregate !== 'none') {
             collectionName += ' by ' + aggregate;
