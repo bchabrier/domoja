@@ -168,7 +168,7 @@ export abstract class GenericDevice implements DomoModule {
         let persistence_spec = initObject && initObject.persistence;
         if (persistence_spec) {
             let pspec = persistence_spec.split(":");
-            this.persistence = new mongodb.mongoDB(pspec[1], pspec[2], pspec[3], pspec[4]);
+            this.persistence = new mongodb.mongoDB(pspec[1], pspec[3], pspec[4]);
             this.persistStates = true;
         } else {
             this.persistence = new mongodb.mongoDB(this.path);

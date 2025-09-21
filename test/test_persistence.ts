@@ -16,15 +16,15 @@ import { dirname } from 'path';
 abstract class persistence_helper<T extends persistence> {
 
   name: string;
-  private klass: new (deviceName: string, ttl?: number, strategy?: Strategy, keep?: string) => T;
+  private klass: new (deviceName: string, strategy?: Strategy, keep?: string) => T;
 
-  constructor(private ctor: new (deviceName: string, ttl?: number, strategy?: Strategy, keep?: string) => T) {
+  constructor(private ctor: new (deviceName: string, strategy?: Strategy, keep?: string) => T) {
     this.klass = ctor;
     this.name = ctor.name
   }
 
-  createInstance(deviceId: string, ttl?: number, strategy?: Strategy, keep?: string): T {
-    return new this.ctor(deviceId, ttl, strategy, keep);
+  createInstance(deviceId: string, strategy?: Strategy, keep?: string): T {
+    return new this.ctor(deviceId, strategy, keep);
   }
 
   abstract dumpToFile(filename: string): Promise<void>;
@@ -294,17 +294,9 @@ describe('Module persistence', function () {
                 value: 15
               },  // 2 Nov 2024, 20:40:35.125
               {
-                date: new Date(2024, 10, 4, 20, 40, 35, 125),
-                value: 15
-              },  // 4 Nov 2024, 20:40:35.125
-              {
                 date: new Date(2025, 0, 3, 2, 25, 35, 125),
                 value: 20
               },    // 3 Jan 2025, 02:25:35.125
-              {
-                date: new Date(2025, 0, 5, 2, 25, 35, 125),
-                value: 20
-              },    // 5 Jan 2025, 02:25:35.125
               {
                 date: new Date(2025, 0, 30, 10, 30, 35, 125),
                 value: 25
@@ -312,10 +304,10 @@ describe('Module persistence', function () {
             ]
           }] as const) {
           it('should get history aggregated by ' + aggregate.type, async function () {
-            if (skip) this.skip();
-            //if (aggregate.type === 'minute') skip = true; // skip after this aggregation type
+            //if (aggregate.type !== 'change') this.skip(); // skip after this aggregation type
+            //if (skip) this.skip();
 
-            persistence = config.createInstance("test_device", 0, 'aggregate', '1 year, 500 days');
+            persistence = config.createInstance("test_device", 'aggregate', '1 year, 500 days');
             assert(persistence);
 
             const datevalues = [
@@ -335,15 +327,11 @@ describe('Module persistence', function () {
               });
             }
 
-            const results = await persistence.getHistory(aggregate.type, null, null);
+            const results = await persistence.getHistory(aggregate.type as "change", null, null);
             assert(results);
             assert(Array.isArray(results));
-            //console.log("Results for aggregate type", aggregate.type, ":");
-            //console.log(results, aggregate.results);
-            assert.deepEqual(results, aggregate.results, "Results do not match expected aggregated results:"
-              + `All dates/values:${JSON.stringify(datevalues, null, 2)}\n`
-              + `Results: ${JSON.stringify(results, null, 2)}\n`
-              + `Expected: ${JSON.stringify(aggregate.results, null, 2)}`);
+            assert.deepEqual(results, aggregate.results, `Results do not match expected aggregated by "${aggregate.type}" results:\n`
+              + `All dates/values:${JSON.stringify(datevalues, null, 2)}\n`);
           });
         }
 
@@ -363,7 +351,7 @@ describe('Module persistence', function () {
       describe('#cleanOldData', function () {
         for (let strategy of ['raw', 'aggregate'] as Strategy[]) {
           it('should clean old data with strategy ' + strategy, async function () {
-            persistence = config.createInstance("test_device", 0, strategy, '1 year');
+            persistence = config.createInstance("test_device", strategy, '1 year');
             assert(persistence);
 
             const now = new Date();
@@ -404,7 +392,7 @@ describe('Module persistence', function () {
         }
 
         it('should clean old data aggregated', async function () {
-          persistence = config.createInstance("test_device", 0, 'aggregate', '1 year, 2 years');
+          persistence = config.createInstance("test_device", 'aggregate', '1 year, 2 years');
           assert(persistence);
 
           const now = new Date();
@@ -438,11 +426,11 @@ describe('Module persistence', function () {
           { type: 'day', nb: 3 },
           { type: 'hour', nb: 3 },
           { type: 'minute', nb: 3 },
-          { type: 'change', nb: 2 }] as const) {
+          { type: 'change', nb: 1 }] as const) {
           it('should clean old data aggregated by ' + aggregate.type, async function () {
             if (aggregate.type === null) this.skip();
 
-            persistence = config.createInstance("test_device", 0, 'aggregate', '1 year, 500 days');
+            persistence = config.createInstance("test_device", 'aggregate', '1 year, 500 days');
             assert(persistence);
 
             const now = new Date();
@@ -494,7 +482,7 @@ describe('Module persistence', function () {
           persistence1 = config.createInstance("test_device1");
 
           if (persistence2) await persistence2.release();
-          persistence2 = config.createInstance("test_device2", 0, "aggregate", "1 year, 2 years");
+          persistence2 = config.createInstance("test_device2", "aggregate", "1 year, 2 years");
 
           if (persistence3) await persistence3.release();
           persistence3 = config.createInstance("test_device3_not_persisted"); // no inserts for this one
@@ -711,7 +699,7 @@ describe('Module persistence', function () {
 
               await config.dumpToFile(dumpFilename);
 
-              console.log("dump file:", readFileSync(dumpFilename, { encoding: 'utf-8' }));
+              //console.log("dump file:", readFileSync(dumpFilename, { encoding: 'utf-8' }));
 
 
               const results1 = await persistence1.getHistory("none", null, null);

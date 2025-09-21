@@ -57,7 +57,6 @@ export type AggregationType = (typeof ALL_AGGREGATION_TYPES)[number];
  */
 export abstract class persistence {
     id: string;
-    ttl: number;
     strategy: Strategy;
     keep: Duration;
     keepString: string;
@@ -66,10 +65,9 @@ export abstract class persistence {
     cleanJob: NodeJS.Timeout;
     cleanJob5: NodeJS.Timeout;
 
-    constructor(id: string, ttl?: number, strategy?: Strategy, keep?: string) {
+    constructor(id: string, strategy?: Strategy, keep?: string) {
         this.strategy = strategy || "raw";
         this.id = id;
-        this.ttl = ttl > 0 ? ttl : 1 * 60; // 1h by default
 
         if (keep) {
             if (this.strategy === 'aggregate') {
@@ -214,7 +212,7 @@ export abstract class persistence {
             // create an instance of the persistence subclass
             const p: persistence = Reflect.construct(this.prototype.constructor, [deviceId]);
 
-            console.log(p);
+            //console.log(p);
 
             const result = await p.restoreStateFromDB();
             if (!result) continue;

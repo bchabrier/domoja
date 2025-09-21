@@ -20,8 +20,8 @@ export class mongoDB extends persistence {
     static indexChecks: { [indexName: string]: boolean; } = {};
     private lastChangeRecord: { date: Date, state: string | Date } = undefined; // last value saved in DB, to avoid useless updates in "change" data set
 
-    constructor(id: string, ttl?: number, strategy?: Strategy, keep?: string) {
-        super(id, ttl, strategy, keep);
+    constructor(id: string, strategy?: Strategy, keep?: string) {
+        super(id, strategy, keep);
 
         if (mongoDB.nbInstances === 0) mongoDB.statsJob = setInterval(() => {
             mongoDB.getMongoClient((err, client) => {
@@ -129,7 +129,7 @@ export class mongoDB extends persistence {
                                 logger.warn("Cannot insert record with date older than last record date", this.lastChangeRecord.date, "in 'change' aggregation, while inserting", record);
                                 return true; // log error, but continue processing other aggregations
                             }
-                            
+
                             if (this.lastChangeRecord && this.lastChangeRecord.state === record.state) {
                                 // same value, ignore
                                 return true;
