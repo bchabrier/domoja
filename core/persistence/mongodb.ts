@@ -18,6 +18,7 @@ export class mongoDB extends persistence {
     static statsJob: NodeJS.Timeout;
     static nbInstances = 0;
     static indexChecks: { [indexName: string]: boolean; } = {};
+    private lastChangeRecord: { date: Date, state: string | Date } = undefined; // last value saved in DB, to avoid useless updates in "change" data set
 
     constructor(id: string, ttl?: number, strategy?: Strategy, keep?: string) {
         super(id, ttl, strategy, keep);
@@ -112,36 +113,32 @@ export class mongoDB extends persistence {
 
                             mongoDB.checkIndex(indexName, collectionStore);
 
-                            // check last 2 values
-                            let beforeLastValue, lastValue: { date: Date, state: string };
-                            if (beforeLastValue === undefined && lastValue === undefined) {
-                                [beforeLastValue, lastValue] = await collectionStore.find(
+                            // check last value
+                            if (this.lastChangeRecord === undefined) {
+                                [this.lastChangeRecord] = await collectionStore.find(
                                     {},
                                     {
                                         'sort': { date: -1 },
-                                        'limit': 2,
+                                        'limit': 1,
                                         'projection': { '_id': 0, 'date': 1, 'state': 1 }
                                     }
                                 ).toArray() as { date: Date, state: string }[];
                             }
 
-                            if (lastValue && record.date.getTime() <= lastValue.date.getTime()) {
-                                logger.warn("Cannot insert record with date older than last record date", lastValue.date, "in 'change' aggregation, while inserting", record);
+                            if (this.lastChangeRecord && record.date.getTime() <= this.lastChangeRecord.date.getTime()) {
+                                logger.warn("Cannot insert record with date older than last record date", this.lastChangeRecord.date, "in 'change' aggregation, while inserting", record);
                                 return true; // log error, but continue processing other aggregations
                             }
-
-                            if (lastValue && beforeLastValue && lastValue.state === record.state && lastValue.state === beforeLastValue.state) {
-                                // replace lastValue, so that we ignore the middle record
-                                await collectionStore.updateOne(
-                                    { date: lastValue.date },
-                                    { $set: { state: record.state, date: record.date } }
-                                );
-                                lastValue.date = record.date;
+                            
+                            if (this.lastChangeRecord && this.lastChangeRecord.state === record.state) {
+                                // same value, ignore
                                 return true;
                             }
 
+
                             // otherwise, just insert the new value
                             await collectionStore.insertOne(record);
+                            this.lastChangeRecord = record;
                             return true;
                         } else {
                             let d = new Date(record.date);
