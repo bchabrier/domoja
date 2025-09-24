@@ -60,8 +60,28 @@ export abstract class persistence {
     strategy: Strategy;
     keep: Duration;
     keepString: string;
-    keepAggregation: Duration;
-    keepAggregationString: string;
+    keepAggregation: {
+        [key in Exclude<AggregationType, 'none'>]: Duration
+    } = {
+            year: undefined,
+            month: undefined,
+            week: undefined,
+            day: undefined,
+            hour: undefined,
+            minute: undefined,
+            change: undefined
+        };
+    keepAggregationString: {
+        [key in Exclude<AggregationType, 'none'>]: string
+    } = {
+            year: undefined,
+            month: undefined,
+            week: undefined,
+            day: undefined,
+            hour: undefined,
+            minute: undefined,
+            change: undefined
+        };
     cleanJob: NodeJS.Timeout;
     cleanJob5: NodeJS.Timeout;
 
@@ -74,13 +94,42 @@ export abstract class persistence {
                 const keepTab = keep.split(',');
                 this.keepString = keepTab[0];
                 this.keep = this.keepString && parseDuration(this.keepString);
-                this.keepAggregationString = keepTab[1];
-                this.keepAggregation = this.keepAggregationString && parseDuration(this.keepAggregationString);
+                const keepAggregationString = keepTab[1];
+                const keepAggregation = keepAggregationString && parseDuration(keepAggregationString);
+
+                this.keepAggregation = {
+                    year: keepAggregation,
+                    month: keepAggregation,
+                    week: keepAggregation,
+                    day: keepAggregation,
+                    hour: keepAggregation,
+                    minute: keepAggregation,
+                    change: keepAggregation
+                };
+                this.keepAggregationString = {
+                    year: keepAggregationString,
+                    month: keepAggregationString,
+                    week: keepAggregationString,
+                    day: keepAggregationString,
+                    hour: keepAggregationString,
+                    minute: keepAggregationString,
+                    change: keepAggregationString
+                };
+
+
+                /*
+                const json = keepTab[2] || "{\"raw\":\"1 month\", \"month\":\"5 years\"}";
+
+                try {
+                    const obj = JSON.parse(json);
+                    console.log("persistence.constructor: keep obj:", obj);
+                } catch (err) {
+                    console.log(`persistence.constructor: parse error while parsing json`, json, ":", err);
+                }
+*/
             } else {
                 this.keepString = keep;
                 this.keep = parseDuration(this.keepString);
-                this.keepAggregationString = undefined;
-                this.keepAggregation = undefined;
             }
         }
 
@@ -89,9 +138,33 @@ export abstract class persistence {
                 this.keepString = '1 year';
                 this.keep = Duration.fromObject({ year: 1 }); // 1 year by default
             }
-            if (this.keepAggregation === undefined) {
-                this.keepAggregationString = '5 years';
-                this.keepAggregation = Duration.fromObject({ year: 5 }); // 5 years by default
+            if (this.keepAggregation.year === undefined) {
+                this.keepAggregationString.year = '5 years';
+                this.keepAggregation.year = Duration.fromObject({ year: 5 }); // 5 years by default
+            }
+            if (this.keepAggregation.month === undefined) {
+                this.keepAggregationString.month = '5 years';
+                this.keepAggregation.month = Duration.fromObject({ year: 5 }); // 5 years by default
+            }
+            if (this.keepAggregation.week === undefined) {
+                this.keepAggregationString.week = '5 years';
+                this.keepAggregation.week = Duration.fromObject({ year: 5 }); // 5 years by default
+            }
+            if (this.keepAggregation.day === undefined) {
+                this.keepAggregationString.day = '5 years';
+                this.keepAggregation.day = Duration.fromObject({ year: 5 }); // 5 years by default
+            }
+            if (this.keepAggregation.hour === undefined) {
+                this.keepAggregationString.hour = '5 years';
+                this.keepAggregation.hour = Duration.fromObject({ year: 5 }); // 5 years by default
+            }
+            if (this.keepAggregation.minute === undefined) {
+                this.keepAggregationString.minute = '5 years';
+                this.keepAggregation.minute = Duration.fromObject({ year: 5 }); // 5 years by default
+            }
+            if (this.keepAggregation.change === undefined) {
+                this.keepAggregationString.change = '5 years';
+                this.keepAggregation.change = Duration.fromObject({ year: 5 }); // 5 years by default
             }
         }
 

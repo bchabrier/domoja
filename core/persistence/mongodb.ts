@@ -385,26 +385,23 @@ export class mongoDB extends persistence {
 
                 }
                 if (this.strategy === 'aggregate' && this.keepAggregation) {
-                    const now = new Date();
-                    const limit = new Date(
-                        now.getFullYear() - this.keepAggregation.years,
-                        now.getMonth() - this.keepAggregation.months,
-                        now.getDate() - this.keepAggregation.days,
-                        now.getHours() - this.keepAggregation.hours,
-                        now.getMinutes() - this.keepAggregation.minutes,
-                        now.getSeconds() - this.keepAggregation.seconds,
-                        now.getMilliseconds() - this.keepAggregation.milliseconds
-                    );
+                            const now = new Date();
                     async.every(ALL_AGGREGATION_TYPES.values(),
                         (aggregate: AggregationType, cb) => {
                             if (aggregate == "none") { // handled with this.keep above
                                 cb(null, true);
                                 return;
                             }
-                            if (aggregate == "change") {
-                                cb(null, true);
-                                return;
-                            }
+                            const limit = new Date(
+                                now.getFullYear() - this.keepAggregation[aggregate].years,
+                                now.getMonth() - this.keepAggregation[aggregate].months,
+                                now.getDate() - this.keepAggregation[aggregate].days,
+                                now.getHours() - this.keepAggregation[aggregate].hours,
+                                now.getMinutes() - this.keepAggregation[aggregate].minutes,
+                                now.getSeconds() - this.keepAggregation[aggregate].seconds,
+                                now.getMilliseconds() - this.keepAggregation[aggregate].milliseconds
+                            );
+
                             const collectionName = collection + " by " + aggregate;
                             const collectionStore = db.collection(collectionName);
                             collectionStore.deleteMany(
@@ -413,7 +410,7 @@ export class mongoDB extends persistence {
                                 },
                                 (err, result) => {
                                     if (err) logger.error(`Could not remove old data from collection '${collectionName}'!`);
-                                    else logger.info(`Removed ${result.deletedCount} data older than ${limit} (${this.keepAggregationString.trim()}) from collection "${collectionName}".`);
+                                    else logger.info(`Removed ${result.deletedCount} data older than ${limit} (${this.keepAggregationString[aggregate].trim()}) from collection "${collectionName}".`);
                                     false && mongoDB.devRemoveDuplicates(collectionName, (err) => {
                                         if (err) logger.error(`Could not remove duplicates from aggregate collection '${collection}'!`, err);
                                         else logger.info(`Removed duplicates and recreated unique index for aggregate collection "${collection}".`);

@@ -426,7 +426,7 @@ describe('Module persistence', function () {
           { type: 'day', nb: 3 },
           { type: 'hour', nb: 3 },
           { type: 'minute', nb: 3 },
-          { type: 'change', nb: 1 }] as const) {
+          { type: 'change', nb: 0 }] as const) {
           it('should clean old data aggregated by ' + aggregate.type, async function () {
             if (aggregate.type === null) this.skip();
 
