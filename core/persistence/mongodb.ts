@@ -110,25 +110,32 @@ export class mongoDB extends persistence {
                 }
                 async.every(aggregates,
                     async (aggregate: AggregationType) => {
+                        // do not store if not needed
+                        if (aggregate === "none") {
+                            if (!this.keep || this.keep.toMillis() === 0) return true;
+                        } else {
+                            if (!this.keepAggregation[aggregate] || this.keepAggregation[aggregate].toMillis() === 0) return true;
+                        }
+
                         switch (aggregate) {
                             case "none": {
                                 var collectionStore = db.collection(collection);
                                 const indexName = "Index for " + collection;
 
-                                mongoDB.checkIndex(indexName, collectionStore);
                                 try {
                                     await collectionStore.insertOne(record);
                                 } catch (err) {
                                     logger.error("Error while storing in Mongo:", err);
                                     logger.error(err.stack);
                                 }
+
+                                mongoDB.checkIndex(indexName, collectionStore);
+
                                 return true;
                             }
                             case "change": {
                                 var collectionStore = db.collection(collection + " by " + aggregate);
                                 const indexName = "Index for " + collection + " by " + aggregate;
-
-                                mongoDB.checkIndex(indexName, collectionStore);
 
                                 // check last value
                                 if (this.lastChangeRecord === undefined) {
@@ -141,6 +148,8 @@ export class mongoDB extends persistence {
                                         }
                                     ).toArray() as { date: Date, state: string }[];
                                 }
+
+                                mongoDB.checkIndex(indexName, collectionStore); // checked after insert to ensure the collection exists
 
                                 if (this.lastChangeRecord && record.date.getTime() <= this.lastChangeRecord.date.getTime()) {
                                     logger.warn("Cannot insert record with date older than last record date", this.lastChangeRecord.date, "in 'change' aggregation, while inserting", record);
@@ -188,8 +197,6 @@ export class mongoDB extends persistence {
                                 var collectionStore = db.collection(collection + " by " + aggregate);
                                 const indexName = "Index for " + collection + " by " + aggregate;
 
-                                mongoDB.checkIndex(indexName, collectionStore);
-
                                 try {
                                     await collectionStore.updateOne(
                                         {
@@ -205,6 +212,9 @@ export class mongoDB extends persistence {
                                 } catch (err) {
                                     logger.error("Error while storing in Mongo:", err);
                                 }
+
+                                mongoDB.checkIndex(indexName, collectionStore); // checked after insert to ensure the collection exists
+
                                 return true;
                             }
                         }
@@ -385,7 +395,7 @@ export class mongoDB extends persistence {
 
                 }
                 if (this.strategy === 'aggregate' && this.keepAggregation) {
-                            const now = new Date();
+                    const now = new Date();
                     async.every(ALL_AGGREGATION_TYPES.values(),
                         (aggregate: AggregationType, cb) => {
                             if (aggregate == "none") { // handled with this.keep above
