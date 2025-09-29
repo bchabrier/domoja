@@ -222,14 +222,14 @@ export class DevicesService {
   /**
    * Get the history of a device
    * @param name path of the device
-   * @param aggregate type of aggregation: none|minute|hour|day|week|month|year
+   * @param dataSet type of aggregation: none|minute|hour|day|week|month|year
    * @param from from date, in YYYY-MM-DD or JSON formats, included
    * @param to from date, in YYYY-MM-DD or JSON formats, included
    */
   @Path(':id/history')
   @GET
   @PreProcessor(deviceIdValidator)
-  getHistory(@PathParam('id') name: string, @QueryParam('aggregate') aggregate: "none" | "minute" | "hour" | "day" | "month" | "year", @QueryParam('from') from: string, @QueryParam('to') to: string) {
+  getHistory(@PathParam('id') name: string, @QueryParam('aggregate') dataSet: "change" | "raw" | "minute" | "hour" | "day" | "month" | "year", @QueryParam('from') from: string, @QueryParam('to') to: string) {
     let device = core.getDevices().find(device => device.path == name);
     return new Promise<{}>((resolve, reject) => {
       let fromDate: Date;
@@ -248,7 +248,7 @@ export class DevicesService {
       } else {
         toDate = new Date(to);
       }
-      device.persistence.getHistory(aggregate, fromDate, toDate, (err, results) => {
+      device.persistence.getHistory(dataSet, fromDate, toDate, (err, results) => {
         if (err) {
           logger.error(err);
           reject("KO");

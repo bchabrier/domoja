@@ -5,7 +5,7 @@ info:
     license:
         name: GPL-3.0
     title: domoja
-    version: 1.4.3
+    version: 1.4.5
 paths:
     /app:
         get:
@@ -141,7 +141,8 @@ paths:
                     required: true
                     type: string
                     enum:
-                        - none
+                        - change
+                        - raw
                         - minute
                         - hour
                         - day

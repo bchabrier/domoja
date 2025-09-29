@@ -164,17 +164,17 @@ export abstract class GenericDevice implements DomoModule {
             }
         }
 
-        // "mongo:temperature_piscine:1200:aggregate:120000"
+        // "mongo:temperature_piscine:{"raw":"1 month"}"
         let persistence_spec = initObject && initObject.persistence;
         if (persistence_spec) {
             let pspec = persistence_spec.split(":");
-            const keepSpec = pspec.length > 3
-                ? persistence_spec.replace(/^([^:]*:){3}/, "") // remove first 3 fields, as the fourth one may contain ':'
+            const keepSpec = pspec.length > 2
+                ? persistence_spec.replace(/^([^:]*:){2}/, "") // remove first 2 fields, as the third one may contain ':'
                 : undefined;
-            this.persistence = new mongodb.mongoDB(pspec[1], pspec[2], keepSpec);
+            this.persistence = new mongodb.mongoDB(pspec[1], keepSpec);
             this.persistStates = true;
         } else {
-            this.persistence = new mongodb.mongoDB(this.path);
+            this.persistence = new mongodb.mongoDB(this.path, '{"raw":"0 minute"}');
         }
 
         this.source.addDevice(this);

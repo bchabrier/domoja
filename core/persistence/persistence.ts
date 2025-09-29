@@ -18,20 +18,13 @@ export function setDemoMode(mode: boolean) {
     demoMode = mode;
 }
 
-export type Strategy = "change" | "raw" | "aggregate";
-
-export const ALL_AGGREGATION_TYPES = ["year", "month", "week", "day", "hour", "minute", "change", "none"] as const;
-export type AggregationType = (typeof ALL_AGGREGATION_TYPES)[number];
+export const ALL_DATA_SETS = ["year", "month", "week", "day", "hour", "minute", "change", "raw"] as const;
+export type DataSet = (typeof ALL_DATA_SETS)[number];
 
 /*
  * Abstract class for persistence
  * 
- * The strategy defines how data is stored and aggregated:
- * - raw: all data is stored as is
- * - change: only changes are stored (no duplicate consecutive values)
- * - aggregate: data is aggregated over time to reduce storage space (only for numerical values)
- * 
- * For this, we keep several data sets:
+ * We keep several data sets:
  *  - raw: all data is stored as is for each date
  *  - change: only changes are stored (duplicate consecutive values are ignored)
  *  - minute: one value per minute (average, we keep the sum and count of values to compute the average)
@@ -51,17 +44,13 @@ export type AggregationType = (typeof ALL_AGGREGATION_TYPES)[number];
  *  - month: default 5 years
  *  - year: default 5 years
  * 
- * The keep parameter can be set to define the retention period for raw data (and change data if strategy is aggregate):
- * - for strategy "raw": keep is a single duration (e.g. "1 year", "6 months", "30 days", "12 hours", "60 minutes")
- * - for strategy "aggregate": keep is two durations separated by a comma (e.g. "1 year,5 years", "6 months,2 years", "30 days,1 year", "12 hours,6 months", "60 minutes,3 months")
+ * The keep parameter can be set to define the retention period for the different data sets, as a JSON string:
+ * '{"raw": "1 month", "change": "1 year"}'
  */
 export abstract class persistence {
     id: string;
-    strategy: Strategy;
-    keep: Duration;
-    keepString: string;
-    keepAggregation: {
-        [key in Exclude<AggregationType, 'none'>]: Duration
+    keep: {
+        [key in DataSet]: Duration
     } = {
             year: undefined,
             month: undefined,
@@ -69,10 +58,11 @@ export abstract class persistence {
             day: undefined,
             hour: undefined,
             minute: undefined,
-            change: undefined
+            change: undefined,
+            raw: undefined
         };
-    keepAggregationString: {
-        [key in Exclude<AggregationType, 'none'>]: string
+    keepString: {
+        [key in DataSet]: string
     } = {
             year: undefined,
             month: undefined,
@@ -80,151 +70,59 @@ export abstract class persistence {
             day: undefined,
             hour: undefined,
             minute: undefined,
-            change: undefined
+            change: undefined,
+            raw: undefined
         };
     cleanJob: NodeJS.Timeout;
     cleanJob5: NodeJS.Timeout;
 
-    constructor(id: string, strategy?: Strategy, keep?: string) {
-        this.strategy = strategy || "change";
+    constructor(id: string, keepString?: string) {
         this.id = id;
 
-        if (keep) {
-            if (this.strategy === 'aggregate') {
+        if (this.keep) {
+            let json: { [key in DataSet]: string } = null;
+            try {
+                json = JSON.parse(keepString);
+                logger.debug("keep string converted to:", json);
+            } catch (err) {
+                logger.warn(`Error in ${id}' persistence definition "${keepString}": parse error while parsing json string`, keepString, ":", err);
+            }
 
-                if (keep.trimStart().startsWith('{')) {
-                    const jsonString = keep || "{\"raw\":\"1 month\", \"month\":\"5 years\"}";
+            if (!json || typeof json !== 'object') {
+                return
+            }
 
-                    let json: { [key in Exclude<AggregationType, "none"> | "raw"]: string } = null;
-                    try {
-                        json = JSON.parse(jsonString);
-                        logger.debug("keep string converted to:", json);
-                    } catch (err) {
-                        logger.warn(`Parse error while parsing json string`, jsonString, ":", err);
-                    }
-
-                    if (!json || typeof json !== 'object') {
-                        return
-                    }
-
-                    for (const k of Object.keys(json)) {
-                        const key = k as Exclude<AggregationType, "none"> | "raw";
-                        if (key === 'raw') {
-                            this.keepString = json['raw'];
-                            this.keep = parseDuration(this.keepString);
-                        } else if (ALL_AGGREGATION_TYPES.includes(key as AggregationType)) {
-                            const keepAggregationString = json[key];
-                            const keepAggregation = parseDuration(keepAggregationString);
-                            this.keepAggregation[key] = keepAggregation;
-                            this.keepAggregationString[key] = keepAggregationString;
-                        } else {
-                            logger.warn(`Unknown key "${key}" in keep json string, ignoring`);
-                        }
-                    }
-
-                    // ensure all keys are present, set to higher value if missing
-                    let previousDurationString = '5 years';
-                    let previousDuration = parseDuration(previousDurationString);
-                    for (const k of ['year', 'month', 'week', 'day', 'hour', 'minute', 'raw', 'change'] as (Exclude<AggregationType, "none"> | "raw")[]) {
-                        switch (k) {
-                            case 'year':
-                            case 'month':
-                            case 'week':
-                            case 'day':
-                            case 'hour':
-                            case 'minute':
-                            case 'change':
-                                if (this.keepAggregation[k] === undefined) {
-                                    this.keepAggregationString[k] = previousDurationString;
-                                    this.keepAggregation[k] = previousDuration;
-                                }
-                                previousDuration = this.keepAggregation[k];
-                                previousDurationString = this.keepAggregationString[k];
-                                break;
-                            case 'raw':
-                                if (this.keep === undefined) {
-                                    this.keepString = '1 month';
-                                    this.keep = parseDuration(this.keepString);
-                                }
-                                previousDuration = this.keep;
-                                previousDurationString = this.keepString;
-                                break;
-                            default:
-                                let _exhaustiveCheck: never = k;
-                                logger.error(`Internal error: unknown key "${_exhaustiveCheck}" in keep json string, ignoring`);
-                                break;
-                        }
-
-                    }
-
-                    logger.debug("Final keep and keepAggregation:", this.keepString, this.keepAggregationString);
-
-
+            for (const k of Object.keys(json)) {
+                const key = k as DataSet;
+                if (ALL_DATA_SETS.includes(key as DataSet)) {
+                    const keepAggregationString = json[key];
+                    const keepAggregation = parseDuration(keepAggregationString);
+                    this.keep[key] = keepAggregation;
+                    this.keepString[key] = keepAggregationString;
                 } else {
-                    const keepTab = keep.split(',');
-                    this.keepString = keepTab[0];
-                    this.keep = this.keepString && parseDuration(this.keepString);
-                    const keepAggregationString = keepTab[1];
-                    const keepAggregation = keepAggregationString && parseDuration(keepAggregationString);
-
-                    Object.keys(this.keepAggregation).forEach(key => {
-                        const keyTyped = key as Exclude<AggregationType, 'none'>;
-                        this.keepAggregationString[keyTyped] = keepAggregationString;
-                        this.keepAggregation[keyTyped] = keepAggregation;
-                    });
+                    logger.warn(`Error in ${id}' persistence definition "${keepString}": Unknown key "${key}" in keep json string, ignoring. Supported keys are:`, ALL_DATA_SETS);
                 }
-
-            } else {
-                this.keepString = keep;
-                this.keep = parseDuration(this.keepString);
             }
+
+            // ensure at least one key is present
+            if (ALL_DATA_SETS.every(k => this.keep[k] === undefined)) {
+                logger.warn(`Error in ${id}' persistence definition "${keepString}": at least one of ${ALL_DATA_SETS} should be defined!`);
+            }
+
+            logger.debug("Final keep and keepAggregation:", this.keepString);
+
+
+            this.cleanJob = setInterval(() => {
+                this.cleanOldData((err) => {
+                    if (err) logger.warn('Could not clean history of "%s":', this.id, err);
+                });
+            }, 24 * 60 * 60 * 1000).unref();
+            this.cleanJob5 = setTimeout(() => {
+                this.cleanOldData((err) => {
+                    if (err) logger.warn('Could not clean history of "%s":', this.id, err);
+                });
+            }, 5 * 60 * 1000).unref(); // run once after 5 minutes, don't block event loop
         }
-
-        if (strategy) {
-            if (this.keep === undefined) {
-                this.keepString = '1 year';
-                this.keep = Duration.fromObject({ year: 1 }); // 1 year by default
-            }
-            if (this.keepAggregation.year === undefined) {
-                this.keepAggregationString.year = '5 years';
-                this.keepAggregation.year = Duration.fromObject({ year: 5 }); // 5 years by default
-            }
-            if (this.keepAggregation.month === undefined) {
-                this.keepAggregationString.month = '5 years';
-                this.keepAggregation.month = Duration.fromObject({ year: 5 }); // 5 years by default
-            }
-            if (this.keepAggregation.week === undefined) {
-                this.keepAggregationString.week = '5 years';
-                this.keepAggregation.week = Duration.fromObject({ year: 5 }); // 5 years by default
-            }
-            if (this.keepAggregation.day === undefined) {
-                this.keepAggregationString.day = '5 years';
-                this.keepAggregation.day = Duration.fromObject({ year: 5 }); // 5 years by default
-            }
-            if (this.keepAggregation.hour === undefined) {
-                this.keepAggregationString.hour = '5 years';
-                this.keepAggregation.hour = Duration.fromObject({ year: 5 }); // 5 years by default
-            }
-            if (this.keepAggregation.minute === undefined) {
-                this.keepAggregationString.minute = '5 years';
-                this.keepAggregation.minute = Duration.fromObject({ year: 5 }); // 5 years by default
-            }
-            if (this.keepAggregation.change === undefined) {
-                this.keepAggregationString.change = '5 years';
-                this.keepAggregation.change = Duration.fromObject({ year: 5 }); // 5 years by default
-            }
-        }
-
-        this.cleanJob = setInterval(() => {
-            this.cleanOldData((err) => {
-                if (err) logger.warn('Could not clean history of "%s":', this.id, err);
-            });
-        }, 24 * 60 * 60 * 1000).unref();
-        this.cleanJob5 = setTimeout(() => {
-            this.cleanOldData((err) => {
-                if (err) logger.warn('Could not clean history of "%s":', this.id, err);
-            });
-        }, 5 * 60 * 1000).unref(); // run once after 5 minutes, don't block event loop
     }
     insert(record: { date: Date, state: any }): Promise<Object>;
     insert(record: { date: Date, state: any }, callback: (err: Error, doc: Object) => void): void;
@@ -233,7 +131,7 @@ export abstract class persistence {
             if (callback) return callback(null, undefined);
             else return new Promise<Object>((resolve) => resolve(undefined));
         }
-        if (/^-?[0-9]+\.?[0-9]*$/.test(record.state) && (parseFloat(record.state) <= -10 || parseFloat(record.state) > 35)) {
+        if (/^ -? [0 - 9] +\.?[0 - 9] * $ /.test(record.state) && (parseFloat(record.state) <= -10 || parseFloat(record.state) > 35)) {
             logger.warn("Mauvaise température reçue, ignorée:", record);
             const err = new Error("Mauvaise temperature!");
             if (callback) return callback(err, null);
@@ -241,14 +139,14 @@ export abstract class persistence {
         }
         return this.doInsert(record, callback);
     }
-    getHistory(aggregate: AggregationType, from: Date | null, to: Date | null): Promise<any[]>;
-    getHistory(aggregate: AggregationType, from: Date | null, to: Date | null, callback: (err: Error, results: any[]) => void): void;
-    getHistory(aggregate: AggregationType, from: Date | null, to: Date | null, callback?: (err: Error, results: any[]) => void): void | Promise<any[]> {
+    getHistory(dataSet: DataSet, from: Date | null, to: Date | null): Promise<any[]>;
+    getHistory(dataSet: DataSet, from: Date | null, to: Date | null, callback: (err: Error, results: any[]) => void): void;
+    getHistory(dataSet: DataSet, from: Date | null, to: Date | null, callback?: (err: Error, results: any[]) => void): void | Promise<any[]> {
         if (demoMode) {
             if (callback) return callback(null, []);
             else return new Promise<any[]>((resolve) => resolve([]));
         }
-        return this.doGetHistory(aggregate, from, to, callback);
+        return this.doGetHistory(dataSet, from, to, callback);
     }
     restoreStateFromDB(): Promise<{ id: string, state: string | Date, date: Date }>;
     restoreStateFromDB(callback: (err: Error, result: { id: string, state: string | Date, date: Date }) => void): void;
@@ -281,9 +179,9 @@ export abstract class persistence {
     abstract doInsert(record: { date: Date, state: any }, callback: (err: Error, doc: Object) => void): void;
     abstract doInsert(record: { date: Date, state: any }, callback?: (err: Error, doc: Object) => void): void | Promise<Object>;
 
-    abstract doGetHistory(aggregate: AggregationType, from: Date | null, to: Date | null): Promise<any[]>;
-    abstract doGetHistory(aggregate: AggregationType, from: Date | null, to: Date | null, callback: (err: Error, results: any[]) => void): void;
-    abstract doGetHistory(aggregate: AggregationType, from: Date | null, to: Date | null, callback: (err: Error, results: any[]) => void): void;
+    abstract doGetHistory(dataSet: DataSet, from: Date | null, to: Date | null): Promise<any[]>;
+    abstract doGetHistory(dataSet: DataSet, from: Date | null, to: Date | null, callback: (err: Error, results: any[]) => void): void;
+    abstract doGetHistory(dataSet: DataSet, from: Date | null, to: Date | null, callback: (err: Error, results: any[]) => void): void;
 
     abstract doRestoreStateFromDB(): Promise<{ id: string, state: string | Date, date: Date }>;
     abstract doRestoreStateFromDB(callback: (err: Error, result: { id: string, state: string | Date, date: Date }) => void): void;
@@ -294,19 +192,19 @@ export abstract class persistence {
     abstract doCleanOldData(): Promise<void>;
     abstract doCleanOldData(callback: (err: Error) => void): void;
 
-    loadDatasetToDB(aggregate: Exclude<AggregationType, 'change' | 'none'>, records: { date: Date, sum: number, count: number }[]): Promise<void>;
-    loadDatasetToDB(aggregate: Extract<AggregationType, 'change' | 'none'>, records: { date: Date, state: string }[]): Promise<void>;
-    loadDatasetToDB(aggregate: AggregationType, records: { date: Date, state: string }[] | { date: Date, sum: number, count: number }[]): Promise<void> {
-        return this.doLoadDatasetToDB(aggregate, records);
+    loadDatasetToDB(dataSet: Exclude<DataSet, 'change' | 'raw'>, records: { date: Date, sum: number, count: number }[]): Promise<void>;
+    loadDatasetToDB(dataSet: Extract<DataSet, 'change' | 'raw'>, records: { date: Date, state: string }[]): Promise<void>;
+    loadDatasetToDB(dataSet: DataSet, records: { date: Date, state: string }[] | { date: Date, sum: number, count: number }[]): Promise<void> {
+        return this.doLoadDatasetToDB(dataSet, records);
     }
-    abstract doLoadDatasetToDB(aggregate: AggregationType, records: { date: Date, state: string }[] | { date: Date, sum: number, count: number }[]): Promise<void>;
+    abstract doLoadDatasetToDB(dataSet: DataSet, records: { date: Date, state: string }[] | { date: Date, sum: number, count: number }[]): Promise<void>;
 
-    dumpDatasetFromDB(aggregate: Exclude<AggregationType, 'change' | 'none'>): Promise<{ date: Date, sum: number, count: number }[]>;
-    dumpDatasetFromDB(aggregate: Extract<AggregationType, 'change' | 'none'>): Promise<{ date: Date, state: string }[]>;
-    dumpDatasetFromDB(aggregate: AggregationType): Promise<{ date: Date, state: string }[] | { date: Date, sum: number, count: number }[]> {
-        return this.doDumpDatasetFromDB(aggregate);
+    dumpDatasetFromDB(dataSet: Exclude<DataSet, 'change' | 'raw'>): Promise<{ date: Date, sum: number, count: number }[]>;
+    dumpDatasetFromDB(dataSet: Extract<DataSet, 'change' | 'raw'>): Promise<{ date: Date, state: string }[]>;
+    dumpDatasetFromDB(dataSet: DataSet): Promise<{ date: Date, state: string }[] | { date: Date, sum: number, count: number }[]> {
+        return this.doDumpDatasetFromDB(dataSet);
     }
-    abstract doDumpDatasetFromDB(aggregate: AggregationType): Promise<{ date: Date, state: string }[] | { date: Date, sum: number, count: number }[]>;
+    abstract doDumpDatasetFromDB(dataSet: DataSet): Promise<{ date: Date, state: string }[] | { date: Date, sum: number, count: number }[]>;
 
 
     static async deviceIdsFromDB(): Promise<string[]> {
@@ -330,11 +228,13 @@ export abstract class persistence {
             //console.log(" Dumping Backup state for device:", deviceId);
             i++;
             // create an instance of the persistence subclass
-            const p: persistence = Reflect.construct(this.prototype.constructor, [deviceId]);
+            const p: persistence = Reflect.construct(this.prototype.constructor, [deviceId, '{"raw": "1 year"}']);
 
             //console.log(p);
 
             const result = await p.restoreStateFromDB();
+            await p.release();
+
             if (!result) continue;
             //console.log(result)
             writeSync(file, "    {\n" + JSON.stringify({
@@ -358,13 +258,14 @@ export abstract class persistence {
         for (const deviceId of devices) {
 
             // create an instance of the persistence subclass
-            const p: persistence = Reflect.construct(this.prototype.constructor, [deviceId]);
+            const p: persistence = Reflect.construct(this.prototype.constructor, [deviceId, '{"raw": "1 year"}']);
 
             let i = 0;
-            for (const aggregate of ALL_AGGREGATION_TYPES) {
+            let wroteDataSetBlock = false; // to manage commas between data set blocks
+            for (const dataSet of ALL_DATA_SETS) {
                 i++;
 
-                const records = aggregate === "change" || aggregate === "none" ? await p.dumpDatasetFromDB(aggregate) : await p.dumpDatasetFromDB(aggregate);
+                const records = dataSet === "change" || dataSet === "raw" ? await p.dumpDatasetFromDB(dataSet) : await p.dumpDatasetFromDB(dataSet);
 
                 if (records.length === 0) continue;
 
@@ -375,7 +276,10 @@ export abstract class persistence {
                 }
                 wroteDeviceId = true;
 
-                writeSync(file, `    "${aggregate}": [\n`);
+                writeSync(file, wroteDataSetBlock ? ",\n" : "\n");
+                wroteDataSetBlock = true;
+
+                writeSync(file, `    "${dataSet}": [\n`);
 
                 for (let j = 0; j < records.length; j++) {
                     const s = JSON.stringify(records[j], null, 10).slice(2, -2);
@@ -385,7 +289,12 @@ export abstract class persistence {
                 }
 
                 writeSync(file, "    ]");
-                writeSync(file, i < ALL_AGGREGATION_TYPES.length ? ",\n" : "\n");
+            }
+            await p.release();
+
+            if (wroteDataSetBlock) {
+                writeSync(file, "\n");
+                wroteDataSetBlock = false;
             }
             if (wroteDeviceId) { // do not write empty "deviceid" {} if no data
                 writeSync(file, "  }");
@@ -446,6 +355,7 @@ export abstract class persistence {
                     }
                     if (line === "  ]," || line === "  ]") {
                         // end of Backup states json block
+                        logger.debug(`Finished reading Backup states block...`);
 
                         JSONstring += "]\n";
 
@@ -453,11 +363,12 @@ export abstract class persistence {
 
                         const key = Object.keys(object)[0]; // should be only one key
                         if (key === "Backup states") {
+                            logger.debug(`Loading Backup states block...`);
                             const states: any[] = object["Backup states"];
                             for (const s of states) {
                                 const deviceId = s.id;
                                 // create an instance of the persistence subclass 
-                                const p: persistence = Reflect.construct(this.prototype.constructor, [deviceId]);
+                                const p: persistence = Reflect.construct(this.prototype.constructor, [deviceId, '{"raw": "1 year"}']);
 
                                 const state = s.state;
                                 const date = new Date(s.date);
@@ -472,6 +383,7 @@ export abstract class persistence {
                         continue;
                     } else if (line === "  }," || line === "  }") {
                         // end of device json block
+                        logger.debug(`Finished reading a device block...`);
 
                         JSONstring += "}\n";
 
@@ -480,11 +392,13 @@ export abstract class persistence {
 
                         const deviceId = key;
 
-                        // create an instance of the persistence subclass 
-                        const p: persistence = Reflect.construct(this.prototype.constructor, [deviceId]);
+                        logger.debug(`Loading device block for '${deviceId}' with data sets:`, Object.keys(object[deviceId]));
 
-                        // get all aggregates for this deviceId
-                        for (const aggregate of Object.keys(object[deviceId]) as AggregationType[]) {
+                        // create an instance of the persistence subclass 
+                        const p: persistence = Reflect.construct(this.prototype.constructor, [deviceId, '{"raw": "1 year"}']);
+
+                        // get all data sets for this deviceId
+                        for (const dataSet of Object.keys(object[deviceId]) as DataSet[]) {
 
                             // insert states for this deviceId
                             const states: {
@@ -494,9 +408,7 @@ export abstract class persistence {
                                 date: string,
                                 sum: number,
                                 count: number
-                            }[] = object[deviceId][aggregate];
-
-                            //console.log(`Loading states for device "${deviceId}", dataset "${aggregate}" (${states.length} state(s))...`);
+                            }[] = object[deviceId][dataSet];
 
                             // cast date strings to Date objects
                             const states2: {
@@ -509,9 +421,9 @@ export abstract class persistence {
                             }[] = states as any;
                             states2.forEach(s => { s.date = new Date(s.date) });
 
-                            await p.doLoadDatasetToDB(aggregate, states2);
+                            await p.doLoadDatasetToDB(dataSet, states2);
                         }
-
+                        logger.debug(`Releasing persistence for '${deviceId}'`);
                         await p.release();
                         JSONstring = "";
                         continue;

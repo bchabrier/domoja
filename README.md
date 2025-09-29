@@ -208,14 +208,11 @@ Persisted state data is categorized into several data sets:
 
 Persistence can be specified through the `persistence` attribute:
 
-`persistence: "<persistence-module>:<id>:<aggregation mode>:<keep>"`
+`persistence: "<persistence-module>:<id>:<keep>"`
 * `<persistence-module>` is `mongo` by default.
 * `<id>` specifies the id of the device to be persisted. If not specified, then the path of the device is used. Specifying the id is useful if you want to be sure to keep the persisted states even if you change the path of the device.
-* `<aggregation mode>`: one of `change`, `raw` or  `aggregate`.
-  - `change` will keep the `change` data set
-  - `raw` will keep the `change` and `none` data sets
-  - `aggregate`will keep the `change`, `none`, plus for numerical values, the `minute`, `hour`, `day`, `week`, `month` and `year` data sets
-* `<keep>`: One or two comma-separated durations indicating how long to persist the states. In case `aggregate` mode is specified, the field contains 2 durations, the first one applies to raw data, while the second one applies to the aggregated data. Durations can be a number (or calculation) of minutes, or a specification of years, months, weeks, days, hours, minutes. A duration of 0 means that data is kept indefinitely.
+* `<keep>`: a JSON object specifying which data sets should be kept and for how long, e.g. `{"raw": "1 year", "year": "5 years"}`. Durations can be a number (or calculation) of minutes, or a specification of years, months, weeks, days, hours, minutes. 
+
 
   Example of durations:
   - `5 years`

@@ -1994,11 +1994,11 @@ function getDeviceLastUpdateDate(path: string): Date {
     return device && device.lastUpdateDate;
 }
 
-function getDeviceStateHistory(path: string, aggregate: "none" | "minute" | "hour" | "day" | "month" | "year", fromDate: Date, toDate: Date, callback: (err: Error, res?: string[]) => void): void {
+function getDeviceStateHistory(path: string, dataSet: "change" | "raw" | "minute" | "hour" | "day" | "month" | "year", fromDate: Date, toDate: Date, callback: (err: Error, res?: string[]) => void): void {
     let device = getDevice(path);
     if (!device) callback(new Error(`Unknown device "${path}"`));
     else {
-        device.persistence.getHistory(aggregate, fromDate, toDate, (err, results) => {
+        device.persistence.getHistory(dataSet, fromDate, toDate, (err, results) => {
             if (err) {
                 logger.error(err);
                 callback(err);
