@@ -91,42 +91,89 @@ export abstract class persistence {
 
         if (keep) {
             if (this.strategy === 'aggregate') {
-                const keepTab = keep.split(',');
-                this.keepString = keepTab[0];
-                this.keep = this.keepString && parseDuration(this.keepString);
-                const keepAggregationString = keepTab[1];
-                const keepAggregation = keepAggregationString && parseDuration(keepAggregationString);
 
-                this.keepAggregation = {
-                    year: keepAggregation,
-                    month: keepAggregation,
-                    week: keepAggregation,
-                    day: keepAggregation,
-                    hour: keepAggregation,
-                    minute: keepAggregation,
-                    change: keepAggregation
-                };
-                this.keepAggregationString = {
-                    year: keepAggregationString,
-                    month: keepAggregationString,
-                    week: keepAggregationString,
-                    day: keepAggregationString,
-                    hour: keepAggregationString,
-                    minute: keepAggregationString,
-                    change: keepAggregationString
-                };
+                if (keep.trimStart().startsWith('{')) {
+                    const jsonString = keep || "{\"raw\":\"1 month\", \"month\":\"5 years\"}";
+
+                    let json: { [key in Exclude<AggregationType, "none"> | "raw"]: string } = null;
+                    try {
+                        json = JSON.parse(jsonString);
+                        logger.debug("keep string converted to:", json);
+                    } catch (err) {
+                        logger.warn(`Parse error while parsing json string`, jsonString, ":", err);
+                    }
+
+                    if (!json || typeof json !== 'object') {
+                        return
+                    }
+
+                    for (const k of Object.keys(json)) {
+                        const key = k as Exclude<AggregationType, "none"> | "raw";
+                        if (key === 'raw') {
+                            this.keepString = json['raw'];
+                            this.keep = parseDuration(this.keepString);
+                        } else if (ALL_AGGREGATION_TYPES.includes(key as AggregationType)) {
+                            const keepAggregationString = json[key];
+                            const keepAggregation = parseDuration(keepAggregationString);
+                            this.keepAggregation[key] = keepAggregation;
+                            this.keepAggregationString[key] = keepAggregationString;
+                        } else {
+                            logger.warn(`Unknown key "${key}" in keep json string, ignoring`);
+                        }
+                    }
+
+                    // ensure all keys are present, set to higher value if missing
+                    let previousDurationString = '5 years';
+                    let previousDuration = parseDuration(previousDurationString);
+                    for (const k of ['year', 'month', 'week', 'day', 'hour', 'minute', 'raw', 'change'] as (Exclude<AggregationType, "none"> | "raw")[]) {
+                        switch (k) {
+                            case 'year':
+                            case 'month':
+                            case 'week':
+                            case 'day':
+                            case 'hour':
+                            case 'minute':
+                            case 'change':
+                                if (this.keepAggregation[k] === undefined) {
+                                    this.keepAggregationString[k] = previousDurationString;
+                                    this.keepAggregation[k] = previousDuration;
+                                }
+                                previousDuration = this.keepAggregation[k];
+                                previousDurationString = this.keepAggregationString[k];
+                                break;
+                            case 'raw':
+                                if (this.keep === undefined) {
+                                    this.keepString = '1 month';
+                                    this.keep = parseDuration(this.keepString);
+                                }
+                                previousDuration = this.keep;
+                                previousDurationString = this.keepString;
+                                break;
+                            default:
+                                let _exhaustiveCheck: never = k;
+                                logger.error(`Internal error: unknown key "${_exhaustiveCheck}" in keep json string, ignoring`);
+                                break;
+                        }
+
+                    }
+
+                    logger.debug("Final keep and keepAggregation:", this.keepString, this.keepAggregationString);
 
 
-                /*
-                const json = keepTab[2] || "{\"raw\":\"1 month\", \"month\":\"5 years\"}";
+                } else {
+                    const keepTab = keep.split(',');
+                    this.keepString = keepTab[0];
+                    this.keep = this.keepString && parseDuration(this.keepString);
+                    const keepAggregationString = keepTab[1];
+                    const keepAggregation = keepAggregationString && parseDuration(keepAggregationString);
 
-                try {
-                    const obj = JSON.parse(json);
-                    console.log("persistence.constructor: keep obj:", obj);
-                } catch (err) {
-                    console.log(`persistence.constructor: parse error while parsing json`, json, ":", err);
+                    Object.keys(this.keepAggregation).forEach(key => {
+                        const keyTyped = key as Exclude<AggregationType, 'none'>;
+                        this.keepAggregationString[keyTyped] = keepAggregationString;
+                        this.keepAggregation[keyTyped] = keepAggregation;
+                    });
                 }
-*/
+
             } else {
                 this.keepString = keep;
                 this.keep = parseDuration(this.keepString);

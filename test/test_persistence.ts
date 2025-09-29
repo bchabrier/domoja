@@ -459,6 +459,55 @@ describe('Module persistence', function () {
             assert.equal(results.length, aggregate.nb); // only the good number of records should remain 
           });
         }
+
+        for (let aggregate of [
+          { type: 'year', nb: 1 },
+          { type: 'month', nb: 3 },
+          { type: 'week', nb: 2 },
+          { type: 'day', nb: 1 },
+          { type: 'hour', nb: 1 },
+          { type: 'minute', nb: 1 },
+          { type: 'change', nb: 0 }] as const) {
+          it('should clean old data aggregated by ' + aggregate.type + " with keep as a JSON string", async function () {
+            if (aggregate.type === null) this.skip();
+
+            persistence = config.createInstance("test_device", 'aggregate', `{
+              "raw": "1 year", 
+              "year": "500 days",
+              "month": "500 days",
+              "week": "300 days",
+              "day": "200 days",
+              "change": "600 days"
+            }`);
+            assert(persistence);
+
+            const now = new Date();
+
+            const dates = [
+              now, // now
+              new Date(now.getTime() - 1000 * 60 * 60 * 24 * 200), // 200 days ago
+              new Date(now.getTime() - 1000 * 60 * 60 * 24 * 400), // 400 days ago
+              new Date(now.getTime() - 1000 * 60 * 60 * 24 * 600), // 600 days ago
+            ].sort((a, b) => a.getTime() - b.getTime());
+            for (let date of dates) {
+              const doc = await persistence.insert({
+                date: date,
+                state: 10
+              });
+            }
+
+            // clean old data
+            //console.log("gethistory before cleanolddata", await persistence.getHistory(aggregate.type, new Date(now.getTime() - 1000 * 60 * 60 * 24 * 700), new Date(now.getTime() + 1));
+            await persistence.cleanOldData();
+
+            const results = await persistence.getHistory(aggregate.type, null, null);
+            assert(results);
+            //console.log("gethistory after cleanolddata", results);
+            assert(Array.isArray(results));
+            assert.equal(results.length, aggregate.nb); // only the good number of records should remain 
+          });
+        }
+
       });
 
       describe("dump and load", function () {
