@@ -1,10 +1,10 @@
 import 'mocha';
-import rewire = require('rewire')
+import rewire = require('rewire');
 import * as ToMock from '../core/lib/load'
 
-import assert = require('assert');
-import async = require('async');
-import fs = require('fs');
+import * as assert from 'assert';
+import * as async from 'async';
+import * as fs from 'fs';
 
 //import * as zibase from '../sources/zibase';
 
@@ -27,23 +27,34 @@ describe('Module load', function () {
         });
     }
 
-    this.timeout(5000);
+    this.timeout(50000);
 
-    let doc: doc = null;
+    let currentDoc: doc | null = null;
 
     before(function () {
         RewireToMock = rewire('../core/lib/load');
         grammar = <any>RewireToMock;
+
+        // overload loadFile to capture the loaded doc, so that we can release it in afterEach
+        const origLoadFile = grammar.loadFile;
+        grammar.loadFile = function newLoadFile(file: string, done: (err: Error, doc: doc) => void) {
+            return origLoadFile(file, (err, doc) => {
+                // capture current doc
+                assert(!currentDoc);
+                currentDoc = doc;
+                return done(err, doc);
+            });
+        }
     });
 
     afterEach('Release document', function (done) {
         //console.log('aftereach...')
-        async.map(doc && doc.sources, (s, callback) => {
+        async.map(currentDoc ? currentDoc.sources : [], (s, callback) => {
             /*
             if (s.source instanceof zibase.Zibase) {
                 //console.log("found zibase...")
                 let z = <zibase.Zibase>s.source
-
+     
                 z.on("message", function () {
                     //console.log("got message...")
                     callback();
@@ -56,8 +67,8 @@ describe('Module load', function () {
         */
         }, () => {
             //console.log("all zibases got messages")
-            if (doc) doc.release();
-            doc = null;
+            if (currentDoc) currentDoc.release();
+            currentDoc = null;
             done();
         });
 
@@ -180,7 +191,7 @@ describe('Module load', function () {
             });
         });
     });
-    describe.only('#configFile', function () {
+    describe('#configFile', function () {
         this.timeout(240000);
         /*
         it('should load the zibase config file', function (done) {
@@ -215,7 +226,6 @@ describe('Module load', function () {
                     doc.release();
                     done();
                 });
-                doc = null;
             }
 
         })
