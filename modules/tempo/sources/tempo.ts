@@ -39,6 +39,7 @@ export class tempo extends Source {
 	jobUpdateTomorrowColor: Cron;
 	tomorrowColorUpdated: boolean = false;
 	request: request.Request;
+	retryTimeout: NodeJS.Timeout;
 
 	constructor(path: string, initObject: InitObject) {
 		super(path, initObject);
@@ -84,6 +85,8 @@ export class tempo extends Source {
 		this.jobUpdateTomorrowColor.stop();
 		this.jobUpdateTomorrowColor = null;
 		this.request.abort();
+		if (this.retryTimeout) clearTimeout(this.retryTimeout);
+		this.retryTimeout = null;
 		super.release();
 	}
 
@@ -104,7 +107,7 @@ export class tempo extends Source {
 				self.logger.warn(err);
 				var delay = 10;
 				self.logger.warn("Retrying in", delay, "mn");
-				setTimeout(function () {
+				self.retryTimeout = setTimeout(function () {
 					self.RetryUpdate(f);
 				}, delay * 60 * 1000).unref();
 			}
