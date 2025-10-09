@@ -1,12 +1,4 @@
-import { Source, ConfigLoader, GenericDevice, InitObject, Parameters } from 'domoja-core';
-import * as assert from 'assert';
-import * as request from 'request';
-
-var logger = require("tracer").colorConsole({
-	dateformat: "dd/mm/yyyy HH:MM:ss.l",
-	level: 2 //0:'test', 1:'trace', 2:'debug', 3:'info', 4:'warn', 5:'error'
-});
-
+import { Source, ConfigLoader, InitObject, Parameters } from 'domoja-core';
 
 //import * as cache from "./cache");
 import { Cron } from 'croner';
@@ -57,7 +49,7 @@ export class tempo extends Source {
 			},
 			function () {
 				self.RetryUpdate(function () {
-					logger.info("All tempo info updated from CronJob.")
+					self.logger.info("All tempo info updated from CronJob.")
 				})
 			}
 		);
@@ -68,7 +60,7 @@ export class tempo extends Source {
 			},
 			function () {
 				if (!self.tomorrowColorUpdated) self.RetryUpdate(function () {
-					if (self.tomorrowColorUpdated) logger.info("Tomorrow color info updated from CronJob.")
+					if (self.tomorrowColorUpdated) self.logger.info("Tomorrow color info updated from CronJob.")
 				})
 			},
 		);
@@ -109,9 +101,9 @@ export class tempo extends Source {
 			if (err == null) {
 				f();
 			} else {
-				logger.warn(err);
+				self.logger.warn(err);
 				var delay = 10;
-				logger.warn("Retrying in", delay, "mn");
+				self.logger.warn("Retrying in", delay, "mn");
 				setTimeout(function () {
 					self.RetryUpdate(f);
 				}, delay * 60 * 1000).unref();
@@ -160,7 +152,7 @@ export class tempo extends Source {
 					if (obj.codeJour != undefined) codeJour = obj.codeJour;
 				} else if (obj.title == "An error occurred" && obj.detail == "Not Found") codeJour = 0; // indeterminé
 			} catch (e) {
-				logger.error(e);
+				self.logger.error(e);
 			}
 			let now = new Date;
 			self.updateAttribute('lastUpdateDate', 'state', now.toString());
@@ -180,7 +172,7 @@ export class tempo extends Source {
 						break;
 					default:
 						self.updateAttribute(couleurDuJour, 'state', "Indéterminé", now);
-						logger.error(couleurDuJour + " '" + codeJour + "' non connue.");
+						self.logger.error(couleurDuJour + " '" + codeJour + "' non connue.");
 				}
 				if (couleurDuJour === "couleurDeDemain") this.tomorrowColorUpdated = true;
 
