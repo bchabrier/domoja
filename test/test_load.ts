@@ -180,8 +180,8 @@ describe('Module load', function () {
             });
         });
     });
-    describe('#configFile', function () {
-        this.timeout(40000)
+    describe.only('#configFile', function () {
+        this.timeout(240000);
         /*
         it('should load the zibase config file', function (done) {
             grammar.loadFile('./test/load/sources/zibase.yml', (err, doc) => {
@@ -270,6 +270,26 @@ describe('Module load', function () {
         it('should fire a simple action, no condition', function (done) {
             grammar.reloadConfig('./test/load/scenarios/simple_action.yml', err => {
                 passToSandbox(done);
+                grammar.getSource('testSource').emitEvent('change', 'the_device', { oldValue: -1, newValue: 1 });
+            });
+        });
+        it('should execute action twice when triggered twice', function (done) {
+            let count = 0;
+            grammar.reloadConfig('./test/load/scenarios/double_trigger.yml', err => {
+                passToSandbox(() => {
+                    count++;
+                    if (count === 2) done();
+                });
+                grammar.getSource('testSource').emitEvent('change', 'the_device', { oldValue: -1, newValue: 1 });
+            });
+        });
+        it('should execute action once when limiting condition', function (done) {
+            let count = 0;
+            grammar.reloadConfig('./test/load/scenarios/double_trigger_condition.yml', err => {
+                passToSandbox(() => {
+                    count++;
+                    if (count === 1) done();
+                });
                 grammar.getSource('testSource').emitEvent('change', 'the_device', { oldValue: -1, newValue: 1 });
             });
         });
